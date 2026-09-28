@@ -13,6 +13,7 @@ import pandas as pd
 from scipy.integrate import solve_ivp
 
 from kinetics.microkinetics.rate_constants import calculate_rate_constants
+from kinetics.microkinetics.kinetic_parameters import PETER_REFERENCE_PARAMETERS
 
 # Default physical densities (g/mL) and molecular weights (g/mol)
 DEFAULT_RHO = {
@@ -188,9 +189,7 @@ def simulate_protocol_reactor(
     snapshots = []
     events = []
     
-    effective_bep = bep_params if bep_params is not None else {
-        "default": {"E0_eV": 1.15, "alpha": 0.50}
-    }
+    effective_bep = bep_params if bep_params is not None else PETER_REFERENCE_PARAMETERS
     
     for stage_i, (label, t_celsius, duration_h, spec_temp) in enumerate(stages):
         # Event: discrete injection and dilution

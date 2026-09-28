@@ -162,12 +162,34 @@ The `max()` operates on kJ/mol (after converting $E_0$ from eV). This is **numer
 ### ✓ Finding 8 (RESOLVED): **Family-Specific BEP Activation Barriers ($E_{0,\text{solv}} = 1.30$ eV)**
 
 - **Previous Flaw:** `family_bep_parameters` previously set a uniform $E_0 = 0.80$ eV across all reaction classes. At room temperature, this caused cyclic carbonate ring-opening ($R_8, R_9$) to proceed $\sim 10^8\times$ too fast, generating artificial $\text{CO}_2$ bubbling and prematurely consuming TMSOH before silyl transfer ($R_5$–$R_7$) could occur.
-- **Resolution:** Following experimental findings from Gogoi et al. (*Nat. Commun.* 2024), `solvent_attack` is assigned $E_0 = 1.30$ eV in both `calculate_rate_constants.py` and `multiscale_microkinetics.ipynb` (Block 5).
+- **Resolution:** Following the experimental observations of Gogoi et al. (*J. Phys. Chem. C* 2024, 128, 1654; the earlier citation to *Nat. Commun.* 2024 was incorrect), `solvent_attack` is assigned $E_0 = 1.30$ eV in both `calculate_rate_constants.py` and `multiscale_microkinetics.ipynb` (Block 5). The paper reports no barrier: 1.30 eV is **derived** from its protocol (TMSOH opens EC only after 8 h holds at 80 °C → observed barrier 1.25–1.36 eV).
 - **Physical Result in Block 7:**
   - Forward rate constant drops from $0.186\text{ s}^{-1}$ to $6.59 \times 10^{-10}\text{ s}^{-1}$.
   - False $\text{CO}_2$ gassing is completely suppressed ($0.00\text{ mM}$ at $10^6\text{ s}$).
   - TMSOH is preserved for productive silyl transfer: TMSPA is fully consumed down to $10.0\text{ mM}$ with $20.0\text{ mM}$ siloxyl formed, resolving Peter Broqvist's original benchmark anomaly.
 - **Documented:** Added Section 5.3 and Section 4 notes to `theory-multiscale_microkinetics.md`.
+
+### ⚠ Finding 15: **Capped BEP is direction-dependent (correctness bug)**
+
+`max(E0, E0 + αΔG)` is not invariant under reaction reversal. Writing R4 as `HMDSO + H2O → 2 TMSOH` changes its physical rate by ×7.2 and the tank trajectories by up to 2.5 mM. The same cap puts every exergonic step exactly at E0, so α acts on 1 of 9 reactions.
+
+> [!WARNING]
+> **Severity: HIGH (correctness).** **Status: mitigated (opt-in).** The Level 1 engine (`kinetic_model='level1'`, `kinetics/microkinetics/barrier_models.py`) uses smooth, reversal-invariant forms. This is verified by `tests/test_barrier_models.py::test_network_reversal_invariance`. The legacy default is kept for Peter-reference reproduction.
+
+### ⚠ Finding 16: **Condensation barrier contradicts Gogoi et al. 2024**
+
+5 vol% TMSOH in EC/DEC forms no TMSOTMS beyond impurity level even after 80 °C (Gogoi et al., *J. Phys. Chem. C* 2024). With E0 = 0.80 eV the model equilibrates R4 within about 45 s (about 22 % TMSOH conversion). The observation implies an uncatalysed ΔG‡(R4) ≳ 1.30 eV. The "R4 autocatalytic water regeneration" narrative is not supported in acid-free media.
+
+> [!CAUTION]
+> **Severity: HIGH.** `LEVEL1_FAMILY_PARAMETERS` sets g(condensation) = 1.30 eV. A catalysed R4 channel (acids from R1–R3) must be added explicitly (Level 3) if needed.
+
+### ⚡ Finding 17: **Block 4 ΔG° table in the theory doc was stale**
+
+The theory doc listed B3LYP-era values (e.g. R4 +0.183, R6 +0.029, R8 −0.449 eV) while the code uses the ωB97M-V snapshot (R4 +0.102, R6 −0.056, R8 −0.047 eV). **Status: resolved** (table regenerated 2026-09-28).
+
+### ⚡ Finding 18: **Level 1 hydrolysis/transfer barriers are placeholders**
+
+Under Marcus, the 0.80 eV placeholders make R1 ~5 × 10³ faster than under the capped BEP. TMSPA is then consumed within the first 20 °C hold of the NB02 protocol, which is faster than observed. **Severity: MEDIUM. Status: open.** Recalibrate g(hydrolysis) and g(transfer) against time-resolved TMSPA decay before making `level1` the default.
 
 ---
 
@@ -291,6 +313,10 @@ The sweep varies $E_0$ uniformly across all families. To test the effect of a hi
 | 12 | 8 | — | ✓ Verified | FWHM is consistent between 2D and 1D plots |
 | 13 | 8 | LOW | Physical | BMSPA and TMSOEG share −18.01 ppm; spectroscopic degeneracy undiscussed |
 | 14 | 9 | LOW | Feature | Sweep uses global $E_0$; cannot test family-specific barriers |
+| 15 | 5 | **HIGH** | ⚠ Correctness | Capped BEP is direction-dependent; mitigated by opt-in Level 1 engine |
+| 16 | 5 | **HIGH** | ⚠ Contradiction | Condensation E0 = 0.80 eV contradicts Gogoi 2024; Level 1 uses g = 1.30 eV |
+| 17 | 4 | LOW | ✓ Resolved | Stale B3LYP ΔG° table in theory doc regenerated from ωB97M-V snapshot |
+| 18 | 5 | MEDIUM | Open | Level 1 hydrolysis/transfer g are placeholders; too fast under Marcus |
 
 ### Critical Path Status
 

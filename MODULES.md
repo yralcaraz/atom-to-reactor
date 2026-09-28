@@ -242,7 +242,11 @@ $$K_{\text{eq}}(T) = \exp\left( -\frac{\Delta G_{\text{rxn}}(T)}{R T} \right)$$
 ### `kinetics/microkinetics/rate_constants.py`
 
 #### Purpose
-Computes forward ($k_f$) and reverse ($k_r$) microkinetic rate constants via Transition State Theory (TST) with thermodynamic consistency. It guarantees strict microscopic reversibility and detailed balance ($k_f / k_r = K_{\text{eq}}$) across all reaction pathways. Supports pluggable kinetic models: Bell-Evans-Polanyi (BEP) linear barrier scaling and Marcus theory quadratic activation.
+Computes forward ($k_f$) and reverse ($k_r$) microkinetic rate constants via Transition State Theory (TST) with thermodynamic consistency. It guarantees strict microscopic reversibility and detailed balance ($k_f / k_r = K_{\text{eq}}$) across all reaction pathways. Supports pluggable kinetic models: Bell-Evans-Polanyi (BEP) linear barrier scaling (legacy default), Marcus theory quadratic activation, and the Level 1 engine (smooth, reversal-invariant barrier relations with recalibrated family intrinsic barriers; opt-in via `kinetic_model='level1'`).
+
+Companion modules:
+* `kinetics/microkinetics/barrier_models.py`: pure barrier functions $F(\Delta G_{\text{rxn}}; g)$ returning $(\Delta G^\ddagger_f, \alpha_{\text{eff}})$.
+* `kinetics/microkinetics/kinetic_parameters.py`: parameter sets `DEFAULT_FAMILY_BEP_PARAMETERS`, `PETER_REFERENCE_PARAMETERS`, `LEVEL1_FAMILY_PARAMETERS` and the schema normaliser.
 
 #### Fundamental Physical Equations
 1. **Model 1: Bell-Evans-Polanyi (BEP) + Eyring TST:**
@@ -255,18 +259,39 @@ Computes forward ($k_f$) and reverse ($k_r$) microkinetic rate constants via Tra
    $$k_f = \kappa \frac{k_B T}{h} \exp\left( -\frac{\Delta G^\ddagger_f}{R T} \right), \quad k_r = \frac{k_f}{K_{\text{eq}}}$$
    *Consistency Condition:* When reorganization energy $\lambda$ is unassigned, it defaults to $\lambda = 4 E_0$ (e.g. $3.20\text{ eV}$ for $E_0 = 0.80\text{ eV}$), ensuring identical barrier ($E_0$) and slope ($\alpha = 0.50$) between Marcus and BEP at thermoneutrality ($\Delta G_{\text{rxn}} = 0$).
 
+3. **Level 1 barrier engine (`kinetic_model='level1'` and the individual shapes):**
+   With $x = \Delta G_{\text{rxn}}$ and intrinsic barrier $g$ (barrier of a thermoneutral family member):
+
+   | Shape | $F(x; g)$ | Notes |
+   |---|---|---|
+   | `marcus` | $g + x/2 + x^2/(16g)$ | $\lambda = 4g$; default shape of `level1` |
+   | `agmon_levine` | $x + \frac{g}{\ln 2}\ln\!\left[1 + e^{-x\ln 2/g}\right]$ | never inverts; $\alpha$ logistic in $(0,1)$ |
+   | `blowers_masel` | Cantera piecewise form, $V_P = 2w(w+g)/(w-g)$ | $w$ = mean BDE (default 5 eV); $\to$ Marcus as $w\to\infty$ |
+   | `two_parabola` | unequal-curvature crossing, $\alpha(0) = \alpha_0$ | $\alpha_0 = \tfrac12$ recovers Marcus |
+   | `bep_cap` | $\max(g, g + \alpha x)$ | legacy; direction-dependent |
+
+   Full barrier: $\Delta G^\ddagger_f = \max\big(w_R + F(x - w_R + w_P;\, g(T)),\ 0,\ x\big)$ with Marcus work terms $w_R, w_P$ and
+   $$g(T) = g(T_{\text{ref}}) - (T - T_{\text{ref}})\,\Delta S^\ddagger_0$$
+   Reactions flagged `'canonical': False` in the network use the reversed family parameters ($\alpha_0 \to 1-\alpha_0$, $w_R \leftrightarrow w_P$).
+   Optional diffusion ceiling (keyword `viscosity_Pa_s`, bimolecular steps only): $k_f^{\text{eff}} = (1/k_f^{\text{TST}} + 1/k_D)^{-1}$, $k_D = 8RT/(3\eta)$, applied before $k_r = k_f/K_{\text{eq}}$.
+
+   *Axioms enforced and tested* (`tests/test_barrier_models.py`): reversal invariance $F(-x;\bar\theta) = F(x;\theta) - x$, bounds $\max(0,x) \le F$, anchoring $F(0) = g$, Leffler bounds $0 \le \alpha \le 1$. The legacy BEP cap violates reversal invariance: writing $R_4$ backwards changes the dynamics.
+
+   *Level 1 family parameters* (`LEVEL1_FAMILY_PARAMETERS`, Marcus): hydrolysis $0.80$ and transfer $0.80\text{ eV}$ (placeholders), condensation $1.30\text{ eV}$ and solvent attack $1.32\text{ eV}$ (derived from the protocol observations of Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654). Derivations and intervals: TFM document *KIN - DRAFT - Level 1 formulation refined scaling relations - 260928*.
+
 #### Functions in `kinetics/microkinetics/rate_constants.py`
 
 ##### 1. `calculate_rate_constants(rxn_id, T_K, model=None, kinetic_model='bep_eyring', bep_params=None, reactions_net=None, species_db=None, mode='qRRHO', thermo_mode=None, **kwargs) -> dict`
 * **Arguments:**
   * `rxn_id` (`str`): Reaction identifier.
   * `T_K` (`float`): Temperature in Kelvin.
-  * `model` / `kinetic_model` (`str`, optional): `'bep_eyring'` (or `'bep'`) vs `'marcus_eyring'` (or `'marcus'`).
-  * `bep_params` (`dict`, optional): Family-specific $E_0$ and $\alpha$ dictionary.
+  * `model` / `kinetic_model` (`str`, optional): `'bep_eyring'` (or `'bep'`, default), `'marcus_eyring'` (or `'marcus'`), `'agmon_levine'`, `'blowers_masel'`, `'two_parabola'`, or `'level1'`.
+  * `bep_params` (`dict`, optional): Family parameter dictionary. Keys per family: `'g_eV'` (or legacy `'E0_eV'`), `'alpha'`, `'shape'` (read by `level1`), `'T_ref_K'`, `'dS_act_J_molK'`, `'alpha0'`, `'w_eV'`, `'wR_eV'`, `'wP_eV'`, plus non-kinetic `'prior'`/`'source'`. `level1` without `bep_params` uses `LEVEL1_FAMILY_PARAMETERS`.
+  * `viscosity_Pa_s` (`float`, optional keyword): enables the Collins–Kimball diffusion ceiling.
   * `reactions_net` (`dict`, optional): Reaction network dictionary.
   * `species_db` (`dict`, optional): Species database.
   * `mode` / `thermo_mode` (`str`, optional): Thermodynamic calculation mode (`'wb97mv'` or `'qRRHO'`; legacy alias: `'b3lyp_benchmark'`).
-* **Returns:** `dict` (Unified dictionary containing rate constants, barriers, reaction free energy, and equilibrium constant).
+* **Returns:** `dict` (Unified dictionary containing rate constants, barriers, reaction free energy, and equilibrium constant). Keys: `'k_f'`, `'k_r'`, `'K_eq'`, `'dG_rxn_eV'`/`'_kJ_mol'`, `'dG_barrier_f_eV'`/`'_kJ_mol'`, `'dG_barrier_r_eV'`/`'_kJ_mol'`, `'class'`, `'kinetic_model'`, `'thermo_mode'`, plus `'barrier_model'`, `'g_eV'`, `'alpha_eff'`, `'lambda_eV'` (Marcus shape) and `'k_D'` (when the diffusion ceiling is active).
 
 ##### 2. `bep_eyring(rxn_id, T_K, bep_params=None, reactions_net=None, species_db=None, mode='qRRHO', **kwargs) -> dict`
 * Evaluates linear BEP scaling + Eyring TST. Returns explicit barriers $\Delta G^\ddagger_f$, $\Delta G^\ddagger_r$, $k_f$, $k_r$, and $K_{\text{eq}}$.
@@ -274,8 +299,14 @@ Computes forward ($k_f$) and reverse ($k_r$) microkinetic rate constants via Tra
 ##### 3. `marcus_eyring(rxn_id, T_K, lambda_eV=None, bep_params=None, reactions_net=None, species_db=None, mode='qRRHO', **kwargs) -> dict`
 * Evaluates Marcus quadratic barrier relation + Eyring TST. Returns $\lambda$, $\Delta G^\ddagger_f$, $\Delta G^\ddagger_r$, $k_f$, $k_r$, and $K_{\text{eq}}$.
 
-##### 4. `_get_bep_parameters(bep_params=None) -> dict`
-* Resolves `family_bep_parameters` across runtime namespaces.
+##### 4. `level1_eyring(rxn_id, T_K, bep_params=None, reactions_net=None, species_db=None, mode='qRRHO', **kwargs) -> dict`
+* Level 1 engine: per-family `'shape'` (default Marcus), $g(T)$, work terms, canonical-direction handling and optional diffusion ceiling. Does not inspect notebook globals.
+
+##### 5. `_get_bep_parameters(bep_params=None) -> dict`
+* Resolves `family_bep_parameters` across runtime namespaces (legacy models only). Known risk: a notebook global silently overrides the defaults when `bep_params` is omitted.
+
+##### 6. `barrier_models.barrier(x, shape, g, wR_eV=0, wP_eV=0, **params) -> (float, float)`
+* Pure barrier evaluation used by all models; `BARRIER_MODELS` lists the shapes, `invert_marcus(dG_obs, x)` returns the intrinsic barrier reproducing an observed barrier.
 
 ---
 

@@ -10,7 +10,13 @@ from kinetics.thermo.solution_gibbs import calculate_solution_gibbs
 from kinetics.thermo.reaction_thermo import calculate_reaction_thermo
 from kinetics.thermo.species_data import load_default_species_database
 
-from kinetics.microkinetics.rate_constants import calculate_rate_constants, bep_eyring, marcus_eyring
+from kinetics.microkinetics.rate_constants import calculate_rate_constants, bep_eyring, marcus_eyring, level1_eyring
+from kinetics.microkinetics.barrier_models import BARRIER_MODELS, barrier, invert_marcus
+from kinetics.microkinetics.kinetic_parameters import (
+    DEFAULT_FAMILY_BEP_PARAMETERS,
+    PETER_REFERENCE_PARAMETERS,
+    LEVEL1_FAMILY_PARAMETERS
+)
 from kinetics.microkinetics.arrhenius import fit_modified_arrhenius, generate_arrhenius_summary
 
 from kinetics.reactor.batch_reactor import simulate_tank_reactor, build_stoichiometric_matrix
@@ -54,6 +60,13 @@ __all__ = [
     "calculate_rate_constants",
     "bep_eyring",
     "marcus_eyring",
+    "level1_eyring",
+    "BARRIER_MODELS",
+    "barrier",
+    "invert_marcus",
+    "DEFAULT_FAMILY_BEP_PARAMETERS",
+    "PETER_REFERENCE_PARAMETERS",
+    "LEVEL1_FAMILY_PARAMETERS",
     "fit_modified_arrhenius",
     "generate_arrhenius_summary",
     "simulate_tank_reactor",

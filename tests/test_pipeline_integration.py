@@ -52,6 +52,11 @@ def test_thermodynamics_and_rates():
     assert rel_error < 1e-4, f"Detailed balance violated: kf/kr={k_ratio}, K_eq={rates['K_eq']}"
     print(f"✓ Detailed balance verified: k_f/k_r = {k_ratio:.3e}, K_eq = {rates['K_eq']:.3e}")
 
+    rates_l1 = calculate_rate_constants("R1", T_K=T, mode="wb97mv", kinetic_model="level1")
+    rel_error_l1 = abs(rates_l1["k_f"] / rates_l1["k_r"] - rates_l1["K_eq"]) / rates_l1["K_eq"]
+    assert rel_error_l1 < 1e-4, "Detailed balance violated for the Level 1 engine"
+    print(f"✓ Level 1 engine ({rates_l1['barrier_model']}): ΔG‡_f(R1) = {rates_l1['dG_barrier_f_eV']:.3f} eV, detailed balance kept")
+
 
 def test_protocol_reactor_simulation():
     print("\n--- 2. Testing Multi-Stage Protocol Reactor Simulation ---")

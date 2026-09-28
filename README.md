@@ -72,6 +72,8 @@ Activation free energies are coupled to reaction thermodynamics via the Bell-Eva
 
 $$\Delta G^\ddagger = E_0 + \alpha \, \Delta G^\circ_{\text{rxn}}$$
 
+An opt-in **Level 1 engine** (`kinetic_model='level1'`) replaces the capped BEP with smooth, reversal-invariant barrier relations (Marcus by default; Agmon–Levine, Blowers–Masel and two-parabola available), temperature-dependent intrinsic barriers and recalibrated family parameters (see `MODULES.md` §5).
+
 ### 4. Stiff Tank Reactor Dynamics
 The batch reactor ODE system tracks 27 interacting chemical species:
 
@@ -166,6 +168,8 @@ atom-to-reactor/
 │   ├── microkinetics/
 │   │   ├── __init__.py
 │   │   ├── arrhenius.py
+│   │   ├── barrier_models.py
+│   │   ├── kinetic_parameters.py
 │   │   └── rate_constants.py
 │   ├── reactor/
 │   │   ├── __init__.py
@@ -189,6 +193,9 @@ atom-to-reactor/
 ├── scripts/
 │   └── sync_linear.py
 └── tests/
+    ├── data/
+    │   └── block5_legacy_baseline.json
+    ├── test_barrier_models.py
     └── test_pipeline_integration.py
 ```
 

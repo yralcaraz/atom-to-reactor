@@ -461,38 +461,40 @@ To ger a liquid at room temp (or sub-0) it is formulated as a binary mixture wit
 ### 1. The 4 Mechanistic Reaction Classes
 The benchmark reaction network (`RXN-02`, Gogoi et al. 2024 / Peter Broqvist) organizes the 9 wired elementary steps into 4 chemical categories:
 
+*Reaction free energies below are from the ωB97M-V/def2-TZVPD + MACE $\Delta E_{\text{solv}}$ snapshot (`mode='wb97mv'`, 298.15 K), regenerated 2026-09-28. The earlier B3LYP-era values differed qualitatively for $R_6$ (sign flip) and $R_8$ (now nearly thermoneutral).*
+
 1. **Sequential Hydrolysis ($R_1, R_2, R_3$):**
    Successive displacement of trimethylsilyl groups by water molecules:
    $$\begin{aligned}
-   R_1: &\quad \text{TMSPA} + \text{H}_2\text{O} \rightleftharpoons \text{BMSPA} + \text{TMSOH} \quad (\Delta G = -0.440\text{ eV} / -10.15\text{ kcal/mol}) \\
-   R_2: &\quad \text{BMSPA} + \text{H}_2\text{O} \rightleftharpoons \text{MMSPA} + \text{TMSOH} \quad (\Delta G = -0.154\text{ eV} / -3.55\text{ kcal/mol}) \\
-   R_3: &\quad \text{MMSPA} + \text{H}_2\text{O} \rightleftharpoons \text{H}_3\text{PO}_4 + \text{TMSOH} \quad (\Delta G = -0.195\text{ eV} / -4.50\text{ kcal/mol})
+   R_1: &\quad \text{TMSPA} + \text{H}_2\text{O} \rightleftharpoons \text{BMSPA} + \text{TMSOH} \quad (\Delta G = -0.474\text{ eV} / -10.94\text{ kcal/mol}) \\
+   R_2: &\quad \text{BMSPA} + \text{H}_2\text{O} \rightleftharpoons \text{MMSPA} + \text{TMSOH} \quad (\Delta G = -0.158\text{ eV} / -3.64\text{ kcal/mol}) \\
+   R_3: &\quad \text{MMSPA} + \text{H}_2\text{O} \rightleftharpoons \text{H}_3\text{PO}_4 + \text{TMSOH} \quad (\Delta G = -0.177\text{ eV} / -4.09\text{ kcal/mol})
    \end{aligned}$$
    All three steps are exergonic in solution.
 
 2. **Silanol Condensation & Autocatalytic Water Regeneration ($R_4$):**
    Trimethylsilanol undergoes self-condensation to form unreactive hexamethyldisiloxane:
-   $$R_4: \quad 2\,\text{TMSOH} \rightleftharpoons \text{siloxyl} + \text{H}_2\text{O} \quad (\Delta G = +0.183\text{ eV} / +4.22\text{ kcal/mol})$$
-   **Key Kinetic Implication:** $R_4$ regenerates water back into the electrolyte! Thus, even a trace amount of water ($20\text{ mM}$) acts autocatalytically, continually regenerating to hydrolyze further equivalents of TMSPA until the scavenger is depleted.
+   $$R_4: \quad 2\,\text{TMSOH} \rightleftharpoons \text{siloxyl} + \text{H}_2\text{O} \quad (\Delta G = +0.102\text{ eV} / +2.34\text{ kcal/mol})$$
+   **Key Kinetic Implication (under review):** $R_4$ would regenerate water, making trace water act autocatalytically. However, Gogoi et al. (*J. Phys. Chem. C* 2024, 128, 1654) observe **no** TMSOTMS from TMSOH alone in EC/DEC, even after 8 h at 80 °C, and conclude that TMSOTMS forms by silyl transfer ($R_5$), not by $R_4$. This implies an uncatalysed condensation barrier $\gtrsim 1.3\text{ eV}$ rather than $0.85\text{ eV}$; see Section 5.3. A fast $R_4$ channel may still exist when acids (BMSPA, MMSPA, H$_3$PO$_4$) are present, but it must be modelled as an explicitly catalysed step.
 
 3. **Direct Silyl Transfer ($R_5, R_6, R_7$):**
    TMSOH can directly attack intact phosphate silyl esters, transferring the silyl group to form siloxyl without requiring free water:
    $$\begin{aligned}
-   R_5: &\quad \text{TMSPA} + \text{TMSOH} \rightleftharpoons \text{BMSPA} + \text{siloxyl} \quad (\Delta G = -0.257\text{ eV} / -5.93\text{ kcal/mol}) \\
-   R_6: &\quad \text{BMSPA} + \text{TMSOH} \rightleftharpoons \text{MMSPA} + \text{siloxyl} \quad (\Delta G = +0.029\text{ eV} / +0.67\text{ kcal/mol}) \\
-   R_7: &\quad \text{MMSPA} + \text{TMSOH} \rightleftharpoons \text{H}_3\text{PO}_4 + \text{siloxyl} \quad (\Delta G = -0.012\text{ eV} / -0.28\text{ kcal/mol})
+   R_5: &\quad \text{TMSPA} + \text{TMSOH} \rightleftharpoons \text{BMSPA} + \text{siloxyl} \quad (\Delta G = -0.373\text{ eV} / -8.60\text{ kcal/mol}) \\
+   R_6: &\quad \text{BMSPA} + \text{TMSOH} \rightleftharpoons \text{MMSPA} + \text{siloxyl} \quad (\Delta G = -0.056\text{ eV} / -1.30\text{ kcal/mol}) \\
+   R_7: &\quad \text{MMSPA} + \text{TMSOH} \rightleftharpoons \text{H}_3\text{PO}_4 + \text{siloxyl} \quad (\Delta G = -0.076\text{ eV} / -1.75\text{ kcal/mol})
    \end{aligned}$$
 
 4. **Solvent Attack & Gassing ($R_8, R_9$):**
    TMSOH and silylated glycols nucleophilically attack cyclic ethylene carbonate, inducing ring-opening and releasing gaseous carbon dioxide:
    $$\begin{aligned}
-   R_8: &\quad \text{EC} + \text{TMSOH} \longrightarrow \text{TMSOEG} + \text{CO}_2\uparrow \quad (\Delta G = -0.449\text{ eV} / -10.35\text{ kcal/mol}) \\
-   R_9: &\quad \text{EC} + \text{TMSOEG} \longrightarrow \text{TMSOdiEG} + \text{CO}_2\uparrow \quad (\Delta G = -0.980\text{ eV} / -22.60\text{ kcal/mol})
+   R_8: &\quad \text{EC} + \text{TMSOH} \longrightarrow \text{TMSOEG} + \text{CO}_2\uparrow \quad (\Delta G = -0.047\text{ eV} / -1.09\text{ kcal/mol}) \\
+   R_9: &\quad \text{EC} + \text{TMSOEG} \longrightarrow \text{TMSOdiEG} + \text{CO}_2\uparrow \quad (\Delta G = -0.467\text{ eV} / -10.77\text{ kcal/mol})
    \end{aligned}$$
    This accounts for electrolyte gassing and cell pouch expansion during aging.
 
 > [!NOTE]
-> **Kinetic Gating (Gogoi et al. 2024 / Finding 8):** Although $R_8$ and $R_9$ are thermodynamically exergonic ($\Delta G < 0$), their ambient kinetics are strongly gated by a high intrinsic barrier ($E_0 = 1.30\text{ eV}$, $k_f \sim 6.6 \times 10^{-10}\text{ s}^{-1}$). At room temperature, TMSOH does not open EC, preventing premature additive degradation and false gassing (see Section 5.3).
+> **Kinetic Gating (Finding 8):** Although $R_8$ and $R_9$ are thermodynamically exergonic ($\Delta G < 0$), their ambient kinetics are strongly gated by a high intrinsic barrier ($E_0 = 1.30\text{ eV}$, $k_f \sim 6.6 \times 10^{-10}\text{ s}^{-1}$). This value is derived from the protocol of Gogoi et al. (*J. Phys. Chem. C* 2024, 128, 1654), where TMSOH opens EC only after holds at $\geq 80\,^\circ$C (observed barrier $1.25$–$1.36\text{ eV}$); it is not reported in the paper. At room temperature, TMSOH does not open EC, preventing premature additive degradation and false gassing (see Section 5.3).
 
 ---
 
@@ -600,6 +602,7 @@ Block 4 Input: Thermodynamics                                           Block 5 
    - $E_0 = 0.80\text{ eV}$: Intrinsic barrier when $\Delta G_{\text{rxn}} = 0$ (benchmark from Peter Broqvist, `tank_model.ipynb`).
    - $\alpha = 0.50$: Brønsted coefficient for a symmetric transition state.
    - Capping at $E_0$ via $\max$ prevents unphysical zero or negative barriers for strongly exergonic steps ($\Delta G_{\text{rxn}} \ll 0$).
+   - **Known defects of the cap (Level 1 review, 2026-09-28):** (i) every exergonic step sits exactly at $E_0$, so $\alpha$ only acts on endergonic steps (only $R_4$ in the current snapshot); (ii) the cap is not invariant under reversal. The kinetics depend on the direction in which a reaction is written: writing $R_4$ backwards changes its physical rate by $\times 7$ and the tank trajectories by up to $2.5\text{ mM}$ (`tests/test_barrier_models.py`); (iii) $E_0$ is calibrated jointly with the cap and is not transferable to smooth forms.
 
 2. **Marcus Theory Quadratic Activation:**
    Models intersecting parabolic energy surfaces of reactants and products, introducing quadratic curvature:
@@ -607,8 +610,18 @@ Block 4 Input: Thermodynamics                                           Block 5 
    - $\lambda = 4 E_0 = 3.20\text{ eV}$: Reorganization energy calibrated to match BEP intrinsic barrier ($E_0 = 0.80\text{ eV}$) and slope ($\alpha = 0.50$) at $\Delta G_{\text{rxn}} = 0$.
    - Provides a continuously differentiable ($C^\infty$) curvature without the sharp derivative discontinuity of linear capping.
 
-3. **Strict Detailed Balance (Microscopic Reversibility):**
-   Enforced on both models to guarantee thermodynamic consistency and zero net flux at equilibrium:
+3. **Level 1 Engine: Smooth, Reversal-Invariant Barrier Relations (`kinetic_model='level1'`, opt-in):**
+   Every barrier function $F(x; g)$, with $x = \Delta G_{\text{rxn}}$ and intrinsic barrier $g$, must satisfy:
+   - reversal invariance $F(-x;\bar\theta) = F(x;\theta) - x$ (kinetics independent of how a reaction is written);
+   - bounds $\max(0, x) \le F$;
+   - anchoring $F(0) = g$;
+   - Leffler bounds $0 \le \partial F/\partial x \le 1$.
+
+   Marcus (default, $\lambda = 4g$), Agmon–Levine $F = x + \frac{g}{\ln 2}\ln[1 + e^{-x\ln 2/g}]$, Blowers–Masel (tends to Marcus for large bond energies) and an unequal-curvature two-parabola model ($\alpha(0) = \alpha_0$) are implemented. Within the network window ($|x| \le 0.47\text{ eV}$) the smooth forms agree within $0.007\text{ eV}$; the gap to the capped BEP is up to $0.22\text{ eV}$ ($\sim 10^{3.8}$ in $k$).
+   The intrinsic barrier may carry an activation entropy, $g(T) = g(T_{\text{ref}}) - (T - T_{\text{ref}})\Delta S^\ddagger_0$, and Marcus work terms $w_R, w_P$ (precursor complexes: the hook for explicit H-bonding and Li$^+$ at Level 3). An optional Collins–Kimball ceiling $k_D = 8RT/(3\eta)$ caps bimolecular rates at the diffusion limit.
+
+4. **Strict Detailed Balance (Microscopic Reversibility):**
+   Enforced on all models to guarantee thermodynamic consistency and zero net flux at equilibrium:
    $$\Delta G^\ddagger_r(T) = \Delta G^\ddagger_f(T) - \Delta G_{\text{rxn}}(T)$$
    $$k_r(T) = \frac{k_B T}{h} \exp\left( -\frac{\Delta G^\ddagger_r(T)}{RT} \right) = \frac{k_f(T)}{K_{\text{eq}}(T)}$$
    This guarantees that forward and reverse rates balance identically at equilibrium ($r_f = r_r$) and prevents artificial perpetual-motion cycles (Wegscheider condition).
@@ -632,9 +645,11 @@ While early engineering approximations used a uniform intrinsic barrier ($E_0 = 
 
 - **Hydrolysis, Condensation, and Silyl Transfer ($R_1$–$R_7$):** Silyl ester cleavage and silanol condensation proceed with moderate barriers ($E_0 \approx 0.80\text{ eV}$), enabling rapid moisture scavenging on the order of minutes to hours at room temperature.
 - **Cyclic Carbonate Ring-Opening / Solvent Attack ($R_8, R_9$):** Ring-opening of cyclic ethylene carbonate (EC) by nucleophilic silanols (TMSOH) involves significant electronic reorganization and strained intermediate transition states. Assigning $E_0 = 0.80\text{ eV}$ predicts an unphysical forward rate $k_f \approx 0.19\text{ s}^{-1}$, causing rapid spurious $\text{CO}_2$ bubbling and prematurely destroying TMSOH before it can participate in productive silyl transfer ($R_5$–$R_7$).
-- **Gogoi et al. (2024) Calibration (Finding 8):** Operando measurements and high-level quantum mechanical calculations (Gogoi et al., *Nat. Commun.* 2024) demonstrate that TMSOH does *not* react with EC at ambient temperatures without severe thermal activation ($E_0 \ge 1.30\text{ eV}$). Setting $E_0(\text{solvent\_attack}) = 1.30\text{ eV}$ reduces the forward rate constant by $\sim 3 \times 10^8$ ($k_f \approx 6.6 \times 10^{-10}\text{ s}^{-1}$):
+- **Gogoi et al. (2024) Calibration (Finding 8):** Gogoi et al. (*J. Phys. Chem. C* 2024, 128, 1654; NMR + GC-MS in EC/DEC, RT → 80 °C in 10 °C steps with 8 h holds) observe that TMSOH does *not* open EC at room temperature and forms TMS-EG only after the 80 °C hold. The paper reports no barrier. Reconstructing rates from the protocol gives an **observed** barrier $\Delta G^\ddagger(R_8) \approx 1.25$–$1.36\text{ eV}$, so $E_0(\text{solvent\_attack}) = 1.30\text{ eV}$ is a *derived* value. It reduces the forward rate constant by $\sim 3 \times 10^8$ ($k_f \approx 6.6 \times 10^{-10}\text{ s}^{-1}$):
   1. **Suppresses false gassing:** $\text{CO}_2$ concentration remains $0.0\text{ mM}$ under ambient storage.
   2. **Preserves TMSOH for silyl transfer:** TMSOH reacts along the productive pathway ($R_5$–$R_7$), consuming TMSPA down to stoichiometric completion ($10\text{ mM}$) and forming siloxyl ($20\text{ mM}$) as experimentally observed.
+- **Condensation conflict (Level 1 review):** In the same paper, 5 vol% TMSOH in EC/DEC forms no TMSOTMS beyond impurity level, even after 80 °C. The authors attribute TMSOTMS to silyl transfer ($R_5$), not condensation ($R_4$). With $E_0 = 0.80\text{ eV}$ the model equilibrates $R_4$ within about 45 s (about 22 % TMSOH conversion), whereas the observation implies an uncatalysed barrier $\gtrsim 1.30\text{ eV}$ at 353 K.
+- **Level 1 intrinsic barriers (`LEVEL1_FAMILY_PARAMETERS`, Marcus form):** solvent attack $g = 1.32\text{ eV}$ (interval $1.27$–$1.38$), condensation $g = 1.30\text{ eV}$ (lower bound $1.25$), transfer $0.80\text{ eV}$ (upper bound $\approx 1.10$), hydrolysis $0.80\text{ eV}$ (placeholder, no quantitative anchor). With these values, $R_9$ runs $\sim 700\times$ faster than $R_8$ at 80 °C, consistent with the further EC ring-opening signal (19.08 ppm) reported by Gogoi et al. **Open issue:** with the 0.80 eV hydrolysis placeholder under Marcus, TMSPA is consumed within the first 20 °C hold of the NB02 protocol, faster than observed. Hydrolysis and transfer intrinsic barriers must be recalibrated against time-resolved data before `level1` becomes the default. Derivations: TFM *KIN - DRAFT - Level 1 formulation refined scaling relations - 260928*.
 
 ---
 
