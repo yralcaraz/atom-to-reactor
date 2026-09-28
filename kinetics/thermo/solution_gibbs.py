@@ -21,7 +21,7 @@ def calculate_solution_gibbs(species_name: str, T_K: float, species_db: dict = N
     dE_solv_kJ_mol = dE_solv_eV * EV_TO_KJ_MOL
     
     # In benchmark mode, standard state shift is omitted to match tank_model.ipynb directly
-    if mode == 'b3lyp_benchmark':
+    if mode in ('wb97mv', 'b3lyp_benchmark'):
         dG_std_shift_kJ_mol = 0.0
     else:
         dG_std_shift_kJ_mol = calculate_standard_state_shift(T_K, **kwargs)

@@ -38,6 +38,22 @@ This document provides the complete schematic architecture and technical referen
 ----------------------------------------------------------------------------------------
 8. Block 8: Virtual Operando Spectrometer (²⁹Si NMR)
      - kinetics/spectroscopy/multinuclear_nmr.py
+----------------------------------------------------------------------------------------
+> Blocks 1–8 power VÍA 1: 'notebooks/01_multiscale_microkinetics_theory.ipynb'
+========================================================================================
+10. Block 10: Multi-Stage Temperature-Programmed Protocol Reactor
+     - kinetics/reactor/protocol_reactor.py
+----------------------------------------------------------------------------------------
+11. Block 11: Molecular Symmetry & Chemical Equivalence Partitioning
+     - kinetics/spectroscopy/molecular_symmetry.py
+----------------------------------------------------------------------------------------
+12. Block 12: Multi-nuclear Operando NMR & Dynamic OH Exchange
+     - kinetics/spectroscopy/multinuclear_nmr.py
+----------------------------------------------------------------------------------------
+13. Block 13: Chemometric Reaction Fingerprints & Extent Inversion
+     - kinetics/spectroscopy/reaction_fingerprints.py
+----------------------------------------------------------------------------------------
+> Blocks 10–13 power VÍA 2: 'notebooks/02_operando_experimental_protocol.ipynb'
 ========================================================================================
 ```
 
@@ -122,7 +138,7 @@ Computes the standard gas-phase enthalpy $H^\circ_{\text{gas}}(T)$, entropy $S^\
   * `T_K` (`float`): Absolute temperature in Kelvin (e.g. `298.15`).
   * `nu_0` (`float`, optional): Frequency damping cutoff threshold in $\text{cm}^{-1}$ (default: `100.0`).
   * `species_db` (`dict`, optional): Molecular properties database. If omitted, inspected dynamically from calling environment.
-  * `mode` (`str`, optional): `'qRRHO'` for canonical statistical mechanics with Grimme damping, or `'b3lyp_benchmark'` to directly load precomputed B3LYP-D3 free energies.
+  * `mode` (`str`, optional): `'wb97mv'` to directly load precomputed ωB97M-V/def2-TZVPD free energies (with legacy alias `'b3lyp_benchmark'`), or `'qRRHO'` for canonical statistical mechanics with Grimme damping.
 * **Returns:** `dict`
   * `'H_gas_kJ_mol'` (`float`): Standard gas-phase enthalpy in $\text{kJ/mol}$.
   * `'S_gas_J_mol_K'` (`float`): Standard gas-phase entropy in $\text{J/(mol}\cdot\text{K)}$.
@@ -175,7 +191,7 @@ $$S^*_{\text{sol}, i}(T) = S^\circ_{\text{gas}, i}(T) - \frac{\Delta G^{\circ \t
   * `species_name` (`str`): Target chemical species.
   * `T_K` (`float`): Temperature in Kelvin.
   * `species_db` (`dict`, optional): Species database.
-  * `mode` (`str`, optional): `'qRRHO'` (applies full thermodynamic cycle with $\Delta G^{\circ \to *}$) or `'b3lyp_benchmark'` (omits shift for direct benchmark comparison).
+  * `mode` (`str`, optional): `'qRRHO'` (applies full thermodynamic cycle with $\Delta G^{\circ \to *}$) or `'wb97mv'` (omits shift for direct benchmark comparison; legacy alias: `'b3lyp_benchmark'`).
 * **Returns:** `dict`
   * `'G_sol_kJ_mol'` (`float`): Liquid-phase Gibbs free energy in $\text{kJ/mol}$.
   * `'G_sol_eV'` (`float`): Liquid-phase Gibbs free energy in $\text{eV}$.
@@ -205,7 +221,7 @@ $$K_{\text{eq}}(T) = \exp\left( -\frac{\Delta G_{\text{rxn}}(T)}{R T} \right)$$
   * `T_K` (`float`): Temperature in Kelvin.
   * `reactions_net` (`dict`, optional): Reaction network dictionary defining reactants, products, and stoichiometry.
   * `species_db` (`dict`, optional): Species thermodynamic database.
-  * `mode` (`str`, optional): `'qRRHO'` or `'b3lyp_benchmark'`.
+  * `mode` (`str`, optional): `'wb97mv'` (direct DFT snapshot) or `'qRRHO'` (legacy alias: `'b3lyp_benchmark'`).
 * **Returns:** `dict`
   * `'rxn_id'` (`str`): Reaction identifier.
   * `'class'` (`str`): Reaction family classification (e.g. `'hydrolysis'`, `'condensation'`, `'transesterification'`).
@@ -249,7 +265,7 @@ Computes forward ($k_f$) and reverse ($k_r$) microkinetic rate constants via Tra
   * `bep_params` (`dict`, optional): Family-specific $E_0$ and $\alpha$ dictionary.
   * `reactions_net` (`dict`, optional): Reaction network dictionary.
   * `species_db` (`dict`, optional): Species database.
-  * `mode` / `thermo_mode` (`str`, optional): Thermodynamic calculation mode (`'qRRHO'` or `'b3lyp_benchmark'`).
+  * `mode` / `thermo_mode` (`str`, optional): Thermodynamic calculation mode (`'wb97mv'` or `'qRRHO'`; legacy alias: `'b3lyp_benchmark'`).
 * **Returns:** `dict` (Unified dictionary containing rate constants, barriers, reaction free energy, and equilibrium constant).
 
 ##### 2. `bep_eyring(rxn_id, T_K, bep_params=None, reactions_net=None, species_db=None, mode='qRRHO', **kwargs) -> dict`
@@ -324,7 +340,7 @@ Simulates dynamic species concentration profiles $C_i(t)$ inside an isothermal, 
 
 #### Functions in `kinetics/reactor/batch_reactor.py`
 
-##### 1. `simulate_tank_reactor(C0_dict, t_end_s=1e6, T_K=298.15, reactions_net=None, bep_params=None, species_db=None, ec_buffered=True, method='Radau', rtol=1e-8, atol=1e-12, n_points=500, mode='b3lyp_benchmark', **kwargs) -> dict`
+##### 1. `simulate_tank_reactor(C0_dict, t_end_s=1e6, T_K=298.15, reactions_net=None, bep_params=None, species_db=None, ec_buffered=True, method='Radau', rtol=1e-8, atol=1e-12, n_points=500, mode='wb97mv', **kwargs) -> dict`
 * **Arguments:**
   * `C0_dict` (`dict[str, float]`): Initial concentrations in $\text{mol/L}$ ($\text{M}$) (e.g. `{'TMSPA': 0.05, 'H2O': 0.005, 'EC': 4.5, ...}`).
   * `t_end_s` (`float`, optional): Total simulation horizon in seconds (default: $10^6\text{ s} \approx 11.5\text{ days}$).

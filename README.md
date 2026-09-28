@@ -9,7 +9,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Academic-lightgrey.svg)]()
-[![Repository](https://img.shields.io/badge/GitHub-Private-red.svg)]()
+[![Repository](https://img.shields.io/badge/GitHub-Public-green.svg)]()
 
 A multiscale chemical engineering simulation platform linking **first-principles quantum chemistry (DFT)** to **macroscopic batch reactor kinetics** and **operando $^{29}\text{Si}$ NMR spectroscopy**. Developed as part of the **BatteryAsTank** master's thesis project at Uppsala University.
 
@@ -89,20 +89,22 @@ $$I(\delta, t) = \sum_{k \in \text{Si species}} C_k(t) \cdot n_{\text{Si}, k} \c
 ## Directory Structure & Modules
 
 > [!TIP]
-> For the complete schematic architecture, mathematical derivations, parameter types, and return dictionaries of every simulation program, consult **[FUNCTIONS.md](FUNCTIONS.md)**.
+> For the complete schematic architecture, mathematical derivations, parameter types, and return dictionaries of every simulation program, consult **[MODULES.md](MODULES.md)**.
+> For the in-depth theoretical derivations and statistical mechanics background, see **[docs/theory-multiscale_microkinetics.md](docs/theory-multiscale_microkinetics.md)**.
+> For the block-by-block audit and scientific findings, see **[docs/improvement_plan.md](docs/improvement_plan.md)**.
 
-| File / Module | Responsibility | Key Interfaces |
+| Directory / File | Responsibility | Key Interfaces / Contents |
 |---|---|---|
-| `multiscale_microkinetics.ipynb` | Master interactive pipeline notebook | 10 executable blocks from DFT to NMR |
-| `theory-multiscale_microkinetics.md` | Complete theoretical background document | Derivations, stat mech, solvation cycles, kinetics |
-| `calculate_gas_thermo.py` | Gas-phase thermochemistry $H(T), S(T), G(T)$ | `calculate_gas_thermo(species, T)` |
-| `calculate_rate_constants.py` | Transition state rate derivation via Eyring | `calculate_rate_constants(dG_rxn, T, E0, alpha)` |
-| `calculate_reaction_thermo.py` | Reaction pathway thermodynamics & Wegscheider check | `calculate_reaction_thermo(reactions, species_thermo)` |
-| `calculate_solution_gibbs.py` | Condensed-phase free energy cycle & SMD integration | `calculate_solution_gibbs(G_gas, dG_solv, T)` |
-| `calculate_standard_state_shift.py` | $1\text{ bar} \to 1.0\text{ M}$ volume compression shift | `calculate_standard_state_shift(T)` |
-| `fit_modified_arrhenius.py` | Non-linear regression: $k(T) = A T^n e^{-E_a / RT}$ | `fit_modified_arrhenius(T_arr, k_arr)` |
-| `simulate_tank_reactor.py` | Batch / CSTR stiff ODE integration | `simulate_tank_reactor(k_fwd, k_rev, c0, t_span)` |
-| `simulate_virtual_nmr.py` | Lorentzian convolution of $^{29}\text{Si}$ NMR spectra | `simulate_virtual_nmr(time_series, chem_shifts)` |
+| `docs/theory-multiscale_microkinetics.md` | Complete theoretical background document | Derivations, stat mech, solvation cycles, BEP/Marcus kinetics, ODEs |
+| `docs/improvement_plan.md` | Block-by-block scientific audit | 14 findings, severity analysis, Gogoi 2024 barrier calibration |
+| `MODULES.md` | Production module specifications (Blocks 1–13) | Complete architecture reference, APIs, equations, and I/O contracts |
+| `kinetics/thermo/` | Statistical mechanics & solvation | Gas thermo, standard state shifts, solution Gibbs, reaction thermo |
+| `kinetics/microkinetics/` | Transition state rate derivation & Arrhenius | BEP/Marcus rate constants, detailed balance, modified Arrhenius regression |
+| `kinetics/reactor/` | Homogeneous & protocol reactor engines | Stiff ODE solver (Radau IIA), multi-stage bench protocol simulation |
+| `kinetics/spectroscopy/` | Operando multi-nuclear spectroscopy | Symmetry classification, multinuclear NMR ($^{29}\text{Si}, ^{31}\text{P}, ^{13}\text{C}, ^{1}\text{H}$), reaction fingerprints |
+| `notebooks/` | Interactive Jupyter simulation suite | `01_multiscale_microkinetics_theory` (theory pipeline), `02_operando_experimental_protocol` (bench protocol, multinuclear NMR, fingerprints) |
+| `scripts/sync_linear.py` | Linear issue tracking & roadmap sync | GraphQL synchronization of TFM audit findings and milestones |
+| `tests/` | Automated test suite | End-to-end integration and mathematical verification tests |
 | `requirements.txt` | Python package dependency specification | Core numerical and scientific libraries |
 
 ---
@@ -124,13 +126,14 @@ pip install -r requirements.txt
 ```
 
 ### 3. Running the Pipeline
-Launch the master notebook:
+Launch the master interactive notebooks:
 ```bash
-jupyter lab multiscale_microkinetics.ipynb
+jupyter lab notebooks/01_multiscale_microkinetics_theory.ipynb
 ```
 Or execute simulation modules directly in Python:
 ```python
-from simulate_tank_reactor import simulate_tank_reactor
+from kinetics.reactor import simulate_tank_reactor
+from kinetics.spectroscopy import simulate_virtual_nmr
 # Run dynamic integration with defined initial concentrations and kinetic constants
 ```
 
@@ -142,4 +145,51 @@ from simulate_tank_reactor import simulate_tank_reactor
 - **Author:** Yeray Alcaraz Galván
 - **Supervision:** Prof. Peter Broqvist
 - **Affiliation:** Department of Chemistry – Ångström Laboratory, Uppsala University, Sweden
+
+---
+
+## Repository Tree Structure
+
+```text
+atom-to-reactor/
+├── .gitignore
+├── MODULES.md
+├── README.md
+├── requirements.txt
+├── data/
+│   └── tank_api_snapshot.json
+├── docs/
+│   ├── improvement_plan.md
+│   └── theory-multiscale_microkinetics.md
+├── kinetics/
+│   ├── __init__.py
+│   ├── microkinetics/
+│   │   ├── __init__.py
+│   │   ├── arrhenius.py
+│   │   └── rate_constants.py
+│   ├── reactor/
+│   │   ├── __init__.py
+│   │   ├── batch_reactor.py
+│   │   └── protocol_reactor.py
+│   ├── spectroscopy/
+│   │   ├── __init__.py
+│   │   ├── molecular_symmetry.py
+│   │   ├── multinuclear_nmr.py
+│   │   └── reaction_fingerprints.py
+│   └── thermo/
+│       ├── __init__.py
+│       ├── gas_thermo.py
+│       ├── reaction_thermo.py
+│       ├── solution_gibbs.py
+│       ├── species_data.py
+│       └── standard_state.py
+├── notebooks/
+│   ├── 01_multiscale_microkinetics_theory.ipynb
+│   └── 02_operando_experimental_protocol.ipynb
+├── scripts/
+│   └── sync_linear.py
+└── tests/
+    └── test_pipeline_integration.py
+```
+
 

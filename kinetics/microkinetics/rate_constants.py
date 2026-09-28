@@ -194,8 +194,9 @@ def calculate_rate_constants(
     - 'marcus_eyring': Marcus theory quadratic activation relation.
     
     Thermodynamic mode:
-    - 'b3lyp_benchmark': Precomputed benchmark B3LYP-D3 dataset.
+    - 'wb97mv': Direct ωB97M-V/def2-TZVPD dataset free energies.
     - 'qRRHO': Grimme quasi-RRHO statistical mechanics.
+    - 'b3lyp_benchmark': Legacy alias for 'wb97mv'.
     """
     active_kin_model = model or kinetic_model
     active_thermo_mode = thermo_mode or mode

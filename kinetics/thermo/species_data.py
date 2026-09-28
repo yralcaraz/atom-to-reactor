@@ -37,8 +37,6 @@ def load_default_species_database(snapshot_path: str = None) -> dict:
         candidate_paths = [
             os.path.join(base_dir, "data", "tank_api_snapshot.json"),
             os.path.join(base_dir, "tank_api_snapshot.json"),
-            "/Users/yerayalcarazgalvan/Documents/GitHub/KIN-microkinetics/data/tank_api_snapshot.json",
-            "/Users/yerayalcarazgalvan/Documents/GitHub/atom-to-reactor/data/tank_api_snapshot.json"
         ]
         for p in candidate_paths:
             if os.path.exists(p):
@@ -64,6 +62,8 @@ def load_default_species_database(snapshot_path: str = None) -> dict:
             db[pid] = {
                 "name": pid,
                 "mass_g_mol": BENCHMARK_MASSES.get(pid, 100.0),
+                "G_wb97mv_Hartree": g_hartree,
+                "G_wb97mv_eV": g_ev,
                 "G_B3_Hartree": g_hartree,
                 "G_B3_eV": g_ev,
                 "E_0K_eV": g_ev,

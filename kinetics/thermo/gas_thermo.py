@@ -47,8 +47,8 @@ def calculate_gas_thermo(species_name: str, T_K: float, nu_0: float = 100.0, spe
     
     # Check if direct benchmark mode is requested or if vibrational data is not populated
     has_freqs = 'frequencies_cm1' in data and len(data['frequencies_cm1']) > 0
-    if mode == 'b3lyp_benchmark' or not has_freqs:
-        G_eV = data.get('G_B3_eV', data.get('E_0K_eV', 0.0))
+    if mode in ('wb97mv', 'b3lyp_benchmark') or not has_freqs:
+        G_eV = data.get('G_wb97mv_eV', data.get('G_B3_eV', data.get('E_0K_eV', 0.0)))
         G_kJ_mol = G_eV * EV_TO_KJ_MOL
         return {
             'H_gas_kJ_mol': G_kJ_mol,

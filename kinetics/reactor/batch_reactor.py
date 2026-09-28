@@ -59,8 +59,8 @@ def simulate_tank_reactor(
     method : stiff ODE solver method ('Radau', 'BDF', etc.)
     rtol, atol : relative and absolute solver tolerances
     n_points : number of evaluation points
-    mode : thermodynamic mode ('b3lyp_benchmark', 'qRRHO'). If None, inherits
-           'selected_thermo_mode' or 'selected_mode' from calling scope (default: 'b3lyp_benchmark').
+    mode : thermodynamic mode ('wb97mv', 'qRRHO', or legacy 'b3lyp_benchmark'). If None, inherits
+           'selected_thermo_mode' or 'selected_mode' from calling scope (default: 'wb97mv').
     t_start_s : initial evaluation time in seconds for logarithmic time grid (default: 1e-3 s = 1 ms).
                 Captures initial fast transients from t=0 while remaining strictly positive for log-scale plotting.
     """
@@ -91,7 +91,7 @@ def simulate_tank_reactor(
                 break
             frame = frame.f_back
         if mode is None:
-            mode = 'b3lyp_benchmark'
+            mode = 'wb97mv'
             
     tracked_species = list(C0_dict.keys())
     idx = {s: i for i, s in enumerate(tracked_species)}

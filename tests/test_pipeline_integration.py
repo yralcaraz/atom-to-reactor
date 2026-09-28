@@ -37,11 +37,15 @@ from kinetics import (
 def test_thermodynamics_and_rates():
     print("--- 1. Testing Solution Thermodynamics & Microkinetics ---")
     T = 298.15
-    sol_tmspa = calculate_solution_gibbs("TMSPA", T_K=T, mode="b3lyp_benchmark")
+    sol_tmspa = calculate_solution_gibbs("TMSPA", T_K=T, mode="wb97mv")
     assert sol_tmspa["G_sol_eV"] < 0.0, "TMSPA G_sol should be negative"
     
-    rxn_thermo = calculate_reaction_thermo("R1", T_K=T, mode="b3lyp_benchmark")
-    rates = calculate_rate_constants("R1", T_K=T, mode="b3lyp_benchmark")
+    rxn_thermo = calculate_reaction_thermo("R1", T_K=T, mode="wb97mv")
+    rates = calculate_rate_constants("R1", T_K=T, mode="wb97mv")
+    
+    # Backwards-compatibility check for legacy alias 'b3lyp_benchmark'
+    sol_legacy = calculate_solution_gibbs("TMSPA", T_K=T, mode="b3lyp_benchmark")
+    assert abs(sol_tmspa["G_sol_eV"] - sol_legacy["G_sol_eV"]) < 1e-12, "Legacy alias mismatch"
     
     k_ratio = rates["k_f"] / rates["k_r"]
     rel_error = abs(k_ratio - rates["K_eq"]) / rates["K_eq"]
