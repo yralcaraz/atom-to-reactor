@@ -1,47 +1,43 @@
-"""Operando spectroscopy, molecular symmetry, and chemometric inversion."""
+"""Blocks 8, 11–13 — Spectroscopy: NMR shifts, synthetic spectra, water balance and reaction fingerprints.
 
-from kinetics.spectroscopy.molecular_symmetry import (
-    build_referenced_nmr_sites,
-    build_bond_graph,
-    find_equivalence_classes,
-    extract_nmr_sites,
-    DEFAULT_NUCLEI,
-    DEFAULT_SPECIES
+    symmetry.py      chemical shifts from DFT shieldings, averaged over symmetry-equivalent atoms
+    spectra.py       Lorentzian spectra from concentrations, OH exchange, water mass balance
+    fingerprints.py  reaction fingerprints, identifiability and recovery of reaction extents
+"""
+
+from kinetics.spectroscopy.symmetry import (
+    DEFAULT_NUCLEI, build_bond_graph, build_nmr_catalog, extract_shielding_sites, find_equivalence_classes,
 )
-from kinetics.spectroscopy.multinuclear_nmr import (
-    simulate_multinuclear_spectra,
-    simulate_virtual_nmr,
-    lorentzian,
-    DEFAULT_NMR_29SI,
-    site_peaks,
-    auto_regions,
-    compute_water_mass_balance
+from kinetics.spectroscopy.spectra import (
+    EXCHANGE_PEAK, LINE_SHAPES, calculate_nmr_peaks, calculate_water_mass_balance, find_shift_windows,
+    lorentzian, simulate_nmr_spectra,
 )
-from kinetics.spectroscopy.reaction_fingerprints import (
-    build_multinuclear_feature_space,
-    build_pure_component_matrix,
-    build_reaction_fingerprints,
-    analyze_reaction_identifiability,
-    recover_reaction_extents
+from kinetics.spectroscopy.fingerprints import (
+    FeatureSpace, analyze_reaction_identifiability, build_feature_space, build_pure_spectra,
+    build_reaction_fingerprints, find_visible_species, recover_reaction_extents, run_fingerprint_analysis,
+    simulate_acquisition_spectra,
 )
 
 __all__ = [
-    "build_referenced_nmr_sites",
-    "build_bond_graph",
-    "find_equivalence_classes",
-    "extract_nmr_sites",
     "DEFAULT_NUCLEI",
-    "DEFAULT_SPECIES",
-    "simulate_virtual_nmr",
+    "build_bond_graph",
+    "build_nmr_catalog",
+    "extract_shielding_sites",
+    "find_equivalence_classes",
+    "EXCHANGE_PEAK",
+    "LINE_SHAPES",
+    "calculate_nmr_peaks",
+    "calculate_water_mass_balance",
+    "find_shift_windows",
     "lorentzian",
-    "DEFAULT_NMR_29SI",
-    "simulate_multinuclear_spectra",
-    "site_peaks",
-    "auto_regions",
-    "compute_water_mass_balance",
-    "build_multinuclear_feature_space",
-    "build_pure_component_matrix",
-    "build_reaction_fingerprints",
+    "simulate_nmr_spectra",
+    "FeatureSpace",
     "analyze_reaction_identifiability",
+    "build_feature_space",
+    "build_pure_spectra",
+    "build_reaction_fingerprints",
+    "find_visible_species",
     "recover_reaction_extents",
+    "run_fingerprint_analysis",
+    "simulate_acquisition_spectra",
 ]

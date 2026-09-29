@@ -1,0 +1,59 @@
+{
+  "_meta": {
+    "source": "Gogoi et al., J. Phys. Chem. C 2024, 128, 1654 (TFM BIB: RXN-02)",
+    "medium": "EC/DEC 1:1 v/v, no LiPF6; NMR with DMSO-d6 lock; spectra recorded at RT after each hold",
+    "protocol": "RT -> 80 °C in 10 °C steps, 8 h hold per step",
+    "curation": "Shifts read from the paper. Barrier windows and control-experiment windows are derived from the reported observations in TFM 'KIN - DRAFT - Level 1 formulation refined scaling relations - 260928', §4.4; entries marked 'assumed' rest on a detection limit or reaction time the paper does not state.",
+    "concentrations": "EC ≈ 7.1 M in EC/DEC with 5 vol% additive; 5 vol% TMSOH ≈ 0.45 M; 2 vol% TMSOH ≈ 0.18 M; 5 vol% TMSPA ≈ 0.15 M"
+  },
+  "nmr_shifts": [
+    {"nucleus": "P",  "species": "TMSPA", "low_ppm": -24.6, "high_ppm": -24.6, "note": ""},
+    {"nucleus": "P",  "species": "BMSPA", "low_ppm": -15.2, "high_ppm": -13.9, "note": "two values reported"},
+    {"nucleus": "P",  "species": "MMSPA", "low_ppm": -8.0,  "high_ppm": -6.4,  "note": "two values reported"},
+    {"nucleus": "P",  "species": "H3PO4", "low_ppm": -0.3,  "high_ppm": -0.3,  "note": ""},
+    {"nucleus": "Si", "species": "TMSPA", "low_ppm": 25.0,  "high_ppm": 25.0,  "note": "approximate; TMSPA, BMSPA and MMSPA unresolved (xMSPA)"},
+    {"nucleus": "Si", "species": "BMSPA", "low_ppm": 25.0,  "high_ppm": 25.0,  "note": "approximate; xMSPA"},
+    {"nucleus": "Si", "species": "MMSPA", "low_ppm": 25.0,  "high_ppm": 25.0,  "note": "approximate; xMSPA"},
+    {"nucleus": "Si", "species": "TMSOH", "low_ppm": 15.0,  "high_ppm": 15.0,  "note": "approximate"},
+    {"nucleus": "Si", "species": "HMDSO", "low_ppm": 7.0,   "high_ppm": 7.0,   "note": "approximate (TMSOTMS)"}
+  ],
+  "barrier_constraints": [
+    {"rxn_id": "R8", "low_eV": 1.25, "high_eV": 1.36, "T_K": 353.15, "status": "derived",
+     "basis": "No EC ring-opening by TMSOH at RT; TMS-EG clearly formed after 8 h at 80 °C (5-90 % conversion)"},
+    {"rxn_id": "R4", "low_eV": 1.30, "high_eV": null, "T_K": 353.15, "status": "assumed",
+     "basis": "TMSOTMS only at impurity level from TMSOH alone after 8 h at 80 °C (< 5 % detection limit assumed)"},
+    {"rxn_id": "R5", "low_eV": null, "high_eV": 0.925, "T_K": 298.15, "status": "assumed",
+     "basis": "TMSPA + TMSOH give BMSPA + TMSOTMS at RT and both vanish (≥ 95 % within 24 h assumed; time not stated)"}
+  ],
+  "control_experiments": [
+    {"id": "E1", "label": "TMSOH in EC, RT, 1 week", "c0_M": {"TMSOH": 0.45, "EC": 7.1}, "T_K": 298.15, "t_s": 604800,
+     "observable": "ring_opened_fraction", "low": null, "high": 0.02, "status": "derived",
+     "observation": "No EC ring-opening at room temperature (< 2 % taken as the detection limit)"},
+    {"id": "E2", "label": "TMSOH in EC, 8 h at 80 °C", "c0_M": {"TMSOH": 0.45, "EC": 7.1}, "T_K": 353.15, "t_s": 28800,
+     "observable": "ring_opened_fraction", "low": 0.05, "high": 0.90, "status": "derived",
+     "observation": "TMS-EG clearly formed after the 80 °C hold (13C, 1H, 29Si, GC-MS); 5-90 % assumed"},
+    {"id": "E3", "label": "TMSOH in EC, 8 h at 80 °C", "c0_M": {"TMSOH": 0.45, "EC": 7.1}, "T_K": 353.15, "t_s": 28800,
+     "observable": "hmdso_si_fraction", "low": null, "high": 0.05, "status": "assumed",
+     "observation": "TMSOTMS only at impurity level (< 5 % of the Si assumed)"},
+    {"id": "E4", "label": "TMSPA + TMSOH in EC, RT, 24 h", "c0_M": {"TMSPA": 0.15, "TMSOH": 0.18, "EC": 7.1}, "T_K": 298.15, "t_s": 86400,
+     "observable": "tmspa_conversion", "low": 0.95, "high": null, "status": "assumed",
+     "observation": "TMSPA and TMSOH no longer detectable (reaction time not stated; ≤ 24 h assumed)"}
+  ],
+  "water_series": {
+    "_basis": "Gogoi 2024 Fig. 1, Fig. S2 and text: 5 vol% TMSPA added to EC/DEC 1:1 pre-contaminated with H2O (stirred 24 h, rested ≥ 12 h), 31P at RT. The time between mixing and the spectrum is not stated. Windows are our reading of the qualitative description (fraction of all P); status 'reading'.",
+    "medium": {"EC_M": 7.1, "tmspa_vol_frac": 0.05, "T_K": 298.15},
+    "samples": [
+      {"id": "W0.5", "h2o_vol_pct": 0.5, "observation": "strong TMSPA at -24.60 ppm, weak BMSPA (Fig. 1a)",
+       "windows": {"TMSPA": [0.5, null]}, "status": "reading"},
+      {"id": "W1", "h2o_vol_pct": 1.0, "observation": "reaction stops at BMSPA while most TMSPA remains unreacted (text only)",
+       "windows": {"TMSPA": [0.5, null], "MMSPA+H3PO4": [null, 0.1]}, "status": "reading"},
+      {"id": "W2", "h2o_vol_pct": 2.0, "observation": "no TMSPA; BMSPA, MMSPA and a strong H3PO4 signal (Fig. 1b)",
+       "windows": {"TMSPA": [null, 0.05], "H3PO4": [0.3, null], "BMSPA+MMSPA": [0.1, null]}, "status": "reading"},
+      {"id": "W5", "h2o_vol_pct": 5.0, "observation": "H3PO4 and a very weak MMSPA signal (Fig. 1c)",
+       "windows": {"H3PO4": [0.8, null]}, "status": "reading"}
+    ],
+    "heating": {"id": "W2-heat", "h2o_vol_pct": 2.0, "steps_C": [30, 40, 50, 60, 70, 80], "hold_h": 8,
+                "observation": "the 2 vol% sample heated in the NMR tube to 80 °C: no change in the 31P signals of TMSPA, BMSPA and MMSPA apart from slight broadening (Fig. S2)",
+                "max_change": 0.1, "status": "reading"}
+  }
+}

@@ -1,29 +1,28 @@
-"""Microkinetics engine: Transition State Theory, BEP, Marcus, and Arrhenius regression."""
+"""Blocks 5–6 — Rate constants: barrier models, family parameters, named models and Arrhenius fits.
 
-try:
-    from kinetics.microkinetics.rate_constants import (
-        calculate_rate_constants, bep_eyring, marcus_eyring, level1_eyring
-    )
-    from kinetics.microkinetics.barrier_models import BARRIER_MODELS, barrier, invert_marcus
-    from kinetics.microkinetics.kinetic_parameters import (
-        DEFAULT_FAMILY_BEP_PARAMETERS, PETER_REFERENCE_PARAMETERS, LEVEL1_FAMILY_PARAMETERS
-    )
-    from kinetics.microkinetics.arrhenius import fit_modified_arrhenius, generate_arrhenius_summary
-except ImportError:
-    from calculate_rate_constants import calculate_rate_constants, bep_eyring, marcus_eyring
-    from fit_modified_arrhenius import fit_modified_arrhenius, generate_arrhenius_summary
+    barriers.py    ΔG‡ as a function of ΔG_rxn (capped BEP, Marcus, Agmon-Levine, Blowers-Masel, two-parabola)
+    parameters.py  intrinsic barrier per reaction family (parameter sets)
+    rates.py       Eyring TST + detailed balance → k_f, k_r
+    models.py      ModelSpec and the registry of named models to compare and select
+    arrhenius.py   modified-Arrhenius regression of k(T)
+"""
+
+from kinetics.microkinetics.barriers import (
+    BARRIER_MODELS, REVERSAL_INVARIANT, calculate_barrier, invert_marcus_barrier, reversed_params,
+)
+from kinetics.microkinetics.parameters import (
+    FAMILY_BEP_PARAMETERS, LEVEL1_PARAMETERS, PETER_REFERENCE_PARAMETERS, normalize_family_params,
+)
+from kinetics.microkinetics.rates import (
+    KINETIC_MODELS, calculate_eyring_rate, calculate_network_rates, calculate_rate_constants,
+)
+from kinetics.microkinetics.models import MODELS, ModelSpec, describe_models, get_model, tabulate_family_barriers
+from kinetics.microkinetics.arrhenius import build_arrhenius_table, fit_modified_arrhenius
 
 __all__ = [
-    "calculate_rate_constants",
-    "bep_eyring",
-    "marcus_eyring",
-    "level1_eyring",
-    "BARRIER_MODELS",
-    "barrier",
-    "invert_marcus",
-    "DEFAULT_FAMILY_BEP_PARAMETERS",
-    "PETER_REFERENCE_PARAMETERS",
-    "LEVEL1_FAMILY_PARAMETERS",
-    "fit_modified_arrhenius",
-    "generate_arrhenius_summary",
+    "BARRIER_MODELS", "REVERSAL_INVARIANT", "calculate_barrier", "invert_marcus_barrier", "reversed_params",
+    "FAMILY_BEP_PARAMETERS", "LEVEL1_PARAMETERS", "PETER_REFERENCE_PARAMETERS", "normalize_family_params",
+    "KINETIC_MODELS", "calculate_eyring_rate", "calculate_network_rates", "calculate_rate_constants",
+    "MODELS", "ModelSpec", "describe_models", "get_model", "tabulate_family_barriers",
+    "build_arrhenius_table", "fit_modified_arrhenius",
 ]

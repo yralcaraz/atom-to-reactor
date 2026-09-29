@@ -98,6 +98,7 @@ $$I(\delta, t) = \sum_{k \in \text{Si species}} C_k(t) \cdot n_{\text{Si}, k} \c
 | Directory / File | Responsibility | Key Interfaces / Contents |
 |---|---|---|
 | `docs/theory-multiscale_microkinetics.md` | Complete theoretical background document | Derivations, stat mech, solvation cycles, BEP/Marcus kinetics, ODEs |
+| `docs/guide-operando_experimental_protocol.md` | Guide to Notebook 02 (Operando Protocol) | Protocol design, barrier calibration, multinuclear NMR, reaction identifiability |
 | `docs/improvement_plan.md` | Block-by-block scientific audit | 14 findings, severity analysis, Gogoi 2024 barrier calibration |
 | `MODULES.md` | Production module specifications (Blocks 1–13) | Complete architecture reference, APIs, equations, and I/O contracts |
 | `kinetics/thermo/` | Statistical mechanics & solvation | Gas thermo, standard state shifts, solution Gibbs, reaction thermo |

@@ -1,22 +1,19 @@
-# ==============================================================================
-# BLOCK 5 (LEVEL 1): FREE-ENERGY BARRIER MODELS
-# ==============================================================================
-# Pure functions mapping a reaction free energy x = ΔG°_rxn (eV) onto a forward
-# activation free energy ΔG‡_f (eV). No thermodynamics is evaluated here; the
-# rate-constant engine (rate_constants.py) supplies x and applies Eyring TST
-# and detailed balance.
-#
-# Every model returns (dG_barrier_f_eV, alpha_eff), where alpha_eff = ∂ΔG‡/∂x is
-# the local Brønsted/Leffler coefficient.
-#
-# Axioms (TFM KIN - DRAFT - Level 1 formulation, §2):
-#   A2 reversal invariance  F(-x; θ̄) = F(x; θ) - x
-#   A3 bounds               max(0, x) <= F(x)
-#   A4 anchoring            F(0) = g
-#   A6 Leffler bounds       0 <= α(x) <= 1
-# 'bep_cap' is the legacy Peter Broqvist form and violates A2, A3 and A5; it is
-# kept only to reproduce earlier results.
-# ==============================================================================
+"""Block 5 (Level 1) — Free-energy barrier models.
+
+Pure functions mapping a reaction free energy x = ΔG°_rxn (eV) onto a forward activation free energy
+ΔG‡_f (eV). No thermodynamics is evaluated here; rate_constants.py supplies x and applies Eyring TST and
+detailed balance. Every model returns (dG_barrier_f_eV, alpha_eff), where alpha_eff = ∂ΔG‡/∂x is the local
+Brønsted/Leffler coefficient.
+
+Axioms (TFM KIN - DRAFT - Level 1 formulation, §2):
+    A2 reversal invariance  F(-x; θ̄) = F(x; θ) - x
+    A3 bounds               max(0, x) <= F(x)
+    A4 anchoring            F(0) = g
+    A6 Leffler bounds       0 <= α(x) <= 1
+'bep_cap' is the legacy Peter Broqvist form and violates A2, A3 and A5; it is kept only to reproduce
+earlier results.
+"""
+
 import math
 
 LN2 = math.log(2.0)
@@ -125,6 +122,10 @@ def two_parabola(x: float, g: float, alpha0: float = 0.5, **_) -> tuple:
 # ------------------------------------------------------------------------------
 # Registry, reversal and work terms
 # ------------------------------------------------------------------------------
+# Reversal-invariant shapes satisfy axiom A2; the legacy cap does not
+REVERSAL_INVARIANT = {'bep_cap': False, 'marcus': True, 'agmon_levine': True, 'blowers_masel': True,
+                      'two_parabola': True}
+
 BARRIER_MODELS = {
     'bep_cap': bep_cap,
     'marcus': marcus,
@@ -143,7 +144,7 @@ def reversed_params(params: dict) -> dict:
     return rev
 
 
-def barrier(x: float, shape: str, g: float, wR_eV: float = 0.0, wP_eV: float = 0.0, **params) -> tuple:
+def calculate_barrier(x: float, shape: str, g: float, wR_eV: float = 0.0, wP_eV: float = 0.0, **params) -> tuple:
     """
     Forward barrier with Marcus work terms:  ΔG‡_f = max(wR + F(x - wR + wP), 0, x).
     The floor enforces A3 when a work term is negative; being symmetric under reversal
@@ -159,7 +160,7 @@ def barrier(x: float, shape: str, g: float, wR_eV: float = 0.0, wP_eV: float = 0
     return value, alpha_eff
 
 
-def invert_marcus(dG_barrier_obs_eV: float, x: float) -> float:
+def invert_marcus_barrier(dG_barrier_obs_eV: float, x: float) -> float:
     """Intrinsic barrier g that reproduces an observed barrier under Marcus (closed form)."""
     a = dG_barrier_obs_eV - x / 2.0
     disc = a * a - x * x / 4.0

@@ -113,6 +113,15 @@ However, it **ignores** the solvation entropy contribution: $\Delta E_{\text{sol
 
 ---
 
+### ⚠ Finding 19: **Solvation uncertainty was propagated incorrectly, and its definition is unknown**
+
+The snapshot's `uncertainty_kjmol` is the quadrature sum of three MD stds (gas solute, solute-in-EC box, pure-EC box). The pure-EC box is shared by all species, so its term cancels in the 2 → 2 steps. Treating it as independent doubles σ(ΔG_rxn) (0.47–0.60 → 0.23–0.44 eV). Whether the stds are per-frame deviations or standard errors of the mean is not documented.
+
+> [!WARNING]
+> **Severity: HIGH (if per-frame).** **Status: open.** With per-frame σ, the signs of R2–R4 and R6–R8 are not resolved at ±1σ. Block 3 now shows provisional error bars (`kinetics/thermo/solvation_uncertainty.py`). The question is tracked in the TFM open-questions document (MET).
+
+---
+
 ## Block 4 — Reaction Network & Wegscheider (Cells 9–10)
 
 ### ✓ Verified (Module: `calculate_reaction_thermo.py`)
@@ -212,6 +221,8 @@ This is **already** in modified Arrhenius form with $A = k_B T_0/h$, $\beta = 1.
 > [!NOTE]
 > **Severity: LOW.** Not a bug — the regression is correct. But the "perfect fit" should not be presented as validation; it's a consequence of the benchmark mode's temperature-independent barriers.
 
+**Status: documented (2026-09-28).** Block 6 in the notebook and the theory doc (§ Block 6.4) now state that the fit is a consistency check, not validation. The Block 6 analysis text was also regenerated: it had stale B3LYP-era numbers (e.g. R4 barrier 0.89 eV, ln K(R4) ≈ −7).
+
 ---
 
 ## Block 7 — Batch Reactor Simulation (Cells 17–18)
@@ -271,6 +282,8 @@ This hardcodes $\gamma = 0.4$ ppm (i.e., $\text{FWHM} = 0.8$ ppm). Since $\gamma
 
 ### ⚡ Finding 13: **BMSPA and TMSOEG share the same chemical shift (−18.01 ppm)**
 
+**Status: obsolete (2026-09-28).** These were B3LYP-era values. With the ωB97M-V snapshot, BMSPA is at 28.5 ppm and TMSOEG at 21.6 ppm, so they no longer overlap. The xMSPA triplet (TMSPA 27.6, BMSPA 28.5, MMSPA 31.0 ppm) is the new near-degeneracy, which Gogoi et al. 2024 also could not resolve in ²⁹Si. See the theory doc, Block 8.2.
+
 Both species appear at $\delta = -18.01$ ppm in the NMR data. In a real experiment, these peaks would overlap and be indistinguishable. The simulation correctly sums their intensities at the same position, but the theory document does not discuss this ambiguity.
 
 > [!NOTE]
@@ -307,16 +320,17 @@ The sweep varies $E_0$ uniformly across all families. To test the effect of a hi
 | 6 | 4 | LOW | ⚡ Misleading | qRRHO comparison columns use garbage placeholder data |
 | 7 | 5 | — | ✓ Verified | `max()` in kJ/mol is unit-invariant, no bug |
 | 8 | 5 | **CRITICAL** | ✓ Resolved | Family-specific $E_0 = 1.30$ eV for `solvent_attack` (Gogoi 2024); false gassing suppressed |
-| 9 | 6 | LOW | ⚡ Tautology | Arrhenius $R^2 = 1.0$ is exact by construction in benchmark mode |
+| 9 | 6 | LOW | ✓ Documented | Arrhenius $R^2 = 1.0$ is exact by construction in benchmark mode; stated as a consistency check |
 | 10 | 7 | **MEDIUM** | ✓ Resolved | Integration starts at $t_0 = 0$, $t_{\text{eval}}$ from $10^{-3}$ s to capture initial fast transients |
 | 11 | 7 | LOW | ✓ Resolved | `mode` inherits dynamically from upstream `selected_thermo_mode` |
 | 12 | 8 | — | ✓ Verified | FWHM is consistent between 2D and 1D plots |
-| 13 | 8 | LOW | Physical | BMSPA and TMSOEG share −18.01 ppm; spectroscopic degeneracy undiscussed |
+| 13 | 8 | LOW | Obsolete | BMSPA/TMSOEG overlap was B3LYP-era; now xMSPA triplet overlaps in ²⁹Si (resolved in ³¹P) |
 | 14 | 9 | LOW | Feature | Sweep uses global $E_0$; cannot test family-specific barriers |
 | 15 | 5 | **HIGH** | ⚠ Correctness | Capped BEP is direction-dependent; mitigated by opt-in Level 1 engine |
 | 16 | 5 | **HIGH** | ⚠ Contradiction | Condensation E0 = 0.80 eV contradicts Gogoi 2024; Level 1 uses g = 1.30 eV |
 | 17 | 4 | LOW | ✓ Resolved | Stale B3LYP ΔG° table in theory doc regenerated from ωB97M-V snapshot |
 | 18 | 5 | MEDIUM | Open | Level 1 hydrolysis/transfer g are placeholders; too fast under Marcus |
+| 19 | 3 | **HIGH** | Open | Solvation σ: shared EC term was double-counted; std vs. SEM undocumented; provisional error bars in Block 3 |
 
 ### Critical Path Status
 

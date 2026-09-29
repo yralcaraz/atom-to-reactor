@@ -454,6 +454,15 @@ To ger a liquid at room temp (or sub-0) it is formulated as a binary mixture wit
 > Calculate with EC+DMC mixture
 >
 
+### 3. Solvation Uncertainty (Provisional)
+Each solvation record stores three standard deviations from the MD runs: the gas-phase solute ($\sigma_{\text{gas}}$), the solute-in-EC box ($\sigma_{\text{sol}}$) and the pure-EC reference box ($\sigma_{\text{EC}}$). The snapshot's `uncertainty_kjmol` is their quadrature sum.
+
+The pure-EC box is one run shared by every species, so its term is fully correlated. It enters a reaction only through the net change in the number of solutes $\Delta n = \sum_i \nu_i$:
+$$\sigma^2(\Delta\Delta E_{\text{solv}}) = \sum_i \nu_i^2\left(\sigma_{\text{gas},i}^2 + \sigma_{\text{sol},i}^2\right) + (\Delta n\,\sigma_{\text{EC}})^2$$
+In the 2 → 2 steps of the network, $\Delta n = 0$, and the shared term cancels. Adding per-species totals in quadrature would overstate $\sigma$ by roughly a factor of 2. Implemented in `kinetics/thermo/solvation_uncertainty.py` and shown as error bars in Block 3.
+
+> **Open question:** it is not documented whether these $\sigma$ are per-frame deviations or standard errors of the mean. If they are per-frame deviations ($\sigma(\Delta G_{\text{rxn}}) \approx 0.23\text{--}0.44\text{ eV}$), the signs of $R_2$–$R_4$ and $R_6$–$R_8$ are not resolved at $\pm 1\sigma$.
+
 ---
 
 ## Block 4: Reaction Network Thermodynamics & The Wegscheider Consistency
@@ -674,6 +683,13 @@ The temperature dependence of the equilibrium constant follows the Van 't Hoff r
 $$\frac{d \ln K_{\text{eq}}}{d (1/T)} = -\frac{\Delta H^\circ_{\text{rxn}}}{R}$$
 Exothermic steps ($\Delta H < 0$) exhibit downward slopes, favoring reactants as temperature increases, whereas endothermic steps exhibit upward slopes.
 
+### 4. Scope: Consistency Check, Not Validation
+With a temperature-independent barrier, the Eyring expression already has the modified Arrhenius form:
+$$\ln k = \ln\frac{k_B T_0}{h} + 1\cdot\ln\frac{T}{T_0} - \frac{\Delta G^\ddagger}{RT}$$
+so the regression returns $A = k_BT_0/h$, $\beta = 1$ and $E_a = \Delta G^\ddagger$ with $R^2 = 1$ by construction. It confirms that the rate engine is wired correctly and re-expresses the rate constants in reactor-engineering form. It does not validate them. The same assumption ($\Delta G_{\text{rxn}}$ independent of $T$ in the default `wb97mv` mode) makes each Van 't Hoff slope equal to $-\Delta G_{\text{rxn}}/R$ rather than a reaction enthalpy.
+
+The fit becomes informative when $\Delta G^\ddagger$ depends on $T$ (activation entropy $\Delta S^\ddagger$, or $\Delta G_{\text{rxn}}(T) = \Delta H - T\Delta S$) or when it is applied to measured $k(T)$.
+
 ---
 
 ## Block 7: Homogeneous Batch Reactor Dynamics ("Tank" Stiff ODE Integration)
@@ -709,17 +725,23 @@ Explicit ODE integrators (e.g. standard Runge-Kutta RK45) undergo numerical expl
 To directly validate our chemical engineering microkinetic model against experimental laboratory data, we project the dynamic reactor concentration vector $\mathbf{C}(t)$ into synthetic **$^{29}\text{Si}$ NMR spectra**.
 
 ### 2. Physical NMR Parameters
-From DFT GIAO calculations (`thermo_H2O.ipynb` / Peter Broqvist), isotropic magnetic shieldings ($\sigma_{\text{iso}}$) relative to tetramethylsilane (TMS, $\sigma_{\text{TMS}}$) yield chemical shifts $\delta$:
-$$\delta_i = \sigma_{\text{TMS}} - \sigma_{\text{iso}, i}$$
+The shifts are **computed, not measured**. The Tank snapshot stores per-atom absolute isotropic shieldings $\sigma_{\text{iso}}$ (and anisotropies) from gas-phase ωB97M-V/def2-TZVPD calculations on the optimised geometries. `kinetics/spectroscopy/molecular_symmetry.py` averages them over equivalent nuclei and references them to the computed standards (TMS for $^{29}$Si, $^{13}$C, $^1$H; H$_3$PO$_4$ for $^{31}$P):
+$$\delta_i = \sigma_{\text{ref}} - \sigma_{\text{iso}, i}$$
 
-The active nuclei count per molecule ($n_{\text{Si}, i}$) provides the exact stoichiometric signal intensity weighting:
-- **TMSPA:** $\delta = -19.86\text{ ppm}$, $n_{\text{Si}} = 3$ (three equivalent trimethylsilyl groups)
-- **BMSPA:** $\delta = -18.01\text{ ppm}$, $n_{\text{Si}} = 2$
-- **MMSPA:** $\delta = -17.58\text{ ppm}$, $n_{\text{Si}} = 1$
-- **TMSOH:** $\delta = -15.57\text{ ppm}$, $n_{\text{Si}} = 1$
-- **siloxyl:** $\delta = -6.92\text{ ppm}$, $n_{\text{Si}} = 2$ (characteristic downfield peak)
-- **TMSOEG:** $\delta = -18.01\text{ ppm}$, $n_{\text{Si}} = 1$
-- **TMSOdiEG:** $\delta = -19.11\text{ ppm}$, $n_{\text{Si}} = 1$
+Computed shifts (snapshot) against the experimental values of Gogoi et al. (*J. Phys. Chem. C* 2024, 128, 1654; EC/DEC, DMSO-d$_6$ lock):
+
+| Species | $n_{\text{Si}}$ | $^{29}$Si computed (ppm) | $^{29}$Si exp. (ppm) | $^{31}$P computed (ppm) | $^{31}$P exp. (ppm) |
+|---|---|---|---|---|---|
+| TMSPA | 3 | 27.6 | ~25 (xMSPA) | −22.0 | −24.6 |
+| BMSPA | 2 | 28.5 | ~25 (xMSPA) | −14.3 | −13.9 / −15.2 |
+| MMSPA | 1 | 31.0 | ~25 (xMSPA) | −7.0 | −6.4 / −8.0 |
+| H$_3$PO$_4$ | 0 | — | — | 0.0 (reference) | −0.3 |
+| TMSOH | 1 | 21.0 | ~15 | — | — |
+| HMDSO (siloxyl) | 2 | 12.4 | ~7 | — | — |
+| TMSOEG | 1 | 21.6 | — | — | — |
+| TMSOdiEG | 1 | 21.0 | — | — | — |
+
+$^{31}$P agrees within about 2.6 ppm. $^{29}$Si is systematically 3–6 ppm too high, so experimental peak positions should be aligned to measured reference spectra before any deconvolution. The shifts carry no concentration or time information: they locate peaks but cannot be used to fit kinetics.
 
 ### 3. Lorentzian Convolution
 Experimental NMR spectra exhibit natural Lorentzian broadening governed by transverse spin-spin relaxation ($T_2$):

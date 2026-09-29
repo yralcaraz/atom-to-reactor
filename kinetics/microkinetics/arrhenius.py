@@ -1,116 +1,56 @@
-# ==============================================================================
-# BLOCK 6: ARRHENIUS REGRESSION & PARAMETER EXTRACTION
-# ==============================================================================
+"""Block 6 — Modified Arrhenius regression of k(T).
+
+    ln k = ln A + β ln(T/T0) - Ea/(RT),   fitted by least squares.
+
+With a temperature-independent barrier the Eyring rate already has this form (A = kB·T0/h, β = 1,
+Ea = ΔG‡), so the fit returns its inputs with R² = 1 (Finding 9). It becomes informative with g(T),
+a diffusion ceiling, or measured k(T).
+"""
+
 import numpy as np
 import pandas as pd
-try:
-    from kinetics.microkinetics.rate_constants import calculate_rate_constants
-    from kinetics.thermo.gas_thermo import R_SI, EV_TO_KJ_MOL
-    from kinetics.thermo.reaction_thermo import _get_reactions_network
-except ImportError:
-    from calculate_rate_constants import calculate_rate_constants
-    from calculate_gas_thermo import R_SI, EV_TO_KJ_MOL
-    from calculate_reaction_thermo import _get_reactions_network
 
-def fit_modified_arrhenius(
-    rxn_id: str,
-    T_grid: np.ndarray,
-    direction: str = 'f',
-    bep_params: dict = None,
-    reactions_net: dict = None,
-    species_db: dict = None,
-    mode: str = 'qRRHO',
-    **kwargs
-) -> dict:
+from kinetics.constants import EV_TO_KJ_MOL, R_SI, T_STD_K
+from kinetics.microkinetics.rates import calculate_rate_constants
+from kinetics.data.network import NETWORK
+
+
+def fit_modified_arrhenius(rxn_id: str, T_grid_K: np.ndarray, *, direction: str = 'f', T0_K: float = T_STD_K,
+                           **rate_options) -> dict:
+    """A, β, Ea and R² of k_f (direction='f') or k_r ('r') over T_grid_K.
+
+    rate_options are passed to calculate_rate_constants (kinetic_model, family_params, network, ...).
     """
-    Fits k(T) to the Modified Arrhenius equation:
-        k(T) = A * (T / T0)^beta * exp(-Ea / RT)
-    via Ordinary Least Squares in log-space:
-        ln k(T) = ln A + beta * ln(T / T0) - (Ea / R) * (1 / T)
-    """
-    T0 = 298.15
-    k_values = []
-    
-    for T in T_grid:
-        # Iterates every T in T_grid
-        rates = calculate_rate_constants(
-            # calls to calculate k_f(T) or k_r(T)
-            rxn_id, T,
-            bep_params=bep_params,
-            reactions_net=reactions_net,
-            species_db=species_db,
-            mode=mode,
-            **kwargs
-        )
-        k_val = rates['k_f'] if direction == 'f' else rates['k_r']
-        k_values.append(k_val)
-        
-    k_values = np.array(k_values)
-    
-    # Linear system: ln(k) = ln(A) + beta * ln(T/T0) - (Ea/R) * (1/T)
-    Y = np.log(k_values)
-    X = np.column_stack([
-        np.ones_like(T_grid),
-        np.log(T_grid / T0),
-        -1.0 / (R_SI * T_grid)
-    ])
-    
-    params, residuals, rank, s = np.linalg.lstsq(X, Y, rcond=None)
+    T = np.asarray(T_grid_K, dtype=float)
+    key = {'f': 'k_f', 'r': 'k_r'}[direction]
+    k = np.array([calculate_rate_constants(rxn_id, T_K, **rate_options)[key] for T_K in T])
+
+    y = np.log(k)
+    X = np.column_stack([np.ones_like(T), np.log(T / T0_K), -1.0 / (R_SI * T)])
+    params, *_ = np.linalg.lstsq(X, y, rcond=None)
     ln_A, beta, Ea_J_mol = params
-    
-    # Compute R^2 determination coefficient
-    Y_pred = X @ params
-    ss_tot = np.sum((Y - np.mean(Y))**2)
-    ss_res = np.sum((Y - Y_pred)**2)
-    r2 = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else 1.0
-    
+    ss_tot = np.sum((y - y.mean()) ** 2)
+    r2 = 1.0 - np.sum((y - X @ params) ** 2) / ss_tot if ss_tot > 0 else 1.0
     return {
         'rxn_id': rxn_id,
         'direction': direction,
         'A': np.exp(ln_A),
         'beta': beta,
         'Ea_kJ_mol': Ea_J_mol / 1000.0,
-        'Ea_eV': (Ea_J_mol / 1000.0) / EV_TO_KJ_MOL,
-        'R2': r2
+        'Ea_eV': Ea_J_mol / 1000.0 / EV_TO_KJ_MOL,
+        'R2': r2,
     }
 
-def generate_arrhenius_summary(
-    T_grid: np.ndarray,
-    reactions_net: dict = None,
-    bep_params: dict = None,
-    species_db: dict = None,
-    mode: str = 'qRRHO',
-    **kwargs
-) -> list:
-    """
-    Generates summary list of forward and reverse Arrhenius parameters across all reactions in the network.
-    """
-    net = _get_reactions_network(reactions_net)
-    summary = []
-    for rxn_id in net.keys():
-        fit_f = fit_modified_arrhenius(
-            rxn_id, T_grid, direction='f',
-            bep_params=bep_params, reactions_net=net,
-            species_db=species_db, mode=mode,
-            **kwargs
-        )
-        fit_r = fit_modified_arrhenius(
-            rxn_id, T_grid, direction='r',
-            bep_params=bep_params, reactions_net=net,
-            species_db=species_db, mode=mode,
-            **kwargs
-        )
-        summary.append({
-            'Reaction': rxn_id,
-            'Class': net[rxn_id]['class'],
-            'A_f (s^-1 or M^-n s^-1)': f"{fit_f['A']:.3e}",
-            'beta_f': f"{fit_f['beta']:.2f}",
-            'Ea_f (kJ/mol)': f"{fit_f['Ea_kJ_mol']:.2f}",
-            'Ea_f (eV)': f"{fit_f['Ea_eV']:.3f}",
-            'A_r': f"{fit_r['A']:.3e}",
-            'beta_r': f"{fit_r['beta']:.2f}",
-            'Ea_r (kJ/mol)': f"{fit_r['Ea_kJ_mol']:.2f}",
-            'Ea_r (eV)': f"{fit_r['Ea_eV']:.3f}",
-            'R2': f"{fit_f['R2']:.4f}"
-        })
-    return summary
+
+def build_arrhenius_table(T_grid_K: np.ndarray, *, network: dict = None, **rate_options) -> pd.DataFrame:
+    """Forward and reverse modified-Arrhenius parameters of every reaction (numeric columns)."""
+    net = network or NETWORK
+    rows = {}
+    for rxn_id, rxn in net.items():
+        row = {'class': rxn['class']}
+        for direction in ('f', 'r'):
+            fit = fit_modified_arrhenius(rxn_id, T_grid_K, direction=direction, network=net, **rate_options)
+            row.update({f'A_{direction}': fit['A'], f'beta_{direction}': fit['beta'],
+                        f'Ea_{direction}_eV': fit['Ea_eV'], f'R2_{direction}': fit['R2']})
+        rows[rxn_id] = row
+    return pd.DataFrame.from_dict(rows, orient='index')
