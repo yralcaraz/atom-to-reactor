@@ -1,7 +1,7 @@
 """Experimental reference data: Gogoi et al., J. Phys. Chem. C 2024, 128, 1654.
 
 `data/experimental_gogoi2024.json` holds four kinds of data:
-    nmr_shifts           measured ³¹P and ²⁹Si shifts
+    nmr_shifts           measured ³¹P, ²⁹Si, ¹³C and ¹H shifts, each with its site, peak and figure
     barrier_constraints  ΔG‡ windows derived from the reported observations (R4, R5, R8)
     control_experiments  the paper's simple mixtures, with a window on one observable each
     water_series         ³¹P of TMSPA with 0.5–5 vol% water, and of the 2 vol% sample heated to 80 °C

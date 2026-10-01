@@ -17,7 +17,9 @@ from kinetics.data.experimental import get_barrier_windows, get_measured_shifts
 from kinetics.reactor.validation import evaluate_control_experiments
 from kinetics.microkinetics.models import tabulate_family_barriers
 from kinetics.data.network import find_reaction_cycles, list_species
-from kinetics.reactor import MassActionSystem, calculate_remaining_fraction, find_crossing_time
+from kinetics.reactor import (
+    MassActionSystem, calculate_remaining_fraction, calculate_worst_case_pressure_bar, find_crossing_time,
+)
 from kinetics.data.snapshot import calculate_molar_mass
 
 
@@ -79,9 +81,17 @@ def test_observables():
     assert abs(calculate_molar_mass('TMSPA') - 314.54) < 0.01
 
 
+def test_worst_case_pressure():
+    # 1 mmol of gas at 300 K in 1 mL of headspace: p = nRT/V = 1e-3 · 8.314 · 300 / 1e-6 Pa ≈ 24.9 bar
+    p_bar = calculate_worst_case_pressure_bar(1.0, 1.0, 1.0, 300.0)
+    assert abs(p_bar - 1e-3 * 8.314462618 * 300.0 / 1e-6 / 1e5) < 1e-9
+    assert calculate_worst_case_pressure_bar(1.0, 0.5, 1.0, 300.0) == 0.5 * p_bar
+
+
 def test_experimental_reference_and_checks():
     shifts = get_measured_shifts()
-    assert set(shifts['nucleus']) == {'Si', 'P'} and (shifts['low_ppm'] <= shifts['high_ppm']).all()
+    assert set(shifts['nucleus']) == {'P', 'Si', 'C', 'H'} and (shifts['low_ppm'] <= shifts['high_ppm']).all()
+    assert shifts['peak'].notna().all() and shifts['source'].notna().all(), 'every shift names its peak and figure'
     constraints = get_barrier_windows()
     assert set(constraints.index) == {'R4', 'R5', 'R8'}
     checks = evaluate_control_experiments(['peter_reference', 'level1'])
@@ -95,5 +105,6 @@ if __name__ == "__main__":
     test_model_registry()
     test_mass_action_jacobian()
     test_observables()
+    test_worst_case_pressure()
     test_experimental_reference_and_checks()
     print("All model, network and engine tests passed.")

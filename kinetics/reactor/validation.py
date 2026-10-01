@@ -35,13 +35,20 @@ OBSERVABLE_REACTIONS = {'ring_opened_fraction': 'R8', 'hmdso_si_fraction': 'R4',
 PHOSPHATES = ('TMSPA', 'BMSPA', 'MMSPA', 'H3PO4')
 
 
-def simulate_control_experiment(experiment: dict, model, network: dict = None, species_db: dict = None,
-                                method: str = 'Radau') -> float:
-    """Predicted observable of one control experiment (an entry of 'control_experiments').
-
-    method: solver; 'BDF' gives the same observables and is much faster in parameter scans, where very fast
-    steps act on species that stay near zero.
+def simulate_control_experiment(experiment: dict,   # one entry of 'control_experiments'
+                                model,              # the microkinetic model to use
+                                network: dict = None,       # network to simulate (default: NETWORK)
+                                species_db: dict = None,    # species database to simulate (default: NETWORK)
+                                method: str = 'Radau') -> float: # ODE solver. 'Radau' is the default; 'BDF' gives the same result and is faster in scans.
+    
     """
+    [Checked - YA]
+    Simulate one control experiment and return the value of its observable at the end.
+
+    - experiment: one entry of 'control_experiments' (initial mixture, T, time, observable).
+    - method: ODE solver. 'Radau' is the default; 'BDF' gives the same result and is faster in scans.
+    """
+
     c0_M = dict.fromkeys(NETWORK_SPECIES, 0.0)
     c0_M.update(experiment['c0_M'])
     sim = simulate_batch_reactor(c0_M, T_K=experiment['T_K'], t_end_s=experiment['t_s'], model=model,
@@ -56,9 +63,13 @@ def is_within_window(value: float, low: float, high: float) -> bool:
     return bool(low_ok and high_ok)
 
 
-def evaluate_control_experiments(models, network: dict = None, species_db: dict = None,
-                                 experiments: list = None, method: str = 'Radau') -> pd.DataFrame:
-    """Simulate every control experiment with every model and compare with the observed window.
+def evaluate_control_experiments(models, network: dict = None, 
+                                 species_db: dict = None,
+                                 experiments: list = None, 
+                                 method: str = 'Radau') -> pd.DataFrame:
+    """
+    # [Checked - YA]
+    Simulate every control experiment with every model and compare with the observed window.
 
     experiments: entries in the format of 'control_experiments' (default: the file), e.g. with a changed
     window or time to test an assumption. Returns one row per (experiment, model).

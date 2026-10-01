@@ -2,11 +2,14 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 from demo.style import (
     BLUE_RAMP, FAMILY_COLORS, GRID, INK, INK_MUTED, INK_SOFT, RULE, SEQUENTIAL_CMAP, SERIES, SURFACE,
     add_temperature_strip,
 )
+from kinetics.data import load_experimental_data
 from kinetics.fitting import calculate_readouts
 
 _FAMILY_TITLES = {'hydrolysis': 'hydrolysis (R1–R3)', 'transfer': 'transfer (R5–R7)',
@@ -25,14 +28,16 @@ def _format_hours(h: float) -> str:
 
 
 def plot_feasibility_scan(scan, bounds, current_g: dict = None):
-    """Rows: control experiments; columns: families. Each panel: predicted observable vs g, window shaded.
+    """Rows: control experiments; columns: families. Each panel: predicted observable vs g.
 
-    A flat line means the experiment says nothing about that family. TMSPA conversion is drawn as TMSPA
-    remaining so that every row shares a log axis.
+    Grey marks the observable values the observation excludes (outside the window), so the curve must stay
+    in the white band. A flat line means the experiment says nothing about that family. TMSPA conversion is
+    drawn as TMSPA remaining so that every row shares a log axis.
     """
     families = list(dict.fromkeys(scan['family']))
     experiments = list(dict.fromkeys(scan['experiment']))
-    fig, axes = plt.subplots(len(experiments), len(families), figsize=(3.1 * len(families), 2.3 * len(experiments)),
+    conditions = {e['id']: e['label'].replace(' in EC', '') for e in load_experimental_data()['control_experiments']}
+    fig, axes = plt.subplots(len(experiments), len(families), figsize=(3.1 * len(families), 2.3 * len(experiments) + 1.0),
                              sharex=True, sharey=True, layout='constrained', squeeze=False)
     for i, exp_id in enumerate(experiments):
         for j, family in enumerate(families):
@@ -42,7 +47,10 @@ def plot_feasibility_scan(scan, bounds, current_g: dict = None):
             y, low, high = d['predicted'].values, d['low'].iloc[0], d['high'].iloc[0]
             if obs == 'tmspa_conversion':
                 y, low, high = 1.0 - y, 1.0 - high if np.isfinite(high) else np.nan, 1.0 - low if np.isfinite(low) else np.nan
-            ax.axhspan(low if np.isfinite(low) else 1e-5, high if np.isfinite(high) else 2.0, color=GRID, zorder=0)
+            if np.isfinite(low):
+                ax.axhspan(1e-5, low, color=GRID, zorder=0)
+            if np.isfinite(high):
+                ax.axhspan(high, 2.0, color=GRID, zorder=0)
             ax.plot(d['g_eV'], np.clip(y, 1e-5, None), color=FAMILY_COLORS[family], lw=2.0, zorder=2)
             for _, b in bounds[(bounds['experiment'] == exp_id) & (bounds['family'] == family)].iterrows():
                 ax.axvline(b['g_eV'], color=INK_SOFT, lw=1.0, ls=':', zorder=1)
@@ -55,13 +63,19 @@ def plot_feasibility_scan(scan, bounds, current_g: dict = None):
             if i == 0:
                 ax.set_title(_FAMILY_TITLES.get(family, family), loc='left', fontsize=10)
             if j == 0:
-                exp = d.iloc[0]
-                ax.set_ylabel(f"{exp_id}: {_OBSERVABLE_AXIS[obs]}", fontsize=9)
-            if i == len(experiments) - 1:
-                ax.set_xlabel('intrinsic barrier g (eV)')
-    fig.suptitle('Each control experiment against the barrier of each family (others fixed). '
-                 'Grey band: observed window; dotted: bound; solid grey: current value',
+                ax.set_ylabel(f"{exp_id}: {conditions.get(exp_id, '')}\n{_OBSERVABLE_AXIS[obs]} (fraction)", fontsize=8.5)
+    fig.supxlabel('intrinsic barrier g of the scanned family (eV)', fontsize=10)
+    fig.suptitle('Which intrinsic barriers g the four Gogoi 2024 controls allow\n'
+                 'Rows: control experiment (all in EC). Columns: family whose g is scanned; '
+                 'the other three stay at their level1 values.',
                  x=0.01, ha='left', fontsize=10.5)
+    handles = [
+        Patch(facecolor=GRID, label='excluded by the observation (outside the window)'),
+        Line2D([], [], color=INK_SOFT, lw=2.0, label='model prediction (colour = scanned family)'),
+        Line2D([], [], color=INK_SOFT, lw=1.0, ls=':', label='bound on g: curve crosses into grey'),
+        Line2D([], [], color=RULE, lw=1.0, label='current level1 value of g'),
+    ]
+    fig.legend(handles=handles, loc='upper center', bbox_to_anchor=(0.5, 0.0), ncol=4, fontsize=8.5, frameon=False)
     return fig
 
 

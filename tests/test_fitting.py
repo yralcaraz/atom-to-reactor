@@ -16,6 +16,9 @@ from kinetics.fitting import (
     calculate_eyring_precision, calculate_parameter_precision, find_barrier_bounds, get_family_parameter,
     project_bounds_to_entropy, simulate_design, split_family_by_reaction,
 )
+from kinetics.fitting.readouts import (
+    build_nmr_readouts, find_reachable_species, find_site_atoms, find_unread_species,
+)
 from kinetics.reactor import evaluate_water_series
 
 COARSE_GRID_EV = np.round(np.arange(0.60, 1.71, 0.10), 2)
@@ -56,6 +59,22 @@ def test_water_series_contradiction():
     assert not (water['W1 ok'] & water['W2 ok']).any()
 
 
+def test_readouts_follow_measured_shifts():
+    readouts = build_nmr_readouts()
+    # ³¹P: four separate signals; ²⁹Si: the three silyl phosphates are one reported signal (xMSPA)
+    assert readouts['P'] == {sp: {sp: 1} for sp in ('TMSPA', 'BMSPA', 'MMSPA', 'H3PO4')}
+    assert readouts['Si']['xMSPA'] == {'TMSPA': 3, 'BMSPA': 2, 'MMSPA': 1}
+    assert readouts['Si']['TMSOH'] == {'TMSOH': 1} and readouts['Si']['TMSOEG'] == {'TMSOEG': 1}
+    # Methyl sites: 3 C and 9 H per TMS group
+    assert readouts['C']['HMDSO'] == {'HMDSO': 6} and readouts['H']['xMSPA']['TMSPA'] == 27
+    assert len(find_site_atoms('EC', 'C', 'Si-CH3')) == 0
+    # Species with no measured shift are not read
+    assert find_unread_species('P') == [] and find_unread_species('Si') == ['TMSOdiEG']
+    # TMSOH alone in EC can form the ring-opened products but no phosphate
+    reachable = find_reachable_species({'TMSOH': 0.45, 'EC': 15.0})
+    assert 'TMSOdiEG' in reachable and 'BMSPA' not in reachable
+
+
 def test_design_readouts_and_information():
     wet = calculate_recipe_molarities(0.02, 0.05)['after']
     c0 = build_composition(wet['EC'], TMSPA=wet['TMSPA'], H2O=wet['H2O'])
@@ -65,7 +84,10 @@ def test_design_readouts_and_information():
     total_P = sum(run['readouts']['P'].values())
     total_Si = sum(run['readouts']['Si'].values())
     assert np.allclose(total_P, wet['TMSPA'], rtol=1e-6), 'P readouts must close the phosphorus balance'
-    assert np.allclose(total_Si, 3.0 * wet['TMSPA'], rtol=1e-6), 'Si readouts must close the silicon balance'
+    t_Si = np.asarray(run['sampling_h']['Si'])
+    unread_Si = sum(np.interp(t_Si, run['t_h'], run['C_M'][run['idx'][sp]]) for sp in find_unread_species('Si'))
+    assert np.allclose(total_Si + unread_Si, 3.0 * wet['TMSPA'], rtol=1e-6), \
+        'Si readouts plus the unread Si species must close the silicon balance'
     # Splitting a family per reaction leaves the kinetics unchanged
     split, network, steps = split_family_by_reaction(model, 'hydrolysis')
     assert steps == ['hydrolysis_R1', 'hydrolysis_R2', 'hydrolysis_R3']
@@ -94,6 +116,7 @@ if __name__ == "__main__":
     test_family_parameter_updates()
     test_feasibility_bounds_level1()
     test_water_series_contradiction()
+    test_readouts_follow_measured_shifts()
     test_design_readouts_and_information()
     test_error_budget_and_eyring()
     print("All fitting and design tests passed.")

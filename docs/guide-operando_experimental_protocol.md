@@ -1,11 +1,10 @@
-# Operando Bench Protocol: Simulation, Multinuclear NMR & Reaction Identifiability
+# Operando protocol: simulation, NMR and reaction identifiability
 
-**Document Identifier:** `PROTO - 260929 - Operando Protocol Guide - Rev 1`  
-**Author:** Yeray Alcaraz Galván  
-**Affiliation:** Department of Chemistry – Ångström Laboratory, Uppsala University  
-**Context:** Master's Thesis (TFM) — Analysis and Guide for Notebook `02_operando_experimental_protocol.ipynb`  
-**Related Notebooks:** `01_multiscale_microkinetics_theory.ipynb`, `02_operando_experimental_protocol.ipynb`  
-**Related Documentation:** [theory-multiscale_microkinetics.md](theory-multiscale_microkinetics.md), [MODULES.md](../MODULES.md)  
+| | |
+|---|---|
+| **Status** | Stable |
+| **Scope** | Guide to Notebook 02 (`notebooks/02_operando_experimental_protocol.ipynb`): how to read each figure of the protocol simulation. |
+| **Builds on** | NB01 `01_multiscale_microkinetics_theory.ipynb`, [theory-multiscale_microkinetics.md](theory-multiscale_microkinetics.md), [MODULES.md](../MODULES.md) |
 
 ---
 

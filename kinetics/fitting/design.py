@@ -1,8 +1,9 @@
 """Block 14B — Experiment design: what an NMR time series of a candidate experiment could determine.
 
 A design is a composition at t = 0 (the moment the additive is added), a temperature program and, per
-nucleus, the times at which a quantitative spectrum is recorded. The readouts are integrals of resolved
-peaks expressed as concentrations of that nucleus [M]; each has Gaussian noise of a fixed σ per nucleus.
+nucleus, the times at which a quantitative spectrum is recorded. The readouts are integrals of the measured
+peaks (readouts.py) expressed as concentrations of that nucleus [M]; each has Gaussian noise of a fixed σ per
+nucleus, a placeholder until the NMR facility gives it.
 
 For parameters θ (family barriers g, optionally activation entropies ΔS‡) the Fisher information is
 
@@ -21,32 +22,28 @@ import pandas as pd
 from kinetics.constants import EV_TO_KJ_MOL, ZERO_CELSIUS_K
 from kinetics.data.network import NETWORK, NETWORK_SPECIES
 from kinetics.fitting.feasibility import get_family_parameter
+from kinetics.fitting.readouts import build_nmr_readouts, find_reachable_species, find_unread_species
 from kinetics.microkinetics.models import get_model
 from kinetics.reactor.batch import simulate_batch_reactor
 from kinetics.reactor.engine import MassActionSystem
 from kinetics.reactor.observables import find_crossing_time
 
-# Resolved peak groups per nucleus: {label: {species: nuclei per molecule in that peak}}.
-# ³¹P: the four phosphates are resolved (Gogoi 2024). ²⁹Si: TMSPA/BMSPA/MMSPA form one band (xMSPA, Gogoi
-# 2024); TMSOH and the TMS glycols are lumped because the computed shifts overlap (measured: TMSOH ≈ 15 ppm,
-# an unassigned line at 19.1 ppm), which is the conservative choice. ¹³C: CO₂ and the glycol CH₂ carbons.
-NMR_READOUTS = {
-    'P': {'TMSPA': {'TMSPA': 1}, 'BMSPA': {'BMSPA': 1}, 'MMSPA': {'MMSPA': 1}, 'H3PO4': {'H3PO4': 1}},
-    'Si': {'xMSPA': {'TMSPA': 3, 'BMSPA': 2, 'MMSPA': 1},
-           'TMSOH + TMS-glycols': {'TMSOH': 1, 'TMSOEG': 1, 'TMSOdiEG': 1},
-           'HMDSO': {'HMDSO': 2}},
-    'C': {'CO2': {'CO2': 1}, 'TMSOEG CH2': {'TMSOEG': 2}, 'TMSOdiEG CH2': {'TMSOdiEG': 4}},
-}
+# Peak groups per nucleus, derived from the measured shifts (kinetics/fitting/readouts.py):
+# {nucleus: {peak: {species: nuclei per molecule in that peak}}}. Species without a measured shift are not read.
+NMR_READOUTS = build_nmr_readouts()
 
-# Assumed acquisition per nucleus (to confirm with the NMR facility): time per quantitative spectrum and the
-# standard error of one peak integral.
+# Acquisition per nucleus: time per quantitative spectrum and standard error of one peak integral. PLACEHOLDERS:
+# no source in the repository gives them (Gogoi 2024 report no acquisition parameters, integrals or noise).
+# The Fisher σ of a well-determined parameter is proportional to sigma_mM, so every σ in the design analysis
+# scales with these numbers; 'needs' says what replaces each one.
 DEFAULT_ACQUISITION = {
-    'P': {'interval_h': 5.0 / 60.0, 'sigma_mM': 1.0,
-          'note': '100 % abundant and sensitive; quantitative 1D spectrum in about 5 min if T1 is a few seconds'},
-    'Si': {'interval_h': 0.5, 'sigma_mM': 5.0,
-           'note': '4.7 % abundant, long T1, negative NOE: inverse-gated quantitative spectra need about 30 min'},
-    'C': {'interval_h': 1.0, 'sigma_mM': 5.0,
-          'note': '1.1 % abundant: quantitative spectra need about 1 h'},
+    'P': {'interval_h': 5.0 / 60.0, 'sigma_mM': 1.0, 'status': 'placeholder',
+          'needs': 'T1 of the silyl phosphates in EC and the S/N of one quantitative ³¹P spectrum (NMR facility)'},
+    'Si': {'interval_h': 0.5, 'sigma_mM': 5.0, 'status': 'placeholder',
+           'needs': 'T1 and the S/N of one inverse-gated ²⁹Si spectrum; Gogoi 2024 did not detect impurity-level '
+                    'HMDSO in ²⁹Si that ¹³C showed'},
+    'C': {'interval_h': 1.0, 'sigma_mM': 5.0, 'status': 'placeholder',
+          'needs': 'T1 and the S/N of one quantitative ¹³C spectrum'},
 }
 
 DEFAULT_PRIOR_SIGMA = {'g': 0.30, 'dS': 100.0}      # eV, J/(mol·K): regularisation only
@@ -98,7 +95,7 @@ def build_isothermal_design(name: str, label: str, c0_M: dict, *, T_C: float, du
 
 
 def build_step_design(name: str, label: str, c0_M: dict, *, hold_temps_C, hold_h: float = 8.0,
-                      acquire_T_C: float = 20.0, acquire_h: float = 1.0, nuclei=('P', 'Si', 'C'),
+                      acquire_T_C: float = 20.0, acquire_h: float = 1.0, nuclei=('P', 'Si'),
                       purpose: str = '') -> ExperimentDesign:
     """Holds at increasing temperature, each followed by one acquisition of every nucleus at acquire_T_C."""
     segments, times, t = [], [], 0.0
@@ -198,6 +195,9 @@ def describe_designs(designs, acquisition: dict = None) -> pd.DataFrame:
             'spectra': ', '.join(f'{n}: {len(t)}' for n, t in d.sampling_h.items()),
             'first spectrum (min)': round(60.0 * min(min(t) for t in d.sampling_h.values())),
             'duration (h)': d.duration_h,
+            'can form, not read': '; '.join(
+                f"{n}: {', '.join(unread)}" for n in d.sampling_h
+                if (unread := find_unread_species(n, find_reachable_species(d.c0_M)))) or '—',
         }
     return pd.DataFrame.from_dict(rows, orient='index')
 

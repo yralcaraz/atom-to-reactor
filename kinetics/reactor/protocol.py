@@ -27,9 +27,13 @@ class Stage(NamedTuple):
     acquired_T_C: Optional[float] = None   # hold temperature reported by an NMR acquisition ending this stage
 
 
-def calculate_recipe_molarities(h2o_vol_frac_stock: float = 0.02, tmspa_vol_frac: float = 0.05,
+def calculate_recipe_molarities(h2o_vol_frac_stock: float = 0.02, 
+                                tmspa_vol_frac: float = 0.05,
                                 densities_g_mL: dict = None) -> dict:
-    """Molarities of the two-step recipe: EC + H2O stock, then TMSPA added (which dilutes the stock).
+    
+    """
+    [Checked - YA]
+    Molarities of the two-step recipe: EC + H2O stock, then TMSPA added (which dilutes the stock).
 
     Returns 'stock' and 'after' ({species: M}), 'dilution_factor', 'h2o_tmspa_ratio' and 'summary' (DataFrame).
     """

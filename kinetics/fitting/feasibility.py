@@ -40,12 +40,24 @@ def _experiments(experiments):
     return experiments if experiments is not None else load_experimental_data()['control_experiments']
 
 
-def scan_family_barriers(model, g_grid_eV=DEFAULT_G_GRID_EV, families=FAMILIES, experiments=None,
-                         network: dict = None, species_db: dict = None) -> pd.DataFrame:
-    """Predicted observable of every experiment on a grid of g for each family (others fixed).
-
-    Returns one row per (family, g, experiment) with the window and whether the prediction lies in it.
+def scan_family_barriers(model, 
+                         g_grid_eV=DEFAULT_G_GRID_EV,   # grid of g values to scan for each family
+                         families=FAMILIES,             # families to scan (default: all)
+                         experiments=None,              # control experiments to scan against (default: Gogoi et al. 2024)
+                         network: dict = None,          # network to simulate (default: NETWORK)
+                         species_db: dict = None) -> pd.DataFrame:  # species database to simulate (default: NETWORK) 
+    
     """
+    [Checked - YA]
+    Find which barrier values g agree with the control experiments.
+
+    - Take one family and try each g of the grid; the other families keep the model's values.
+    - For each g, simulate every control experiment and get the predicted observable.
+    - Check if the prediction falls inside the measured window [low, high].
+
+    Returns a table with one row per (family, g, experiment); 'consistent' is True if inside the window.
+    """
+
     spec = get_model(model)
     rows = []
     for family in families:
@@ -81,11 +93,23 @@ def _bisect_edge(spec, family, exp, edge_value, g_lo, g_hi, tol_eV, network, spe
 def find_barrier_bounds(model, families=FAMILIES, *, scan: pd.DataFrame = None, experiments=None,
                         g_grid_eV=DEFAULT_G_GRID_EV, tol_eV: float = 0.002, network: dict = None,
                         species_db: dict = None) -> pd.DataFrame:
-    """Every bound on g set by an experiment window edge, refined by bisection.
+    """
+    [Checked - YA]
+    Find the g values where a prediction crosses an edge of an experiment's window.
 
-    Returns one row per bound: family, experiment, 'bound' ('g ≥' or 'g ≤'), g_eV, the reaction the
-    experiment probes and its ΔG‡ at the bound and at the experiment's temperature (NaN when the bound acts
-    indirectly, through a reaction of another family).
+    - Uses the scan to spot where the prediction crosses a window edge (low or high).
+    - Refines each crossing by bisection (halving the g interval) down to tol_eV.
+    - Each crossing is a bound: 'g ≥' (consistent only above it) or 'g ≤' (only below it).
+
+    Returns one row per bound: 
+    - family, 
+    - experiment, 
+    - bound, 
+    - g_eV, 
+    - T_K, 
+    - the reaction the experiment probes,
+    - 'acts' (directly, or indirectly through another family's reaction) 
+    - and, for direct bounds, the barrier ΔG‡ at the bound (NaN if indirect).
     """
     spec = get_model(model)
     exps = {e['id']: e for e in _experiments(experiments)}
@@ -122,7 +146,9 @@ def find_barrier_bounds(model, families=FAMILIES, *, scan: pd.DataFrame = None, 
 
 def summarize_feasible_intervals(bounds: pd.DataFrame, scan: pd.DataFrame, model=None,
                                  families=FAMILIES) -> pd.DataFrame:
-    """Per family: the feasible interval of g, the experiments that set each end, and a verdict.
+    """
+    [Checked - YA] 
+    Per family: the feasible interval of g, the experiments that set each end, and a verdict.
 
     The interval is limited to the scanned range; 'current g' is the model's value when a model is given.
     """
@@ -157,9 +183,14 @@ def summarize_feasible_intervals(bounds: pd.DataFrame, scan: pd.DataFrame, model
     return pd.DataFrame.from_dict(rows, orient='index')
 
 
-def project_bounds_to_entropy(bounds: pd.DataFrame, family: str, dS_grid_J_mol_K, T_ref_K: float = 298.15,
+def project_bounds_to_entropy(bounds: pd.DataFrame, 
+                              family: str, 
+                              dS_grid_J_mol_K, 
+                              T_ref_K: float = 298.15,
                               base_dS_J_mol_K: float = 0.0) -> pd.DataFrame:
-    """Bounds of one family as lines g(T_ref) = g_bound + (T_exp − T_ref)·(ΔS‡ − ΔS‡_base) in the (ΔS‡, g) plane.
+    """
+    [Checked - YA]
+    Bounds of one family as lines g(T_ref) = g_bound + (T_exp − T_ref)·(ΔS‡ − ΔS‡_base) in the (ΔS‡, g) plane.
 
     Each bound fixes g at its experiment's temperature; g(T) = g(T_ref) − (T − T_ref)·ΔS‡. The bounds were
     found with ΔS‡ = base_dS_J_mol_K. Returns one row per (bound, ΔS‡).

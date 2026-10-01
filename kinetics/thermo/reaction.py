@@ -11,9 +11,21 @@ from kinetics.data.species import resolve_species_database
 from kinetics.thermo.uncertainty import calculate_solvation_sigma
 
 
-def calculate_reaction_thermo(rxn_id: str, T_K: float, *, network: dict = None, species_db: dict = None,
+def calculate_reaction_thermo(rxn_id: str, 
+                              T_K: float, 
+                              *, 
+                              network: dict = None, 
+                              species_db: dict = None,
                               thermo_mode: str = 'wb97mv') -> dict:
-    """ΔH, ΔS, ΔG and K_eq = exp(-ΔG/RT) of one reaction in EC solution at T_K."""
+    
+    """
+    [Checked - YA]
+    ΔH, ΔS, ΔG and K_eq = exp(-ΔG/RT) of one reaction in EC solution at T_K.
+
+    Computes reaction thermodynamics for the whole reaction network at T
+
+    """
+    
     rxn = (network or NETWORK)[rxn_id]
     dG_kJ_mol = dH_kJ_mol = dS_J_mol_K = 0.0
     for side, sign in (('products', 1.0), ('reactants', -1.0)):

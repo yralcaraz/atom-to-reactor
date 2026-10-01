@@ -3,6 +3,8 @@
 import numpy as np
 import pandas as pd
 
+from kinetics.constants import R_SI
+
 
 def find_crossing_time(t: np.ndarray, y: np.ndarray, level: float) -> float:
     """First time y falls to `level` (linear interpolation); NaN if it never does."""
@@ -13,6 +15,14 @@ def find_crossing_time(t: np.ndarray, y: np.ndarray, level: float) -> float:
     if i == 0:
         return float(t[0])
     return float(t[i - 1] + (level - y[i - 1]) * (t[i] - t[i - 1]) / (y[i] - y[i - 1]))
+
+
+def calculate_worst_case_pressure_bar(C_gas_M: float, liquid_mL: float, gas_mL: float, T_K: float) -> float:
+    """Headspace pressure [bar] if all of a dissolved gas left the liquid (ideal gas); an upper bound for safety.
+
+    p = C·V_liquid·R·T / V_gas. Henry partitioning keeps part of the gas dissolved, so the real pressure is lower.
+    """
+    return C_gas_M * liquid_mL * R_SI * T_K / gas_mL / 100.0     # mol/L·mL = mmol; Pa → bar
 
 
 def summarize_batch_runs(sims: dict) -> pd.DataFrame:

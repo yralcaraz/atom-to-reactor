@@ -1,6 +1,10 @@
-# Block-by-Block Audit: Notebook × Theory × Modules
+# Block-by-block audit: notebook × theory × modules
 
-Systematic cross-reference of `multiscale_microkinetics.ipynb` (23 cells), `theory-multiscale_microkinetics.md`, and the 8 Python modules. Each block lists **verified items** (✓) and **findings** (⚠ errors, ⚡ false assumptions, 💡 improvements).
+| | |
+|---|---|
+| **Status** | Historical. It audits the first 23-cell notebook; function and module names have since changed (see [reference-api_migration.md](reference-api_migration.md)). |
+| **Scope** | Systematic cross-reference of `multiscale_microkinetics.ipynb`, `theory-multiscale_microkinetics.md` and the 8 Python modules. |
+| **Markers** | ✓ verified item · ⚠ error · ⚡ false assumption · 💡 improvement |
 
 ---
 
