@@ -1,6 +1,15 @@
-# Data inventory: `tank_api_snapshot.json`
+# Data inventory
 
-An offline snapshot of Peter Broqvist's Tank dataset API (`http://127.0.0.1:8000/api`), captured on 2026-09-24. It is the only source of thermochemistry, solvation, NMR and geometry data in this repo. **All of it is computed; there is no experimental data in the repo.**
+| File | Kind | Content | Loaded by |
+|---|---|---|---|
+| `tank_api_snapshot.json` | Computed | Gas-phase DFT, MD solvation in EC, NMR shieldings, geometries | `kinetics/data/snapshot.py`, `species.py` |
+| `experimental_gogoi2024.json` | Measured | NMR shifts, barrier windows, control experiments, water series (Gogoi et al. 2024) | `kinetics/data/experimental.py` |
+
+There are no kinetic time series in the repo yet. The test baseline `tests/data/block5_legacy_baseline.json` is regression data for the tests, not input data.
+
+## Snapshot: `tank_api_snapshot.json`
+
+An offline snapshot of Peter Broqvist's Tank dataset API (`http://127.0.0.1:8000/api`), captured on 2026-09-24. It is the only source of thermochemistry, solvation, NMR and geometry data in this repo. **All of it is computed.**
 
 | Endpoint | Records | Content |
 |---|---|---|
@@ -9,7 +18,7 @@ An offline snapshot of Peter Broqvist's Tank dataset API (`http://127.0.0.1:8000
 | `nmr` | 24 | Per-atom computed NMR shieldings, keyed by `dataset_uuid` |
 | `structure` | 24 | Optimised geometry (elements + Cartesian coordinates in Å) |
 
-## `datasets` (gas-phase DFT)
+### `datasets` (gas-phase DFT)
 
 - **Level of theory:** ωB97M-V/def2-TZVPD with VV10 non-local dispersion, for all 24 species. Every species is neutral and closed-shell.
 - **Energies (Hartree):** `energy_scf_eh`, `zpe_eh`, `enthalpy_eh`, `gibbs_eh`. G is at 298.15 K and 1 bar. The rigid-rotor/harmonic-oscillator entropy follows as S = (H − G)/T; for H₂O it is 188.6 J/(mol·K) against 188.8 J/(mol·K) experimentally.
@@ -25,16 +34,16 @@ An offline snapshot of Peter Broqvist's Tank dataset API (`http://127.0.0.1:8000
 - **Not wired into the network (13):** TMS (NMR reference), PH3, DMSO, DEC, DMC, DME, VC, propylene_carbonate, C2H4, bis_2_oxoethyl_oxalate, dilithium_4_carboxylatooxybutyl_carbonate, c6h6f2li2o6 and c6h6f2li2o6-2 (two entries with the same formula).
 - **Not in the snapshot:** no fluorine/HF chemistry species (TMSF, HF, LiPF6, POF3, PF5) and no Li⁺.
 
-## `solvation` (MACE-OMol MD in EC)
+### `solvation` (MACE-OMol MD in EC)
 
 - **Species (12):** the 11 network species plus VC. The model is `MACE-OMol-extra_large` at 298.15 K. Each box has 14 EC and the solute; the pure-EC reference box has 15 EC.
 - **ΔE_solv:** `delta_e_solv_kjmol` = E(solution) − (14/15)·E(pure EC) − E(gas solute), all MD averages. This is an energy, not a free energy: there is no solvation entropy.
 - **`uncertainty_kjmol`:** the quadrature sum of `raw_metadata` `E_gas_std_eV`, `E_solution_std_eV` and `E_solvent_std_eV`.
-  - The pure-EC term (0.202 eV) is one shared run and cancels in 2 → 2 reactions (see `kinetics/thermo/solvation_uncertainty.py`).
+  - The pure-EC term (0.202 eV) is one shared run and cancels in 2 → 2 reactions (see `kinetics/thermo/uncertainty.py`).
   - Whether these stds are per-frame deviations or standard errors of the mean is not documented (TFM open question SLV-01).
 - **Also in `raw_metadata`:** `E_*_mean_eV`, `E_solvent_scaled_eV`, `solution_start_density_g_cm3`, `smiles`.
 
-## `nmr` (computed shieldings)
+### `nmr` (computed shieldings)
 
 - **Content:** per atom, `element`, `atom_index` (matching `structure`), absolute `isotropic_ppm` shielding and `anisotropy_ppm`. `parse_strategy` = `summary_table` for all 24, i.e. parsed from the program's shielding summary.
 - **Coverage:** 211 H, 94 C, 68 O, 12 Si, 5 P and 4 F values. Li (and S in DMSO) are not included.
@@ -42,10 +51,10 @@ An offline snapshot of Peter Broqvist's Tank dataset API (`http://127.0.0.1:8000
   - They are absolute shieldings per atom of a single static geometry. Chemically equivalent methyl H in TMS differ by about 0.01 ppm, whereas a solution spectrum would average them.
   - They include anisotropies, which solution NMR does not measure.
   - They exist for every dataset, including the Li salts.
-- **Use:** `kinetics/spectroscopy/molecular_symmetry.py` averages them over equivalent nuclei and references them (TMS for ²⁹Si/¹³C/¹H, H₃PO₄ for ³¹P). They give peak positions only, with no concentrations or times, so they cannot be used to fit kinetics.
+- **Use:** `kinetics/spectroscopy/symmetry.py` averages them over equivalent nuclei and references them (TMS for ²⁹Si/¹³C/¹H, H₃PO₄ for ³¹P). They give peak positions only, with no concentrations or times, so they cannot be used to fit kinetics.
 - **Accuracy against Gogoi et al. 2024:** ³¹P within about 2.6 ppm. ²⁹Si is systematically 3–6 ppm high (see the theory doc, Block 8.2).
 
-## Experimental data: `experimental_gogoi2024.json`
+## Measured data: `experimental_gogoi2024.json`
 
 The only experimental data in the repo come from Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654 (TFM BIB folder, `RXN - 02`). The measurements are in EC/DEC 1:1 without LiPF₆, and the paper tabulates no concentrations. The file holds four kinds of data:
 
