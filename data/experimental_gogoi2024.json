@@ -38,16 +38,16 @@
   ],
   "control_experiments": [
     {"id": "E1", "label": "TMSOH in EC, RT, 1 week", "c0_M": {"TMSOH": 0.45, "EC": 7.1}, "T_K": 298.15, "t_s": 604800,
-     "observable": "ring_opened_fraction", "low": null, "high": 0.02, "status": "derived",
+     "observable": "ring_opened_fraction", "low": null, "high": 0.02, "status": "derived", "time_basis": "paper (1 week)",
      "observation": "No EC ring-opening at room temperature (< 2 % taken as the detection limit)"},
     {"id": "E2", "label": "TMSOH in EC, 8 h at 80 °C", "c0_M": {"TMSOH": 0.45, "EC": 7.1}, "T_K": 353.15, "t_s": 28800,
-     "observable": "ring_opened_fraction", "low": 0.05, "high": 0.90, "status": "derived",
+     "observable": "ring_opened_fraction", "low": 0.05, "high": 0.90, "status": "derived", "time_basis": "paper (8 h hold)",
      "observation": "TMS-EG clearly formed after the 80 °C hold (13C, 1H, 29Si, GC-MS); 5-90 % assumed"},
     {"id": "E3", "label": "TMSOH in EC, 8 h at 80 °C", "c0_M": {"TMSOH": 0.45, "EC": 7.1}, "T_K": 353.15, "t_s": 28800,
-     "observable": "hmdso_si_fraction", "low": null, "high": 0.05, "status": "assumed",
+     "observable": "hmdso_si_fraction", "low": null, "high": 0.05, "status": "assumed", "time_basis": "paper (8 h hold)",
      "observation": "TMSOTMS only at impurity level (< 5 % of the Si assumed)"},
     {"id": "E4", "label": "TMSPA + TMSOH in EC, RT, 24 h", "c0_M": {"TMSPA": 0.15, "TMSOH": 0.18, "EC": 7.1}, "T_K": 298.15, "t_s": 86400,
-     "observable": "tmspa_conversion", "low": 0.95, "high": null, "status": "assumed",
+     "observable": "tmspa_conversion", "low": 0.95, "high": null, "status": "assumed", "time_basis": "assumed (not stated)",
      "observation": "TMSPA and TMSOH no longer detectable (reaction time not stated; ≤ 24 h assumed)"}
   ],
   "water_series": {

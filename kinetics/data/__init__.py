@@ -5,6 +5,7 @@ experimental reference data.
     species.py       species database built from the snapshot (energies converted to eV)
     network.py       the 9-reaction network, its species and stoichiometry helpers
     experimental.py  Gogoi et al. 2024: measured shifts, barrier windows, control experiments, water series
+    lab_nmr.py       measured lab spectra (JEOL .jdf, private, read from LAB_NMR_DIR): inventory and processing
 """
 
 from kinetics.data.snapshot import (
@@ -17,6 +18,10 @@ from kinetics.data.network import (
 from kinetics.data.experimental import (
     get_barrier_windows, get_measured_shifts, get_water_series, load_experimental_data,
 )
+from kinetics.data.lab_nmr import (
+    DEFAULT_LAB_NMR_DIR, build_lab_nmr_inventory, calculate_area_shares, calculate_window_integrals, estimate_noise,
+    find_heated_windows, load_spectrum, load_text_spectrum, read_jdf, refine_window_phase, tabulate_area_shares,
+)
 
 __all__ = [
     "load_snapshot", "get_dataset_records", "get_solvation_records", "count_elements", "calculate_molar_mass",
@@ -24,4 +29,7 @@ __all__ = [
     "NETWORK", "NETWORK_SPECIES", "build_stoichiometric_matrix", "find_reaction_cycles", "format_equation",
     "list_species",
     "load_experimental_data", "get_measured_shifts", "get_barrier_windows", "get_water_series",
+    "DEFAULT_LAB_NMR_DIR", "build_lab_nmr_inventory", "read_jdf", "load_spectrum", "load_text_spectrum",
+    "estimate_noise", "calculate_window_integrals", "refine_window_phase", "calculate_area_shares",
+    "tabulate_area_shares", "find_heated_windows",
 ]

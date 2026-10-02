@@ -200,35 +200,34 @@ def plot_design_precision(scans: dict, floor_meV: float = 2.0, undetermined_meV:
     return fig
 
 
-def plot_design_readouts(results: dict, measured: dict = None, acquisition: dict = None, nuclei=('P', 'Si')):
-    """Temperature program and the readouts of each nucleus; lines per truth, dots: one synthetic measurement.
+def plot_design_readouts(results: dict, measured: dict = None, nuclei=('P', 'Si')):
+    """Rows: truths, under the temperature program; columns: nuclei. Lines: readouts; dots: one synthetic measurement.
 
-    results: {label: simulate_design result}; measured: {label: add_readout_noise output} (drawn for the first).
+    results: {label: simulate_design result}; measured: {label: add_readout_noise output}.
+    The panels of one nucleus share the y axis, so the truths compare top to bottom.
     """
     first = next(iter(results.values()))
-    fig, axes = plt.subplots(len(nuclei) + 1, 1, figsize=(10.5, 2.0 + 3.0 * len(nuclei)), sharex=True,
-                             height_ratios=[0.8] + [3.0] * len(nuclei), layout='constrained')
-    add_temperature_strip(axes[0], first['t_h'], first['T_C'] + 273.15)
-    styles = ['-', '--', ':', '-.']
-    for ax, nucleus in zip(axes[1:], nuclei):
+    fig, axes = plt.subplots(len(results) + 1, len(nuclei), figsize=(5.8 * len(nuclei), 1.4 + 3.0 * len(results)),
+                             sharex=True, squeeze=False, height_ratios=[0.8] + [3.0] * len(results),
+                             layout='constrained')
+    for col, nucleus in enumerate(nuclei):
+        add_temperature_strip(axes[0, col], first['t_h'], first['T_C'] + 273.15)
         labels = list(first['readouts'][nucleus])
-        for k, label in enumerate(labels):
-            color = SERIES[k % len(SERIES)]
-            for s, (name, res) in enumerate(results.items()):
-                trace = calculate_readouts(res['C_M'], res['idx'], nucleus)[label]
-                ax.plot(res['t_h'], trace * 1000.0, color=color, lw=1.6, ls=styles[s % len(styles)],
-                        label=label if s == 0 else None, zorder=2)
-            if measured is not None:
-                first_name = next(iter(results))
-                y = measured[first_name][nucleus][label] * 1000.0
-                t = np.asarray(first['sampling_h'][nucleus])
-                ax.plot(t, y, 'o', color=color, ms=3.2, alpha=0.75, mec='none', zorder=3)
-        ax.set_ylabel(f'{nucleus} in peak (mM)')
-        ax.legend(loc='upper left', bbox_to_anchor=(1.01, 1.0), fontsize=8, title=f'{nucleus} peaks',
-                  title_fontsize=8)
-    if len(results) > 1:
-        names = list(results)
-        axes[1].set_title('   '.join(f"{'─' if s == 0 else '- -' if s == 1 else '···'} {n}" for s, n in enumerate(names)),
-                          loc='left', fontsize=9, color=INK_SOFT)
-    axes[-1].set_xlabel('time after mixing (h)')
+        for row, (name, res) in enumerate(results.items(), start=1):
+            ax = axes[row, col]
+            if row > 1:
+                ax.sharey(axes[1, col])
+            traces = calculate_readouts(res['C_M'], res['idx'], nucleus)
+            for k, label in enumerate(labels):
+                color = SERIES[k % len(SERIES)]
+                ax.plot(res['t_h'], traces[label] * 1000.0, color=color, lw=1.6, label=label, zorder=2)
+                if measured is not None and name in measured:
+                    y = measured[name][nucleus][label] * 1000.0
+                    ax.plot(np.asarray(res['sampling_h'][nucleus]), y, 'o', color=color, ms=3.2, alpha=0.75,
+                            mec='none', zorder=3)
+            ax.set_title(f'{nucleus} · {name}', loc='left', fontsize=9, color=INK_SOFT)
+            ax.set_ylabel(f'{nucleus} in peak (mM)')
+        axes[-1, col].set_xlabel('time after mixing (h)')
+        axes[-1, col].legend(loc='upper center', bbox_to_anchor=(0.5, -0.22), ncol=len(labels), fontsize=8,
+                             title=f'{nucleus} peaks', title_fontsize=8)
     return fig

@@ -17,7 +17,7 @@ from kinetics.reactor.observables import (
 from kinetics.reactor.validation import (
     OBSERVABLE_REACTIONS, OBSERVABLES, calculate_phosphate_fractions, calculate_water_series_c0,
     evaluate_control_experiments, evaluate_heating_observation, evaluate_water_series, is_within_window,
-    simulate_control_experiment,
+    simulate_control_experiment, simulate_phosphate_path,
 )
 
 __all__ = [
@@ -27,5 +27,5 @@ __all__ = [
     "tabulate_trajectory",
     "OBSERVABLE_REACTIONS", "OBSERVABLES", "calculate_phosphate_fractions", "calculate_water_series_c0",
     "evaluate_control_experiments", "evaluate_heating_observation", "evaluate_water_series", "is_within_window",
-    "simulate_control_experiment",
+    "simulate_control_experiment", "simulate_phosphate_path",
 ]

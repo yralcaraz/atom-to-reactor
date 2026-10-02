@@ -19,7 +19,16 @@ from kinetics.reactor.batch import simulate_batch_reactor
 from kinetics.reactor.protocol import DEFAULT_DENSITY_G_ML, Stage, simulate_protocol
 from kinetics.data.snapshot import calculate_molar_mass
 
-# Observable name → (label, function of final concentrations C [M], species index, initial concentrations)
+PHOSPHATES = ('TMSPA', 'BMSPA', 'MMSPA', 'H3PO4')
+
+
+def _phosphate_share(species: str):
+    """Observable: share of all P held by one phosphate (what a ³¹P spectrum measures)."""
+    return lambda C, i, c0: C[i[species]] / sum(C[i[sp]] for sp in PHOSPHATES)
+
+
+# Observable name → (label, function of concentrations C [M] (final, or species × time), species index,
+# initial concentrations)
 OBSERVABLES = {
     'ring_opened_fraction': ('TMSOH ring-opened into TMSOEG + TMSOdiEG (fraction)',
                              lambda C, i, c0: (C[i['TMSOEG']] + C[i['TMSOdiEG']]) / c0['TMSOH']),
@@ -27,12 +36,12 @@ OBSERVABLES = {
                           lambda C, i, c0: 2.0 * C[i['HMDSO']] / c0['TMSOH']),
     'tmspa_conversion': ('TMSPA converted (fraction)',
                          lambda C, i, c0: 1.0 - C[i['TMSPA']] / c0['TMSPA']),
+    **{f'{sp.lower()}_share': (f'{sp} share of all P (³¹P)', _phosphate_share(sp)) for sp in PHOSPHATES},
 }
 
 # Reaction whose barrier each observable probes most directly
-OBSERVABLE_REACTIONS = {'ring_opened_fraction': 'R8', 'hmdso_si_fraction': 'R4', 'tmspa_conversion': 'R5'}
-
-PHOSPHATES = ('TMSPA', 'BMSPA', 'MMSPA', 'H3PO4')
+OBSERVABLE_REACTIONS = {'ring_opened_fraction': 'R8', 'hmdso_si_fraction': 'R4', 'tmspa_conversion': 'R5',
+                        'tmspa_share': 'R1', 'bmspa_share': 'R2', 'mmspa_share': 'R3', 'h3po4_share': 'R3'}
 
 
 def simulate_control_experiment(experiment: dict,   # one entry of 'control_experiments'
@@ -109,6 +118,23 @@ def calculate_phosphate_fractions(C_M: np.ndarray, idx: dict) -> dict:
     """Fraction of all P in each phosphate (arrays over the last axis of C_M)."""
     total = sum(C_M[idx[sp]] for sp in PHOSPHATES)
     return {sp: C_M[idx[sp]] / total for sp in PHOSPHATES}
+
+
+def simulate_phosphate_path(c0_M: dict, model, *, T_K: float = 298.15, t_end_s: float = 3.2e8,
+                            network: dict = None, species_db: dict = None, n_points: int = 400,
+                            method: str = 'BDF') -> pd.DataFrame:
+    """Share of all P in each phosphate along an isothermal batch run (one row per time, t_h column).
+
+    A barrier only sets how fast the run moves along this path; the path itself (which compositions are
+    reachable) is set by the rate law and the ratios of the rate constants.
+    """
+    full = dict.fromkeys(NETWORK_SPECIES, 0.0)
+    full.update(c0_M)
+    sim = simulate_batch_reactor(full, T_K=T_K, t_end_s=t_end_s, model=model, network=network,
+                                 species_db=species_db, n_points=n_points, t_start_s=1.0, method=method)
+    path = pd.DataFrame(calculate_phosphate_fractions(sim['C_M'], sim['idx']))
+    path.insert(0, 't_h', sim['t_h'])
+    return path
 
 
 def _window_value(fractions: dict, key: str):

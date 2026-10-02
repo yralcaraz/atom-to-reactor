@@ -18,7 +18,7 @@ def format_columns(df: pd.DataFrame, formats: dict, na_rep: str = '—') -> pd.D
 
 
 def format_species_table(species_db: dict, species: list, nmr_catalog: dict, experimental=None) -> pd.DataFrame:
-    """Per species: G_gas, ΔE_solv ± σ, computed ²⁹Si / ³¹P shifts (and measured ones when given), frequencies."""
+    """Per species: G_gas, ΔE_solv ± standard error, computed ²⁹Si / ³¹P shifts (and measured ones when given), frequencies."""
     def computed(el, sp):
         sites = [d for d, _, labile in nmr_catalog.get(el, {}).get(sp, []) if not labile]
         return f'{sites[0]:.1f}' if sites else '—'
@@ -38,7 +38,7 @@ def format_species_table(species_db: dict, species: list, nmr_catalog: dict, exp
         rows[sp] = {
             'G_gas (Eh)': f"{r['G_gas_Eh']:.5f}",
             'ΔE_solv (eV)': f"{r['dE_solv_eV']:+.3f}",
-            'σ ΔE_solv (eV)': f"{r['dE_solv_sigma_eV']:.2f}",
+            'SE ΔE_solv (eV)': f"{r['dE_solv_sigma_eV']:.2f}",
             'δ29Si calc (ppm)': computed('Si', sp),
             'δ29Si exp (ppm)': measured('Si', sp),
             'δ31P calc (ppm)': computed('P', sp),
@@ -49,18 +49,18 @@ def format_species_table(species_db: dict, species: list, nmr_catalog: dict, exp
 
 
 def format_thermo_table(thermo: pd.DataFrame) -> pd.DataFrame:
-    """ΔG_rxn in eV and kcal/mol, provisional σ, whether the sign is resolved at ±1σ, and K_eq."""
+    """ΔG_rxn in eV and kcal/mol, standard error of the solvation term, whether the sign is resolved at ±1 SE, and K_eq."""
     df = pd.DataFrame({
         'class': thermo['class'],
         'equation': thermo['equation'],
         'ΔG_rxn (eV)': thermo['dG_rxn_eV'],
         'ΔG_rxn (kcal/mol)': thermo['dG_rxn_eV'] * EV_TO_KCAL_MOL,
-        '±1σ solv (kcal/mol)': thermo['sigma_solv_eV'] * EV_TO_KCAL_MOL,
+        '±1 SE solv (kcal/mol)': thermo['sigma_solv_eV'] * EV_TO_KCAL_MOL,
         'sign resolved': np.where(thermo['dG_rxn_eV'].abs() > thermo['sigma_solv_eV'], 'yes', 'no'),
         'K_eq': thermo['K_eq'],
     })
     return format_columns(df, {'ΔG_rxn (eV)': '+.3f', 'ΔG_rxn (kcal/mol)': '+.2f',
-                               '±1σ solv (kcal/mol)': '.2f', 'K_eq': '.2e'})
+                               '±1 SE solv (kcal/mol)': '.2f', 'K_eq': '.2e'})
 
 
 def format_rate_comparison(rates_by_model: dict) -> pd.DataFrame:
@@ -113,3 +113,11 @@ def format_control_checks(checks: pd.DataFrame) -> pd.DataFrame:
             row[r['model']] = f"{r['predicted']:.3g} {'✓' if r['consistent'] else '✗'}"
         rows[exp_id] = row
     return pd.DataFrame.from_dict(rows, orient='index')
+
+
+def format_share_table(shares: pd.DataFrame, windows: list, index=('sample', 'acquired_at')) -> pd.DataFrame:
+    """Measured area shares (kinetics.data.tabulate_area_shares) as 'share ± SE', one row per spectrum."""
+    value = shares.pivot_table(index=list(index), columns='window', values='share')
+    sigma = shares.pivot_table(index=list(index), columns='window', values='sigma')
+    return pd.DataFrame({w: [f'{v:+.3f} ± {s:.3f}' for v, s in zip(value[w], sigma[w])] for w in windows},
+                        index=value.index)
