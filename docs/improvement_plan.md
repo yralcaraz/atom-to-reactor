@@ -117,12 +117,12 @@ However, it **ignores** the solvation entropy contribution: $\Delta E_{\text{sol
 
 ---
 
-### ⚠ Finding 19: **Solvation uncertainty was propagated incorrectly, and its definition is unknown**
+### ⚠ Finding 19: **Solvation uncertainty was propagated incorrectly**
 
-The snapshot's `uncertainty_kjmol` is the quadrature sum of three MD stds (gas solute, solute-in-EC box, pure-EC box). The pure-EC box is shared by all species, so its term cancels in the 2 → 2 steps. Treating it as independent doubles σ(ΔG_rxn) (0.47–0.60 → 0.23–0.44 eV). Whether the stds are per-frame deviations or standard errors of the mean is not documented.
+The snapshot's `uncertainty_kjmol` is the quadrature sum of three MD standard errors of the mean (gas solute, solute-in-EC box, pure-EC box; stored under `*_std_eV` keys). The pure-EC box is shared by all species, so its term cancels in the 2 → 2 steps. Treating it as independent doubles σ(ΔG_rxn) (0.47–0.60 → 0.23–0.44 eV).
 
 > [!WARNING]
-> **Severity: HIGH (if per-frame).** **Status: open.** With per-frame σ, the signs of R2–R4 and R6–R8 are not resolved at ±1σ. Block 3 now shows provisional error bars (`kinetics/thermo/solvation_uncertainty.py`). The question is tracked in the TFM open-questions document (MET).
+> **Severity: HIGH.** **Status: resolved (2026-10-02).** The stored σ are standard errors (TFM question SLV-01), so the error bars are used as stored: the signs of R2–R4 and R6–R8 are not resolved at ±1σ. Block 3 shows these error bars (`kinetics/thermo/uncertainty.py`).
 
 ---
 
@@ -334,7 +334,7 @@ The sweep varies $E_0$ uniformly across all families. To test the effect of a hi
 | 16 | 5 | **HIGH** | ⚠ Contradiction | Condensation E0 = 0.80 eV contradicts Gogoi 2024; Level 1 uses g = 1.30 eV |
 | 17 | 4 | LOW | ✓ Resolved | Stale B3LYP ΔG° table in theory doc regenerated from ωB97M-V snapshot |
 | 18 | 5 | MEDIUM | Open | Level 1 hydrolysis/transfer g are placeholders; too fast under Marcus |
-| 19 | 3 | **HIGH** | Open | Solvation σ: shared EC term was double-counted; std vs. SEM undocumented; provisional error bars in Block 3 |
+| 19 | 3 | **HIGH** | ✓ Resolved | Solvation σ: shared EC term was double-counted; σ are standard errors (SLV-01); error bars in Block 3 |
 
 ### Critical Path Status
 

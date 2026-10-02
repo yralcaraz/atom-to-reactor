@@ -25,11 +25,11 @@ Every piece of information cuts away part of that space: the DFT and MD energies
 |---|---|---|
 | 1 | The layer DFT → k(T) has about 30 continuous unknowns in three groups: computed thermodynamics φ (6 independent directions, not 9), kinetic parameters ψ (g, ΔS‡) and interpretation parameters λ (window edges, unknown times). On top of these sits a discrete structure M: rate law, network, family partition. | Section 2; [App. A1] |
 | 2 | Every bound we report today is a **slice**: one g scanned, everything else held at one point (φ at the DFT mean, ΔS‡ = 0, λ at the file values). A slice is always contained in the **projection**, which is the bound the information actually supports. The current intervals are therefore too narrow. | Section 4.2 |
-| 3 | Moving only the ΔG_rxn of the probed reaction by ±1σ (raw-std reading of the MD σ), the transfer bound g ≤ 1.13 eV becomes g ≤ 1.24 eV, and the solvent-attack interval 1.27–1.39 eV slides anywhere within 1.07–1.58 eV. Under a 0.02 eV reading of σ the bounds move by only ±0.01 eV. | Section 4.4; [App. A2] |
+| 3 | Moving only the ΔG_rxn of the probed reaction by ±1σ (σ = standard error of the MD energies), the transfer bound g ≤ 1.13 eV becomes g ≤ 1.24 eV, and the solvent-attack interval 1.27–1.39 eV slides anywhere within 1.07–1.58 eV. | Section 4.4; [App. A2] |
 | 4 | The solvation axis also decides **which constraints exist**. E4 cannot be met at any g once the BMSPA energy is 0.11 eV less favourable than computed (0.44σ). E3 gives no bound on condensation once ΔG_rxn(R4) ≥ 0.22 eV (0.36σ above the DFT value). So the qualitative observations also bound the DFT dimension. | Section 4.5; [App. A2, A3] |
 | 5 | Inconsistency can be measured, not only detected. The water-series contradiction disappears if the 2 vol% spectrum was taken ≥ 2.2× later than the 1 vol% one. The heating observation does not depend on that time, so it is the firmer evidence. It points to equilibrium (M3) or water loss (M4) rather than acid catalysis (M2). | Section 5.3; [App. A5] |
 | 6 | A design must be judged over F, not at one assumed truth. NB03 §7 uses a 1-D grid of hydrolysis g with everything else at placeholders. Its verdict "transfer undetermined" holds only for the placeholder g_T = 0.80 eV, while F reaches 1.13–1.24 eV, where experiment E is informative. | Section 6; [NB03 §7.1–7.2] |
-| 7 | Resolving SLV-01 (are the MD σ standard deviations or standard errors?) is the cheapest "experiment" available. It changes the projected width of the g intervals about fourfold, and it decides whether M3 is admissible at all. | Sections 4.4, 5.3, 6.6 |
+| 7 | SLV-01 is resolved: the MD σ are standard errors of the mean, used as stored. The ±1σ projections of the g intervals therefore stand, and thermodynamics cannot exclude M3 (R2 and R3 are within 1σ of thermoneutral). | Sections 4.4, 5.3, 6.6 |
 
 ```mermaid
 flowchart LR
@@ -52,7 +52,7 @@ The picture of an n-dimensional space cut by boundaries is, formally, **set-memb
 
 | Layer | Notebook | What it provides | Kind of information | State of its boundary |
 |---|---|---|---|---|
-| L0 species energies G_i | NB01 B1–B2 | ωB97M-V G at 298 K + MACE ΔE_solv in EC, with σ per species | computed | defined, but the width is uncertain by a factor of about 10 (SLV-01) |
+| L0 species energies G_i | NB01 B1–B2 | ωB97M-V G at 298 K + MACE ΔE_solv in EC, with σ per species | computed | defined; σ is the standard error of the MD energies (SLV-01) |
 | L1 reaction energies ΔG_rxn | NB01 B3–B4 | 9 values; Wegscheider cycles close; the sign of 6 of 9 is unresolved at ±1σ | computed | correlated; only 6 independent directions [App. A1] |
 | L2 barriers | NB01 B5; NB03 §1 | Marcus with one g per family, ΔS‡ = 0; α not identifiable | structural hypothesis + placeholders | hydrolysis free, transfer half-bounded, condensation half-bounded, solvent attack bounded [NB03 §3] |
 | L3 rate constants | NB01 B5, B7 | Eyring + detailed balance | exact, given L1–L2 | — |
@@ -72,7 +72,7 @@ The notebooks already contain every element of the method, but each element acts
 | Consistency test | NB03 §4: 0 of 21 parameter sets pass the 1 and 2 vol% pair | pass/fail only; no measure of how far off, or of which assumption to relax |
 | Structural identifiability | NB02 §7: rank 6 of 9 | none; it is the rank of the stoichiometric matrix (Section 2.3) |
 | Design | NB03 §6–7: half-life maps, Fisher σ over true values of g_H | truths on a 1-D grid, other coordinates at placeholders |
-| Error propagation ΔG‡ → g | NB03 §7.3: +10 or +125 meV | applied after the fit, not inside the region |
+| Error propagation ΔG‡ → g | NB03 §7.3: +125 meV | applied after the fit, not inside the region |
 | Model selection | NB01 B6, NB03 §2: registry, pass/fail on E1–E4 | the same data set the values and test them (NB03 §2 note) |
 
 ---
@@ -95,7 +95,7 @@ $$
 \end{aligned}
 $$
 
-Here s_i is the solute part of the MD σ of species i (gas and solution boxes), and s_EC is the pure-EC box shared by every species (`kinetics/thermo/uncertainty.py`). Altogether the model is a map θ ↦ y = S_M(θ; u).
+Here s_i is the solute part of the MD standard error of species i (gas and solution boxes), and s_EC is the pure-EC box shared by every species (`kinetics/thermo/uncertainty.py`). Altogether the model is a map θ ↦ y = S_M(θ; u).
 
 ### 2.2 The coordinates
 
@@ -124,7 +124,7 @@ since N𝟏 = 0 for these 2 → 2 steps and the shared EC term cancels. N has ra
 | R8 with R9 | +0.71 | EC and CO₂ (σ = 0.30 eV) are on the same side in both |
 | R9 with R1–R7 | 0.00 | no shared species |
 
-**Reading.** The solvation "dimension" is not nine independent error bars. Learning one ΔG_rxn better also tells us about the others. A joint 95 % region in six dimensions extends to 3.55σ along each axis (√χ²₆,₀.₉₅), not to 1.96σ. The ±1σ moves used in Section 4 are therefore illustrations, not the full region. The width of the whole region is itself uncertain by an order of magnitude (SLV-01).
+**Reading.** The solvation "dimension" is not nine independent error bars. Learning one ΔG_rxn better also tells us about the others. A joint 95 % region in six dimensions extends to 3.55σ along each axis (√χ²₆,₀.₉₅), not to 1.96σ. The ±1σ moves used in Section 4 are therefore illustrations, not the full region. Its width is set by the standard errors of the MD energies (SLV-01).
 
 The same rank appears in NB02 §7. Spectra identify only 6 of the 9 reaction extents (R1 ⊕ R5, R2 ⊕ R6, R3 ⊕ R7, …), because composition can only fix the net extent along the six independent directions of N. Transfer (R5) and hydrolysis plus condensation (R1 + R4) lead to the same composition. They can be separated only through their rate laws, by changing the concentration of a species that enters one route and not the other. Water is that species, which is why the dry experiment E isolates transfer. **Structural rule:** to separate two routes with the same net stoichiometry, vary a species that appears in only one of them.
 
@@ -222,20 +222,20 @@ The second slope is the line of NB03 §3.2. In ω the constraints are boxes; in 
 
 The direct bounds of NB03 §3 recomputed at shifted ΔG_rxn of the probed reaction, holding ω at its bound value (Marcus inversion), and checked by simulation (a species solvation energy shifted, then `find_barrier_bounds` rerun) [App. A2]:
 
-| Bound (experiment) | Probed reaction, ω at the bound | g at x̂ − σ | g at x̂ (NB03 §3) | g at x̂ + σ | g at x̂ ± 0.02 eV |
-|---|---|---|---|---|---|
-| transfer ≤ (E4) | R5: 0.950 eV at 25 °C | 1.242 (simulated 1.241) | 1.129 | **no g satisfies E4** (simulated, Section 4.5) | 1.119–1.138 |
-| condensation ≥ (E3) | R4: 1.286 eV at 80 °C | 1.401 (simulated 1.402) | 1.235 | **no bound**: E3 holds at equilibrium (simulated, Section 4.5) | 1.224–1.245 |
-| solvent attack ≥ (E1) | R8: 1.249 eV at 25 °C | 1.462 (simulated 1.463) | 1.272 | 1.067 (simulated 1.068) | 1.263–1.282 |
-| solvent attack ≤ (E2) | R8: 1.363 eV at 80 °C | 1.577 (simulated 1.577) | 1.386 | 1.182 (simulated 1.184) | 1.377–1.396 |
+| Bound (experiment) | Probed reaction, ω at the bound | g at x̂ − σ | g at x̂ (NB03 §3) | g at x̂ + σ |
+|---|---|---|---|---|
+| transfer ≤ (E4) | R5: 0.950 eV at 25 °C | 1.242 (simulated 1.241) | 1.129 | **no g satisfies E4** (simulated, Section 4.5) |
+| condensation ≥ (E3) | R4: 1.286 eV at 80 °C | 1.401 (simulated 1.402) | 1.235 | **no bound**: E3 holds at equilibrium (simulated, Section 4.5) |
+| solvent attack ≥ (E1) | R8: 1.249 eV at 25 °C | 1.462 (simulated 1.463) | 1.272 | 1.067 (simulated 1.068) |
+| solvent attack ≤ (E2) | R8: 1.363 eV at 80 °C | 1.577 (simulated 1.577) | 1.386 | 1.182 (simulated 1.184) |
 
-σ = σ_x of the probed reaction under the raw-std reading: R5 0.250, R4 0.336, R8 0.396 eV [App. A1].
+σ = σ_x of the probed reaction, the standard error of the MD energies: R5 0.250, R4 0.336, R8 0.396 eV [App. A1].
 
 **Reading.**
-- Each row is one of today's bounds. The middle column is what NB03 reports. The columns on either side show where the same observation puts the bound if the computed ΔG_rxn is off by one standard deviation.
+- Each row is one of today's bounds. The middle column is what NB03 reports. The columns on either side show where the same observation puts the bound if the computed ΔG_rxn is off by one standard error.
 - Where the observable is kinetically controlled, inversion and simulation agree within 2 meV. The shortcut is valid there and costs nothing.
 - Solvent attack stays a band about 0.11 eV wide, but the band slides with ΔG_rxn(R8). Projected over ±1σ it covers 1.07–1.58 eV, against 1.27–1.39 eV in the slice. In ω the same information is firm: ΔG‡(R8) = 1.249–1.363 eV, independent of ΔG_rxn.
-- Under the 0.02 eV reading of σ every bound moves by ±0.01 eV. Settling SLV-01 changes the width of these projections by about a factor of four (solvent attack: 0.51 vs 0.13 eV).
+- SLV-01 is resolved: σ is the standard error, so these ±1σ projections are the relevant ones. The 0.02 eV reading considered earlier (bounds moving by only ±0.01 eV) is excluded.
 
 ### 4.5 The solvation axis changes which constraints exist
 
@@ -300,7 +300,7 @@ $$m_e(\theta) = \frac{\min\{h_e(\theta) - L_e,\ U_e - h_e(\theta)\}}{w_e}, \qqua
 - So the water series rejects M1 only if the two spectra were taken within about a factor of 2 in time of each other. The sampling times belong on the list of questions for the authors.
 
 **The heating observation is the firmer test.** In Gogoi's Fig. S2 the 2 vol% sample, heated stepwise to 80 °C, shows no change apart from slight broadening (our reading). That observation does not involve the sampling time. NB03 §4 finds 0 of the 4 runs consistent at room temperature that keep the spectrum unchanged. The water is in excess: about 1.1 M against at most 0.45 M needed to hydrolyse 0.15 M TMSPA completely. Under M1 or M2 the ladder must therefore move on heating; under M3 (equilibrium) or M4 (water lost) it need not. M2–M4 are not coded, so this is reasoning, not simulation. The heating observation therefore points to M3 or M4 rather than M2. Two points are checkable:
-- **M3 depends on SLV-01.** M3 needs R2 and R3 close to thermoneutral. Their computed ΔG_rxn values are −0.158 and −0.177 eV, which is 0.64σ and 0.73σ from zero under the raw-std reading but about 8σ under a 0.02 eV reading. SLV-01 decides whether M3 is admissible at all.
+- **M3 is admissible.** M3 needs R2 and R3 close to thermoneutral. Their computed ΔG_rxn values are −0.158 and −0.177 eV, which is 0.64σ and 0.73σ from zero, with σ the standard error of the MD energies (SLV-01). The computed thermodynamics cannot exclude M3.
 - **M4 has a candidate mechanism to verify.** Water reacting with EC above 40 °C is listed in NB03 §2 from the paper's abstract, in a table marked autogenerated. It needs checking against Gogoi 2024.
 
 ---
@@ -347,7 +347,7 @@ Designs are chosen inside U.
 
 Rank candidate actions by the expected shrinkage of width(P_Q) per unit cost. A computation is an action like any other.
 
-- **Resolving SLV-01** costs no lab time. It changes the projected g widths about fourfold (Section 4.4), decides whether M3 is admissible (Section 5.3), and moves the E3 and E4 thresholds (Section 4.5).
+- **SLV-01 is resolved** (the MD σ are standard errors). It fixes the projected g widths at the ±1σ values of Section 4.4, leaves M3 admissible (Section 5.3), and sets the E3 and E4 thresholds at 0.36σ and 0.44σ (Section 4.5).
 - **Asking the authors for two times** (the E4 reaction time and the water-series sampling times) costs one e-mail and settles two interpretation parameters.
 
 Both come before any NMR run.
@@ -460,7 +460,7 @@ repeat (round r):
 | g condensation | ≥ 1.235 (E3) | ≥ 1.40, or no bound if ΔG_rxn(R4) ≥ 0.22 | 1.21–1.27 (detection limit 10–2 %) | **half-bounded**, conditional | F time series |
 | g solvent attack | 1.273–1.387 | band 0.11 wide sliding within 1.07–1.58 | 1.30–1.34 if 20–60 % ring-opened | **bounded** in g; in ω, ΔG‡(R8) = 1.249–1.363 (114 meV > τ₁₀) | F time series |
 | ΔS‡ (every family) | fixed at 0 | — | E1 + E2 exclude ΔS‡ < about −200 J/mol/K for solvent attack [NB03 §3.2] | **free** within the prior | C + C′ for R1–R3 [NB03 §7.5] |
-| φ (6 directions) | DFT mean | E4 cuts the BMSPA direction above +0.11 eV | width uncertain ×10 (SLV-01) | computed prior; one direction bounded by data | SLV-01; equilibrium plateaus, if any |
+| φ (6 directions) | DFT mean | E4 cuts the BMSPA direction above +0.11 eV | width = MD standard errors (SLV-01) | computed prior; one direction bounded by data | equilibrium plateaus, if any |
 | Rate law M | M1 assumed | — | water series rejects M1 only if t₂/t₁ < 2.16 | **contested** (heating) | C vs D; in-situ heating with Karl Fischer (in C) |
 | λ_t water series | common time | — | unknown | **free** | question to the authors |
 
@@ -469,7 +469,7 @@ repeat (round r):
 2. Evaluate the designs over samples of F, not at the placeholder truth. In particular, "transfer undetermined" in NB03 §7.2 is a statement about g_T = 0.80 eV.
 3. Add to the questions for the authors: the time between mixing and the ³¹P spectrum for each water-series sample. A factor of 2.2 between them removes the contradiction.
 4. Treat the heating observation as the main test of the structure. Design C, with Karl Fischer before and after, already repeats it in situ.
-5. Push SLV-01 first. It is a computation, not lab time, and it changes the widths of the projections fourfold and the admissibility of M3.
+5. SLV-01 is settled: the MD σ are standard errors, so the ±1σ projections of Section 4.4 stand and M3 stays admissible.
 
 ---
 

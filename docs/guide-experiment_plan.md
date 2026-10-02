@@ -50,7 +50,7 @@ flowchart LR
 | Time regime | Dynamic. T(t) is piecewise constant (isothermal segments). | T lags after a step (probe equilibration) |
 | Solvent | EC at constant concentration: 7.1 M for EC/DEC (Gogoi), ≈ **15.0 M for pure EC first** | EC is consumed noticeably (EC + H₂O ≥ 40 °C is **not in the network**) |
 | Chemistry | 9 elementary reversible reactions in 4 families. No LiPF₆, no HF. | real electrolyte (this is the OOD case, B1) |
-| Thermodynamics | ΔG_rxn from ωB97M-V (298 K) + MACE ΔE_solv in EC. Ideal dilute (activity = concentration). | σ(ΔG_rxn) is large (SLV-01); concentrated or ionic media |
+| Thermodynamics | ΔG_rxn from ωB97M-V (298 K) + MACE ΔE_solv in EC. Ideal dilute (activity = concentration). | σ(ΔG_rxn) is large: standard errors of 0.23–0.44 eV (SLV-01); concentrated or ionic media |
 | Kinetics | Marcus barrier with one intrinsic g per family, ΔS‡ = 0 | acid catalysis, water clustering, a mechanism change with T |
 | Gas | CO₂ stays in solution | sealed tube with headspace: CO₂ partitions out; F can reach up to 15 bar (upper bound) and ¹³C sees only dissolved CO₂ [NB03 §8.1] |
 
@@ -100,7 +100,7 @@ Assumed readouts [ASSUMED, to confirm with the NMR facility]:
 | Quantity | Identifiable? | Why |
 |---|---|---|
 | ΔG‡ of a step at temperature T | yes, if the step proceeds inside the observation window | it sets the time scale directly |
-| g of a family | only through ΔG_rxn | it inherits σ(ΔG_rxn): 10 meV (σ as standard errors) or 125 meV (σ as raw stds) [NB03 §7.3] |
+| g of a family | only through ΔG_rxn | it inherits σ(ΔG_rxn): 125 meV (σ = MD standard errors) [NB03 §7.3] |
 | g and ΔS‡ from one temperature | no, they are confounded | one T fixes a single combination g − (T − 298)ΔS‡ [NB03 §3.2] |
 | α | no | see A2 |
 
@@ -137,11 +137,11 @@ Assumed readouts [ASSUMED, to confirm with the NMR facility]:
 |---|---|---|
 | Noise (local) | Fisher F = Σ JᵀJ/σ² + diag(1/σ_prior²); σ_θ = √diag(F⁻¹) (Cramér-Rao) | holds only at the assumed true θ, so NB03 scans over plausible truths [NB03 §7.1] |
 | Systematics | ±0.5 K in T → 1.68 meV; ±5 % in [H₂O]₀ → 1.32 meV | floor = √(1.68² + 1.32²) = **2.14 meV** [NB03 §7.3] |
-| ΔG‡ → g | Marcus inversion with σ(ΔG_rxn) | +10 meV or +125 meV (SLV-01) [NB03 §7.3] |
+| ΔG‡ → g | Marcus inversion with σ(ΔG_rxn) | +125 meV (SLV-01) [NB03 §7.3] |
 | ΔH‡, ΔS‡ | Eyring regression, σ(ΔG‡) = 3 meV | span 40 K, 3 temperatures: σΔS‡ ≈ 10 J/mol/K, σΔH‡ ≈ 3.4 kJ/mol [NB03 §7.4] |
 | Correlations | covariance matrix from F⁻¹ | [PROPOSED]: report it; not shown in NB03 yet |
 
-**Reading rule.** A Fisher σ below 2 meV means the result is limited by systematics, not that it is better. The primary result is **ΔG‡ per step**. g is derived from it only after SLV-01 is resolved.
+**Reading rule.** A Fisher σ below 2 meV means the result is limited by systematics, not that it is better. The primary result is **ΔG‡ per step**. g derived from it carries the +125 meV of σ(ΔG_rxn) (SLV-01: the MD σ are standard errors).
 
 ### B4. Verification and validation
 
@@ -310,6 +310,6 @@ flowchart TD
 | 7 | Priority 5 = a 50→70 °C ramp "across a 40 K span" | repeat C at a second T chosen for t½ = 30 min–5 h (and 50→70 °C spans only 20 K) |
 | 8 | "> 800 mM CO₂, 3–5 bar" in the tube | now simulated: F ends with 851 mM CO₂; worst case 15 bar (0.6 mL liquid / 1 mL gas), 3.7 bar with 0.15 mL liquid [NB03 §8.1] |
 | 9 | "Commercial TMSPA contains 5–10 % BMSPA" (Gogoi) | no figure in our data; only that BMSPA was found |
-| 10 | The ΔG‡ → g error was not quantified | +10 meV or +125 meV depending on SLV-01 |
+| 10 | The ΔG‡ → g error was not quantified | +125 meV (SLV-01: MD σ are standard errors) |
 | 11 | Hydrolysis and transfer `level1` values not stated | both 0.80 eV **placeholders** |
 | 12 | E1–E4 treated as independent evidence | they are **training data** for `level1`; only the water series is untouched |
