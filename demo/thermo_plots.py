@@ -8,35 +8,37 @@ from kinetics.constants import EV_TO_KCAL_MOL
 
 
 def plot_solvation_dumbbell(thermo, unit: str = 'kcal/mol'):
-    """Gas-phase vs solution ΔG_rxn per reaction, with the provisional ±1σ of the solvation term.
+    """Gas-phase vs solution ΔG_rxn per reaction, with the ±1 standard error of the solvation term.
 
     thermo: DataFrame from kinetics.calculate_network_thermo.
     """
+    fig, ax = plt.subplots(figsize=(8.5, 4.8), layout='constrained')
+    _draw_solvation_dumbbell(ax, thermo, thermo['sigma_solv_eV'], unit, 'solution in EC, ±1 standard error')
+    ax.set_title('Driving force ΔG_rxn: gas phase vs EC solution', loc='left')
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=2)
+    return fig
+
+
+def _draw_solvation_dumbbell(ax, thermo, err_eV, unit: str, sol_label: str):
+    """Gas → solution segment per reaction, solution point with ±err_eV error bars."""
     scale = EV_TO_KCAL_MOL if unit == 'kcal/mol' else 1.0
     gas = thermo['dG_gas_eV'] * scale
     sol = thermo['dG_rxn_eV'] * scale
-    sigma = thermo['sigma_solv_eV'] * scale
     y = np.arange(len(thermo))
-
-    fig, ax = plt.subplots(figsize=(8.5, 4.8), layout='constrained')
     for yi, g, s in zip(y, gas, sol):
         ax.plot([g, s], [yi, yi], color=RULE, lw=1.5, zorder=1)
     ax.scatter(gas, y, s=60, color=SERIES[0], zorder=3, label='gas phase (ωB97M-V)')
-    ax.errorbar(sol, y, xerr=sigma, fmt='o', ms=8, color=SERIES[1], ecolor=SERIES[1], elinewidth=1.2,
-                capsize=3, zorder=3, label='solution in EC, ±1σ (provisional)')
+    ax.errorbar(sol, y, xerr=err_eV * scale, fmt='o', ms=8, color=SERIES[1], ecolor=SERIES[1], elinewidth=1.2,
+                capsize=3, zorder=3, label=sol_label)
     for yi, g, s in zip(y, gas, sol):
         ax.annotate(f'{g:+.1f}', (g, yi), xytext=(0, 8), textcoords='offset points', ha='center', fontsize=8, color=INK_SOFT)
         ax.annotate(f'{s:+.1f}', (s, yi), xytext=(0, -13), textcoords='offset points', ha='center', fontsize=8, color=INK_SOFT)
     ax.axvline(0.0, color=INK, lw=0.8)
     ax.set_yticks(y, [f"{rid}  {eq}" for rid, eq in zip(thermo.index, thermo['equation'])], fontsize=8.5)
-    ax.invert_yaxis()
+    if not ax.yaxis_inverted():
+        ax.invert_yaxis()
     ax.set_xlabel(f'ΔG_rxn ({unit})')
-    ax.set_title('Driving force ΔG_rxn: gas phase vs EC solution', loc='left')
     ax.grid(axis='y', visible=False)
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=2)
-    return fig
-
-
 
 
 def plot_species_temperature(entropy_J_mol_K: dict, T_K, shift_kJ_mol):
@@ -96,7 +98,7 @@ def plot_wegscheider_cycles(dG_eV: dict, cycles=(('R1', 'R4', 'R5'), ('R2', 'R4'
 
 def plot_temperature_dependence(dG_low_eV, dG_high_eV, sigma_eV, lnK, classes: dict, T_low_C: float = 20.0,
                                 T_high_C: float = 80.0):
-    """(A) ΔG_rxn at the two ends of the window (RRHO entropy kept), with the solvation σ for scale;
+    """(A) ΔG_rxn at the two ends of the window (RRHO entropy kept), with the solvation standard error for scale;
     (B) van 't Hoff plot ln K vs 1000/T for the stored (T-independent) ΔG_rxn.
 
     dG_low_eV, dG_high_eV, sigma_eV: Series indexed by reaction; lnK: DataFrame (index T_K, columns reactions).
@@ -104,7 +106,7 @@ def plot_temperature_dependence(dG_low_eV, dG_high_eV, sigma_eV, lnK, classes: d
     fig, (ax_a, ax_b) = plt.subplots(1, 2, figsize=(13, 4.8), layout='constrained')
     y = np.arange(len(dG_low_eV))
     ax_a.barh(y, 2 * sigma_eV.values, left=(dG_low_eV - sigma_eV).values, height=0.6, color=GRID, zorder=0,
-              label='±1σ solvation (provisional)')
+              label='±1 SE solvation')
     for yi, a, b in zip(y, dG_low_eV, dG_high_eV):
         ax_a.plot([a, b], [yi, yi], color=RULE, lw=1.5, zorder=1)
     ax_a.scatter(dG_low_eV, y, color=BLUE_RAMP[0], s=50, zorder=3, label=f'{T_low_C:.0f} °C')

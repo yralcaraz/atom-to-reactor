@@ -38,9 +38,8 @@ An offline snapshot of Peter Broqvist's Tank dataset API (`http://127.0.0.1:8000
 
 - **Species (12):** the 11 network species plus VC. The model is `MACE-OMol-extra_large` at 298.15 K. Each box has 14 EC and the solute; the pure-EC reference box has 15 EC.
 - **ΔE_solv:** `delta_e_solv_kjmol` = E(solution) − (14/15)·E(pure EC) − E(gas solute), all MD averages. This is an energy, not a free energy: there is no solvation entropy.
-- **`uncertainty_kjmol`:** the quadrature sum of `raw_metadata` `E_gas_std_eV`, `E_solution_std_eV` and `E_solvent_std_eV`.
+- **`uncertainty_kjmol`:** the quadrature sum of `raw_metadata` `E_gas_std_eV`, `E_solution_std_eV` and `E_solvent_std_eV`. Despite the `_std` key names, these are standard errors of the mean MD energies (TFM question SLV-01, resolved), so they are used as stored.
   - The pure-EC term (0.202 eV) is one shared run and cancels in 2 → 2 reactions (see `kinetics/thermo/uncertainty.py`).
-  - Whether these stds are per-frame deviations or standard errors of the mean is not documented (TFM open question SLV-01).
 - **Also in `raw_metadata`:** `E_*_mean_eV`, `E_solvent_scaled_eV`, `solution_start_density_g_cm3`, `smiles`.
 
 ### `nmr` (computed shieldings)

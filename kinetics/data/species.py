@@ -7,7 +7,7 @@ One record per snapshot species, keyed by `pipeline_id`:
     H_gas_eV                  enthalpy at 298.15 K
     E_scf_eV                  electronic SCF energy (qRRHO starts from it)
     dE_solv_eV                MACE MD solvation energy in EC (an energy, not a free energy); None if absent
-    dE_solv_sigma_eV          snapshot uncertainty of dE_solv (provisional, see solvation_uncertainty.py)
+    dE_solv_sigma_eV          standard error of dE_solv (snapshot `uncertainty_kjmol`, see thermo/uncertainty.py)
     sigma_rot                 rotational symmetry number (placeholder 1, Finding 2)
 
 The snapshot has no frequencies or moments of inertia, so `frequencies_cm1` / `moments_amu_A2` are absent

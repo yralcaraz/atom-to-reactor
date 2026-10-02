@@ -10,7 +10,10 @@ if repo_root not in sys.path:
 
 from kinetics.constants import EV_TO_KJ_MOL
 from kinetics.data.snapshot import get_solvation_records
-from kinetics.thermo import calculate_solvation_sigma, calculate_solvation_sigma_naive
+from kinetics.data.network import NETWORK
+from kinetics.thermo import (
+    calculate_solvation_covariance, calculate_solvation_sigma, calculate_solvation_sigma_naive,
+)
 
 SOLVATION = get_solvation_records()
 
@@ -39,8 +42,23 @@ def test_list_and_dict_stoichiometry_agree():
     assert math.isclose(as_list, as_dict, rel_tol=1e-12)
 
 
+def test_covariance_matches_sigmas_and_shared_species():
+    cov = calculate_solvation_covariance(['R2', 'R3', 'R4'])
+    for r in cov.index:
+        sigma = calculate_solvation_sigma(NETWORK[r]['reactants'], NETWORK[r]['products'])
+        assert math.isclose(math.sqrt(cov.loc[r, r]), sigma, rel_tol=1e-12)
+    assert math.isclose(cov.loc['R2', 'R3'], cov.loc['R3', 'R2'])
+    # R2 and R3 share H2O and TMSOH on the same sides (+) and MMSPA on opposite sides (−)
+    def solute_var(sp):
+        raw = SOLVATION[sp]['raw_metadata']
+        return raw['E_gas_std_eV'] ** 2 + raw['E_solution_std_eV'] ** 2
+    expected = solute_var('H2O') + solute_var('TMSOH') - solute_var('MMSPA')
+    assert math.isclose(cov.loc['R2', 'R3'], expected, rel_tol=1e-12)
+
+
 if __name__ == "__main__":
     test_snapshot_uncertainty_is_quadrature_of_md_stds()
     test_shared_solvent_term_cancels_in_two_to_two_reactions()
     test_list_and_dict_stoichiometry_agree()
+    test_covariance_matches_sigmas_and_shared_species()
     print("All solvation-uncertainty tests passed.")

@@ -49,7 +49,7 @@ def calculate_network_thermo(T_K: float = T_STD_K, *, network: dict = None, spec
                              thermo_mode: str = 'wb97mv') -> pd.DataFrame:
     """One row per reaction: gas-phase ΔG, solvation contribution ΔΔE_solv ± σ, solution ΔG_rxn and K_eq.
 
-    sigma_solv_eV is the provisional ±1σ of ΔΔE_solv (NaN when the snapshot has no MD record).
+    sigma_solv_eV is the ±1 standard error of ΔΔE_solv (NaN when the snapshot has no MD record).
     """
     net = network or NETWORK
     db = resolve_species_database(species_db)
