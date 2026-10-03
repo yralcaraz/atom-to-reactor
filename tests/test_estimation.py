@@ -1,11 +1,13 @@
-"""Tests for the first fit: sample histories, species shifts and residuals.
+"""Tests for the first fit: sample histories, species shifts, residuals, structures, optimiser and profiles.
 
 Covers:
 1. simulate_history against the batch and design reactors, the call budget, a model with its own network.
 2. Species shifts: Wegscheider cycles stay closed, the requested reaction shifts come out, registered models unchanged.
 3. Residuals: scenarios, the replicate block, the one-sided paper term, ages found inside an evaluation.
 4. Solver tolerance: search and report settings agree far inside the measurement error.
-5. With the lab file present: the windows of notebook 03 give its barrier intervals through the new forward path.
+5. Structures, the optimiser and profiles: known parameters are recovered from synthetic shares, a parameter the
+   samples cannot see is reported as not determined, nesting never raises χ².
+6. With the lab file present: the windows of notebook 03 give its barrier intervals through the new forward path.
 
 Classification: REVIEW (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván; expected intervals read from notebooks/results/03 (computed from P. Broqvist, Tank
@@ -25,7 +27,11 @@ for path in (repo_root, os.path.dirname(os.path.abspath(__file__))):
 
 from kinetics.constants import ZERO_CELSIUS_K
 from kinetics.data import DEFAULT_OBSERVABLES_PATH, NETWORK, NETWORK_SPECIES, load_experimental_data, load_lab_observables
-from kinetics.fitting import ExperimentDesign, simulate_design, split_family_by_reaction
+from kinetics.fitting import (
+    ExperimentDesign, FitProblem, calculate_parameter_directions, calculate_prediction_band, calculate_profile,
+    compare_structures, embed_parent_theta, find_confidence_interval, fit_leave_one_out, fit_structure, get_structure,
+    simulate_design, simulate_synthetic_shares, split_family_by_reaction, tabulate_reaction_barriers,
+)
 from kinetics.fitting.residuals import (
     FREE_AGE_BOUNDS_H, PENALTY, REPORT_SOLVER, SEARCH_SOLVER, _shares_from_state, build_sample_history,
     build_sample_set, calculate_predicted_shares, calculate_residuals, summarize_residuals, tabulate_residuals,
@@ -258,7 +264,123 @@ def test_search_and_report_tolerances_agree():
 
 
 # ------------------------------------------------------------------------------
-# 5. Notebook 03's intervals through the new forward path (needs the lab file)
+# 5. Structures, optimiser and profiles
+# ------------------------------------------------------------------------------
+def test_structures_build_models():
+    observables = build_synthetic_observables()
+    free = build_sample_set(observables, 'free')
+    names = {name: [p.name for p in get_structure(name).parameters(free)] for name in
+             ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split', 'M3-split+W')}
+    assert names['M0-BEP'] == ['g all reactions', 'log10 age 2 % H2O']
+    assert names['M1-split'][:5] == ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack']
+    assert names['M3-split+W'][5:] == ['dG R1', 'dG R2', 'dG R3', 'dG R4', 'water fraction', 'log10 age 2 % H2O']
+    # M0 reproduces the registered models at their own barrier; M1 reproduces level1
+    for structure, registered, g in (('M0-BEP', 'peter_reference', 1.15), ('M0-Marcus', 'level1', 1.15)):
+        built = get_structure(structure).build({'g all reactions': g})
+        expected = get_model(registered).with_barrier(g).calculate_rates(300.0)
+        assert np.array_equal(built['model'].calculate_rates(300.0)['k_f'].values, expected['k_f'].values), structure
+    level1_theta = {'g hydrolysis': 0.80, 'g transfer': 0.80, 'g condensation': 1.30, 'g solvent_attack': 1.32}
+    built = get_structure('M1').build(level1_theta)
+    assert np.array_equal(built['model'].calculate_rates(300.0)['k_f'].values, get_model('level1').calculate_rates(300.0)['k_f'].values)
+    assert built['prior'].size == 0 and built['ages'] == {} and built['water_fraction'] == 1.0
+    # The split gives R2 and R3 one barrier; freed energies move the ladder and leave R8, R9 alone
+    theta = embed_parent_theta('M3-split', level1_theta)
+    assert theta['g hydrolysis_R1'] == theta['g hydrolysis_R23'] == 0.80 and theta['dG R2'] == 0.0
+    same = get_structure('M3-split').build(theta)
+    assert np.allclose(same['model'].calculate_rates(300.0)['k_f'].values, built['model'].calculate_rates(300.0)['k_f'].values,
+                       rtol=1e-12), 'a child at its parent\'s values is the parent'
+    theta.update({'g hydrolysis_R23': 1.0, 'dG R2': 0.12, 'dG R3': 0.17, 'log10 age 2 % H2O': 2.0, 'water fraction': 0.5})
+    moved = get_structure('M3-split+W').build(theta)
+    rates, base = moved['model'].calculate_rates(300.0), built['model'].calculate_rates(300.0)
+    assert rates.loc['R2', 'g_eV'] == rates.loc['R3', 'g_eV'] == 1.0 and rates.loc['R1', 'g_eV'] == 0.80
+    assert abs(rates.loc['R2', 'dG_rxn_eV'] - base.loc['R2', 'dG_rxn_eV'] - 0.12) < 1e-9
+    assert abs(rates.loc['R6', 'dG_rxn_eV'] - base.loc['R6', 'dG_rxn_eV'] - 0.12) < 1e-9, 'R6 = R2 + R4 follows'
+    assert abs(rates.loc['R8', 'dG_rxn_eV'] - base.loc['R8', 'dG_rxn_eV']) < 1e-9
+    assert moved['ages'] == {'2 % H2O': 100.0} and moved['water_fraction'] == 0.5
+    cov = calculate_solvation_covariance(['R1', 'R2', 'R3', 'R4']).to_numpy()
+    d = np.array([0.0, 0.12, 0.17, 0.0])
+    assert abs(moved['prior'] @ moved['prior'] - d @ np.linalg.solve(cov, d)) < 1e-9, 'the constraint is the Mahalanobis distance'
+    assert [round(row['z'], 6) for row in moved['prior_rows']] == [round(v, 6) for v in d / np.sqrt(np.diag(cov))]
+    barriers = tabulate_reaction_barriers(get_structure('M3-split'), theta)
+    assert barriers['R1']['T_K'] == 295.65 and barriers['R8']['T_K'] == 353.15 and len(barriers) == 9
+    print('  ✓ structures: parameter lists, registered models reproduced, split and freed energies, constraint')
+
+
+def test_interval_finder():
+    v = np.linspace(-3.0, 3.0, 25)
+    parabola = pd.DataFrame({'parameter': 'p', 'value': 1.0 + 0.1 * v, 'chi2': 5.0 + v ** 2})
+    parabola['delta'] = parabola['chi2'] - 5.0
+    ci = find_confidence_interval(parabola, 'p')
+    assert ci['status'] == 'interval' and abs(ci['low'] - (1.0 - 0.196)) < 0.002 and abs(ci['high'] - (1.0 + 0.196)) < 0.002
+    # A grid coarser than the interval (step 2.5 σ): the edges must not be pulled towards the best value
+    coarse = pd.DataFrame({'parameter': 'p', 'value': 1.0 + 0.1 * np.array([-5.0, -2.5, 0.0, 2.5, 5.0]),
+                           'chi2': 5.0 + np.array([-5.0, -2.5, 0.0, 2.5, 5.0]) ** 2})
+    coarse['delta'] = coarse['chi2'] - 5.0
+    ci = find_confidence_interval(coarse, 'p')
+    half = 0.1 * np.sqrt(3.84)
+    assert abs(ci['low'] - (1.0 - half)) < 1e-9 and abs(ci['high'] - (1.0 + half)) < 1e-9, ci
+    one_sided = parabola.assign(chi2=np.where(v > 0, 5.0, 5.0 + v ** 2))
+    ci = find_confidence_interval(one_sided, 'p')
+    assert ci['status'] == 'lower bound only' and np.isnan(ci['high']) and abs(ci['low'] - (1.0 - 0.196)) < 0.002
+    flat = parabola.assign(chi2=5.0)
+    assert find_confidence_interval(flat, 'p')['status'] == 'not determined'
+    band = calculate_prediction_band(lambda theta: theta['a'] ** 2, [{'a': 1.0}, {'a': -3.0}, {'a': 2.0}])
+    assert band['low'] == 1.0 and band['high'] == 9.0 and band['theta_high'] == {'a': -3.0}
+    print('  ✓ intervals: ±1.96 σ on a parabola even on a coarse grid, an open side stays open, a flat profile is '
+          '"not determined"')
+
+
+def test_fit_recovers_and_reports_blind_spots(workers=4):
+    """Synthetic shares from a known parameter set, on the TMSOH samples only: the barriers these samples see
+    come back inside their intervals (an open side counts as inside); the hydrolysis barrier, which they cannot
+    see, is 'not determined'."""
+    observables = build_synthetic_observables()
+    tmsoh = build_sample_set(observables, 'middle', exclude=('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)'))
+    truth = {'g hydrolysis': 1.25, 'g transfer': 1.00, 'g condensation': 1.22, 'g solvent_attack': 1.315}
+    exact = simulate_synthetic_shares('M1', truth, tmsoh)
+    assert np.max(np.abs(FitProblem('M1', exact).residuals([truth[k] for k in truth]))) < 1e-4, 'no noise: no residual'
+    data = simulate_synthetic_shares('M1', truth, tmsoh, seed=1)
+    problem = FitProblem('M1', data, fixed={'g transfer': 1.00})
+    at_truth = problem.chi2(problem.vector(truth))
+    fit = fit_structure(problem, n_screen=64, n_starts=4, max_nfev=15, workers=workers)
+    assert fit['chi2'] <= at_truth + 1e-6, (fit['chi2'], at_truth)
+    assert fit['n_residuals'] == 13 and fit['n_parameters'] == 3 and fit['fits']
+    profile = calculate_profile(problem, fit, ['g solvent_attack', 'g condensation', 'g hydrolysis'], max_nfev=10, workers=workers)
+    for name in ('g solvent_attack', 'g condensation'):
+        ci = find_confidence_interval(profile, name)
+        assert not np.isfinite(ci['low']) or ci['low'] - 0.002 <= truth[name], ci
+        assert not np.isfinite(ci['high']) or truth[name] <= ci['high'] + 0.002, ci
+    assert find_confidence_interval(profile, 'g solvent_attack')['status'] == 'interval'
+    assert find_confidence_interval(profile, 'g hydrolysis')['status'] == 'not determined'
+    assert profile[profile['parameter'] == 'g hydrolysis']['delta'].abs().max() < 0.5
+    directions = calculate_parameter_directions(problem, fit['theta'])
+    assert np.isinf(directions['sigma_local']['g hydrolysis']), 'a parameter the data do not see has no standard error'
+    assert directions['sigma_local']['g solvent_attack'] < 0.02
+    table = compare_structures({'M1': fit})
+    assert bool(table.loc['M1', 'fits']) and table.loc['M1', 'residuals'] == 13
+    # Without the glovebox sample nothing bounds solvent attack from above
+    without = {'TMSOH, glovebox': [s for s in data if s['name'] != 'TMSOH, glovebox']}
+    loo = fit_leave_one_out('M1', without, fit, n_screen=32, n_starts=2, max_nfev=10, workers=workers)
+    assert loo['TMSOH, glovebox']['n_residuals'] == 10
+    print(f"  ✓ recovery: χ² {fit['chi2']:.1f} ≤ {at_truth:.1f} at the truth; truth inside the intervals; "
+          "the unseen barrier is 'not determined'")
+
+
+def test_nesting_never_raises_chi2(workers=4):
+    observables = build_synthetic_observables()
+    samples = build_sample_set(observables, 'middle', exclude=('2 % H2O', 'TMSOH, probe', 'E1'))
+    parent = fit_structure(FitProblem('M1', samples), n_screen=64, n_starts=4, max_nfev=15, workers=workers, report=False)
+    child = fit_structure(FitProblem('M1-split', samples), n_screen=0, max_nfev=15, workers=workers, report=False,
+                          start_points=[embed_parent_theta('M1-split', parent['theta'])])
+    assert child['chi2'] <= parent['chi2'] + 1e-6, (child['chi2'], parent['chi2'])
+    freed = fit_structure(FitProblem('M3-split', samples), n_screen=0, max_nfev=15, workers=workers, report=False,
+                          start_points=[embed_parent_theta('M3-split', child['theta'])])
+    assert freed['chi2'] <= child['chi2'] + 1e-6, (freed['chi2'], child['chi2'])
+    print(f"  ✓ nesting: χ² {parent['chi2']:.1f} (M1) ≥ {child['chi2']:.1f} (M1-split) ≥ {freed['chi2']:.1f} (M3-split)")
+
+
+# ------------------------------------------------------------------------------
+# 6. Notebook 03's intervals through the new forward path (needs the lab file)
 # ------------------------------------------------------------------------------
 GRID_EV = np.round(np.arange(0.60, 1.701, 0.025), 3)        # the scan grid of notebook 03
 
@@ -390,5 +512,9 @@ if __name__ == "__main__":
     test_replicate_block_and_limits()
     test_free_ages_and_tables()
     test_search_and_report_tolerances_agree()
+    test_structures_build_models()
+    test_interval_finder()
+    test_fit_recovers_and_reports_blind_spots()
+    test_nesting_never_raises_chi2()
     test_windows_reproduce_notebook_03_if_available()
     print("All estimation tests passed.")

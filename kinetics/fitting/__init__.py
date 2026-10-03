@@ -6,6 +6,8 @@
     readouts.py     NMR peaks a fit can integrate, derived from the measured shifts (Gogoi 2024)
     design.py       NMR readouts, candidate experiments and their expected parameter precision (Fisher information)
     residuals.py    lab observables against a model under a scenario of the unknown ages: residuals and tables
+    candidates.py   candidate structures of the first fit: which barriers and energies are free
+    estimation.py   best fit, profile intervals, leave-one-out and what the data cannot determine
 
 Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
@@ -40,7 +42,23 @@ from kinetics.fitting.residuals import (
     build_sample_set, calculate_predicted_shares, calculate_residuals, find_free_age, summarize_residuals,
     tabulate_residuals,
 )
+from kinetics.fitting.candidates import (
+    FIT_STRUCTURES, FitParameter, FitStructure, embed_parent_theta, get_structure, tabulate_reaction_barriers,
+)
+from kinetics.fitting.estimation import (
+    DELTA_CHI2_95, FIT_RULE_MAX_Z, FitProblem, build_profile_grid, calculate_parameter_directions,
+    calculate_prediction_band, calculate_profile, compare_structures, find_confidence_interval, fit_leave_one_out,
+    fit_structure, get_profile_theta, load_fit_result, refine_profile_edges, simulate_synthetic_shares,
+    write_fit_result,
+)
+
 __all__ = [
+    "FIT_STRUCTURES", "FitParameter", "FitStructure", "embed_parent_theta", "get_structure",
+    "tabulate_reaction_barriers",
+    "DELTA_CHI2_95", "FIT_RULE_MAX_Z", "FitProblem", "build_profile_grid", "calculate_parameter_directions",
+    "calculate_prediction_band", "calculate_profile", "compare_structures", "find_confidence_interval",
+    "fit_leave_one_out", "fit_structure", "get_profile_theta", "load_fit_result", "refine_profile_edges",
+    "simulate_synthetic_shares", "write_fit_result",
     "FREE_AGE_BOUNDS_H", "REPORT_SOLVER", "SCENARIO_AGES_H", "SCENARIOS", "SEARCH_SOLVER", "build_sample_history",
     "build_sample_set", "calculate_predicted_shares", "calculate_residuals", "find_free_age", "summarize_residuals",
     "tabulate_residuals",
