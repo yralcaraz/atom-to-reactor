@@ -1,4 +1,8 @@
-"""Block 4 — Reaction thermodynamics: ΔG_rxn, K_eq and Wegscheider cycle closure."""
+"""Block 4 — Reaction thermodynamics: ΔG_rxn, K_eq and Wegscheider cycle closure.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
+"""
 
 import numpy as np
 import pandas as pd

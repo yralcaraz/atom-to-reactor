@@ -5,6 +5,9 @@
     solution.py        G_sol = G_gas + ΔE_solv + ΔG°→*
     uncertainty.py     σ of the solvation contribution to a reaction
     reaction.py        ΔG_rxn, K_eq, network table, Wegscheider cycles
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 from kinetics.thermo.gas import THERMO_MODES, calculate_gas_thermo

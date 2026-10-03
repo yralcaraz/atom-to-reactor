@@ -3,6 +3,9 @@
 A ModelSpec fixes everything a reactor needs to turn the network into rate constants
 (thermo_mode, kinetic_model, family parameters) and records its status and assumptions, so that
 notebooks can compare several models and then select one by name. Register new models in MODELS.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván; barrier windows from Gogoi et al., J. Phys. Chem. C 2024, 128, 1654 (published)
 """
 
 from dataclasses import dataclass, field, replace

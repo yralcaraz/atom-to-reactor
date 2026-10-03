@@ -1,4 +1,8 @@
-"""Figures for Blocks 7 and 10: concentration panels, model overlays and depletion per protocol step."""
+"""Figures for Blocks 7 and 10: concentration panels, model overlays and depletion per protocol step.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np

@@ -1,4 +1,8 @@
-"""Tests for the propagation of MD solvation uncertainties into reaction energies."""
+"""Tests for the propagation of MD solvation uncertainties into reaction energies.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
+"""
 
 import math
 import os

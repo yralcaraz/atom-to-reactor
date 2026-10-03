@@ -14,6 +14,9 @@ The package follows the pipeline, one folder per stage:
 
 Figures and display tables for the notebooks live in demo/ (no science there). The most used functions
 are re-exported here.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 from kinetics.data import (

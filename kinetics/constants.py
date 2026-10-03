@@ -2,6 +2,9 @@
 
 Names carry their unit (`_SI`, `_EV`) or read as `<FROM>_TO_<TO>`. Import from here; never redefine
 a constant locally, since small differences between copies break the detailed-balance tests.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 import math

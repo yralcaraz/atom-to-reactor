@@ -3,6 +3,8 @@
 | | |
 |---|---|
 | **Status** | Historical. It audits the first 23-cell notebook; function and module names have since changed (see [reference-api_migration.md](reference-api_migration.md)). |
+| **Classification** | REVIEW (see CLASSIFICATION.md) |
+| **Source** | Y. Alcaraz Galván |
 | **Scope** | Systematic cross-reference of `multiscale_microkinetics.ipynb`, `theory-multiscale_microkinetics.md` and the 8 Python modules. |
 | **Markers** | ✓ verified item · ⚠ error · ⚡ false assumption · 💡 improvement |
 

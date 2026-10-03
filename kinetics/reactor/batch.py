@@ -1,4 +1,8 @@
-"""Block 7 — Isothermal batch reactor ('tank'): stiff mass-action ODEs at one temperature."""
+"""Block 7 — Isothermal batch reactor ('tank'): stiff mass-action ODEs at one temperature.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
+"""
 
 import numpy as np
 

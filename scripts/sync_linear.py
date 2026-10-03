@@ -2,6 +2,9 @@
 """
 Comprehensive synchronization of Linear project (TFM - Uppsala)
 with the complete findings and architectural deliverables of improvement_plan.md.
+
+Classification: CONFIDENTIAL (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván (project management)
 """
 import os
 import requests

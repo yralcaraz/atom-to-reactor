@@ -2,6 +2,9 @@
 
 The snapshot is the single data source of the pipeline (see `data/README.md`). It is parsed once
 and cached; the returned structures are shared, so callers must not mutate them.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván; reads P. Broqvist, Tank dataset snapshot (unpublished)
 """
 
 import json

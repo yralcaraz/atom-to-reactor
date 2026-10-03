@@ -3,6 +3,8 @@
 | | |
 |---|---|
 | **Status** | Stable |
+| **Classification** | PUBLIC (see CLASSIFICATION.md) |
+| **Source** | Y. Alcaraz Galván |
 | **Scope** | `MODULES.md`, `README.md` and `docs/theory-multiscale_microkinetics.md` still use the names on the left. This document maps them to the current code. The numerical results did not change (see *Verification*). |
 | **Applies to** | Package layout of 2026-09-29 (commit `36faa93`) |
 

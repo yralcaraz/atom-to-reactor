@@ -1,6 +1,9 @@
 """Display tables for the notebooks (formatting only; the numbers come from kinetics).
 
 Tables are returned as DataFrames of formatted strings, so they render without optional pandas extras.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 import numpy as np

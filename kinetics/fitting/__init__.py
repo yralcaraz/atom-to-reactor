@@ -5,6 +5,9 @@
     structure.py    what a measurement implies whatever the barriers are (equilibrium, heating, water balance)
     readouts.py     NMR peaks a fit can integrate, derived from the measured shifts (Gogoi 2024)
     design.py       NMR readouts, candidate experiments and their expected parameter precision (Fisher information)
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 from kinetics.fitting.feasibility import (

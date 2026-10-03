@@ -3,6 +3,8 @@
 | | |
 |---|---|
 | **Status** | Draft for review |
+| **Classification** | CONFIDENTIAL (see CLASSIFICATION.md) |
+| **Source** | Y. Alcaraz Galván; numbers computed from P. Broqvist, Tank dataset snapshot (unpublished) |
 | **Scope** | Plan for Notebook 03 (`notebooks/03_experiment_plan.ipynb`) and the programming step that follows. |
 | **Numbers** | Every number tagged **[NB03 §n]** is an output of section n of Notebook 03 (`notebooks/03_experiment_plan.ipynb`, commit `ef9c683`, model `level1`). |
 | **Frameworks** | Model anatomy and lifecycle (Parts A–B). Leardi, *Experimental design in chemistry: A tutorial*, Anal. Chim. Acta 652 (2009) 161–172 (Part C). |

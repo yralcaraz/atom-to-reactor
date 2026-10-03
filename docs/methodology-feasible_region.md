@@ -3,6 +3,8 @@
 | | |
 |---|---|
 | **Status** | Draft for review |
+| **Classification** | CONFIDENTIAL (see CLASSIFICATION.md) |
+| **Source** | Y. Alcaraz Galván; numbers computed from P. Broqvist, Tank dataset snapshot (unpublished) |
 | **Scope** | One method for the two open problems of the project: (1) how to model the layer between DFT energies and C(t); (2) how to "fit" the model before kinetic data exist, in order to know which data are needed. It must work now (windows, no time series), later (NMR time series) and for other systems or models. |
 | **Builds on** | NB01 `01_multiscale_microkinetics_theory.ipynb`, NB02 `02_operando_experimental_protocol.ipynb`, NB03 `03_experiment_plan.ipynb` (outputs as saved in the working tree on 2026-10-01), and `docs/guide-experiment_plan.md` (the experiment-specific plan, which is one instance of this method). |
 | **Tags** | **[NB01 Bn]** block n of NB01; **[NB02 §n]**, **[NB03 §n]** notebook sections; **[App. A]** computed for this document with the current code (script and output in Appendix A); **[PROPOSED]** not coded or not checked yet; **[ASSUMED]** an input still to be confirmed. Section numbers without a tag refer to this document. |

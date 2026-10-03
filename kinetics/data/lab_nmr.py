@@ -16,6 +16,9 @@ the environment variable LAB_NMR_DIR, or from the thesis OneDrive copy when it i
     find_heated_windows      clock intervals in which a sample was recorded above room temperature
 
 Chemical-shift axes are as acquired (lock-based, not referenced to an internal standard).
+
+Classification: CONFIDENTIAL (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván; reads N. Gogoi, raw lab NMR spectra 2022–2023 (unpublished)
 """
 
 import hashlib

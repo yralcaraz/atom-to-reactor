@@ -6,6 +6,9 @@ Covers:
 3. Bit-identity of the legacy BEP / Marcus paths against the pre-refactor baseline.
 4. Network reversal: identical dynamics when a reaction is written backwards (legacy BEP fails).
 5. Temperature-dependent intrinsic barrier, Level 1 calibration and the diffusion ceiling.
+
+Classification: REVIEW (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván; expected barriers computed from P. Broqvist, Tank dataset snapshot (unpublished)
 """
 
 import json

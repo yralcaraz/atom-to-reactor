@@ -11,6 +11,9 @@ Parameter schema per reaction family (all keys optional except the barrier):
     'wR_eV', 'wP_eV'            Marcus work terms (precursor / successor complexes)
     'prior', 'source'           provenance and calibration intervals (not used in rates)
 The 'default' entry applies to any family without its own entry.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván; barrier windows from Gogoi et al., J. Phys. Chem. C 2024, 128, 1654 (published)
 """
 
 from copy import deepcopy

@@ -5,6 +5,9 @@
 Buffered species (the EC solvent) keep their state value but enter the rates at a fixed concentration.
 The analytic Jacobian is passed to the implicit solver, which avoids finite-difference overflow for
 very fast models.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 import numpy as np

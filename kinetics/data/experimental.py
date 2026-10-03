@@ -7,6 +7,9 @@
     water_series         ³¹P of TMSPA with 0.5–5 vol% water, and of the 2 vol% sample heated to 80 °C
 Entries marked 'assumed' rest on a detection limit or reaction time the paper does not state; 'reading'
 marks our quantitative reading of a qualitative description.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván; data from Gogoi et al., J. Phys. Chem. C 2024, 128, 1654 (published)
 """
 
 import json

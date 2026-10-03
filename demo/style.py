@@ -2,6 +2,9 @@
 
 Categorical hues are assigned in a fixed order (validated for colour-vision deficiency) and follow the
 entity: each registered model keeps the same colour and line style in every figure.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 import matplotlib.pyplot as plt

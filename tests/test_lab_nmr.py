@@ -4,6 +4,9 @@ Covers:
 1. FID → spectrum on a synthetic signal: peak position (Delta axis convention), digital-filter delay, phasing.
 2. The real data directory, when it is available: every file parses and FIDs match the exported spectrum.
 3. Area shares with their uncertainty on a synthetic spectrum, and heated intervals from acquisition times.
+
+Classification: CONFIDENTIAL (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván; names files and dates of N. Gogoi, raw lab NMR spectra 2022–2023 (unpublished)
 """
 
 import os

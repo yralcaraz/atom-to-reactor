@@ -6,6 +6,9 @@ experimental reference data.
     network.py       the 9-reaction network, its species and stoichiometry helpers
     experimental.py  Gogoi et al. 2024: measured shifts, barrier windows, control experiments, water series
     lab_nmr.py       measured lab spectra (JEOL .jdf, private, read from LAB_NMR_DIR): inventory and processing
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 from kinetics.data.snapshot import (

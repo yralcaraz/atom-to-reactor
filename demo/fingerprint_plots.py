@@ -1,4 +1,8 @@
-"""Figures for Block 13: nucleus selectivity and recovery of reaction extents."""
+"""Figures for Block 13: nucleus selectivity and recovery of reaction extents.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np

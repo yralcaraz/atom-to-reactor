@@ -12,6 +12,9 @@ Axioms (TFM KIN - DRAFT - Level 1 formulation, §2):
     A6 Leffler bounds       0 <= α(x) <= 1
 'bep_cap' is the legacy Peter Broqvist form and violates A2, A3 and A5; it is kept only to reproduce
 earlier results.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 import math

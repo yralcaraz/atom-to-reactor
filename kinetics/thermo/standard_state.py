@@ -1,4 +1,8 @@
-"""Block 3A — Standard-state shift from the 1 bar ideal gas to the 1 M solution."""
+"""Block 3A — Standard-state shift from the 1 bar ideal gas to the 1 M solution.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
+"""
 
 import numpy as np
 

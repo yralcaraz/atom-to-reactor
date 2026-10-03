@@ -1,4 +1,8 @@
-"""Figures for Blocks 2–4: species free energies, driving forces, Wegscheider cycles and f(T)."""
+"""Figures for Blocks 2–4: species free energies, driving forces, Wegscheider cycles and f(T).
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np

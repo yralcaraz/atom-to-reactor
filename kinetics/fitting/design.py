@@ -12,6 +12,9 @@ For parameters θ (family barriers g, optionally activation entropies ΔS‡) th
 and sqrt(diag F⁻¹) is the smallest standard error an unbiased fit could reach (Cramér-Rao). The prior only
 regularises the inversion: a parameter the data do not inform keeps σ ≈ σ_prior. F is local, so every
 result holds for one assumed truth; designs are compared over a range of plausible truths.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 from dataclasses import dataclass, replace

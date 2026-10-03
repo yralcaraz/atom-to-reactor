@@ -3,6 +3,9 @@
 A network is a dict {rxn_id: {'reactants': {species: nu}, 'products': {species: nu}, 'class': family}}.
 An optional 'canonical': False flag marks a reaction written against its family's reference direction
 (Level 1 engine only). Species names are snapshot `pipeline_id`s.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 import numpy as np

@@ -3,6 +3,8 @@
 | | |
 |---|---|
 | **Status** | Stable |
+| **Classification** | PUBLIC (see CLASSIFICATION.md) |
+| **Source** | Y. Alcaraz Galván; protocol from P. Broqvist |
 | **Scope** | Guide to Notebook 02 (`notebooks/02_operando_experimental_protocol.ipynb`): how to read each figure of the protocol simulation. |
 | **Builds on** | NB01 `01_multiscale_microkinetics_theory.ipynb`, [theory-multiscale_microkinetics.md](theory-multiscale_microkinetics.md), [MODULES.md](../MODULES.md) |
 

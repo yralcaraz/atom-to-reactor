@@ -5,6 +5,9 @@
     protocol.py     recipe, temperature program and multi-stage protocol reactor
     observables.py  characteristic times and tables extracted from a run
     validation.py   re-simulation of the Gogoi 2024 control experiments and water series for any model
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 from kinetics.reactor.engine import MassActionSystem, calculate_element_totals

@@ -4,6 +4,9 @@ The fingerprint of reaction r is F_r = Σ_i ν_ir P_i, with P_i the pure spectru
 concatenated over the nuclei. Each nucleus block is scaled to unit norm. A greedy SVD-rank basis gives
 the identifiable (lumped) reactions; the Net Analyte Signal (NAS) gives, per nucleus, the share of each
 fingerprint no other reaction can mimic; the pseudoinverse recovers per-step extents Δξ from spectra.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 from dataclasses import dataclass

@@ -1,0 +1,8 @@
+,sample,solutes at t = 0,T (°C),time since mixing,time basis,windows,status,probes,source
+L1,0.5 % H2O: TMSPA ≥ 0.89 of P after ≥ 19 h,"TMSPA 149 mM, H2O 263 mM",22.3,19 h – 1.8 d,files + assumed age,tmspa_share ≥ 0.89,measured,hydrolysis,lab ³¹P 2022
+L2,2 % H2O: TMSPA ≤ 0.06 of P at the first spectrum,"TMSPA 149 mM, H2O 1052 mM",22.5,4.6 min – 1 d,files + assumed age,tmspa_share ≤ 0.06,measured,hydrolysis,lab ³¹P 2022
+L3,TMSPa + 2 % TMSOH: TMSPA ≤ 0.19 of P at the first spectrum,"TMSPA 149 mM, TMSOH 180 mM",21.7,3.7 min – 1 d,files + assumed age,tmspa_share ≤ 0.19,measured,transfer,lab ³¹P 2023
+L4,TMSOH heated in the probe: ring-opened ≤ 0.04 of Si,TMSOH 450 mM,80.0,8.7 min – 5.6 d,files (80 °C spectra … gap),ring_opened_fraction ≤ 0.04,measured,solvent_attack,lab ¹³C 2022
+L5,"TMSOH 8 h at 80 °C: ring-opened 0.34–0.51, HMDSO ≤ 0.27 of Si",TMSOH 450 mM,80.0,8 h,"paper (8 h hold), assumed to be this sample",ring_opened_fraction 0.34–0.51; hmdso_si_fraction ≤ 0.27,measured,"solvent_attack, condensation",lab ¹³C 2022
+E1,"TMSOH in EC, RT, 1 week",TMSOH 450 mM,25.0,7 d,paper (1 week),ring_opened_fraction ≤ 0.02,derived,solvent_attack,Gogoi 2024 (paper)
+E4,"TMSPA + TMSOH in EC, RT, 24 h","TMSPA 150 mM, TMSOH 180 mM",25.0,1 d,assumed (not stated),tmspa_conversion ≥ 0.95,assumed,transfer,Gogoi 2024 (paper)

@@ -9,6 +9,9 @@ experiments.
 An observable depends on a family's g only through g(T_exp), the barrier at the experiment's temperature.
 A bound found with ΔS‡ = 0 is therefore a bound on g(T_exp), and project_bounds_to_entropy maps it onto the
 (g(T_ref), ΔS‡) plane.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 import numpy as np

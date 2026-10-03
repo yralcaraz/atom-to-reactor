@@ -1,4 +1,8 @@
-"""Observables extracted from reactor results: characteristic times and composition at acquisitions."""
+"""Observables extracted from reactor results: characteristic times and composition at acquisitions.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
+"""
 
 import numpy as np
 import pandas as pd

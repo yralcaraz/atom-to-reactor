@@ -1,4 +1,8 @@
-"""Figures for Block 14: feasibility of the family barriers, the water series, timing maps and experiment design."""
+"""Figures for Block 14: feasibility of the family barriers, the water series, timing maps and experiment design.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np

@@ -3,6 +3,9 @@
 Stages run back to back; each is isothermal, its end state seeds the next, and rate constants are
 recomputed at each stage temperature. TMSPA is injected as a discrete dilute-and-add event at the start
 of the injection stage, which defines t = 0. Temperature changes are instantaneous.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 from typing import NamedTuple, Optional

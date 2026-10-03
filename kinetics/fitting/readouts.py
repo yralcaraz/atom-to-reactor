@@ -9,6 +9,9 @@ The counts n follow from the stored geometries: every P or Si atom for the sites
 bonded to Si, or the protons on those carbons, for 'Si-CH3'. A species that carries the nucleus at that site
 but has no measured shift is not read: where its peak lies is unknown. The DFT shifts are tabulated next to
 the measured ones only for comparison.
+
+Classification: PUBLIC (see CLASSIFICATION.md)
+Source: Y. Alcaraz Galván
 """
 
 from functools import lru_cache
