@@ -6,6 +6,7 @@ experimental reference data.
     network.py       the 9-reaction network, its species and stoichiometry helpers
     experimental.py  Gogoi et al. 2024: measured shifts, barrier windows, control experiments, water series
     lab_nmr.py       measured lab spectra (JEOL .jdf, private, read from LAB_NMR_DIR): inventory and processing
+    observables.py   curated lab observables (shares, uncertainties, sample histories) that a fit reads
 
 Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
@@ -25,6 +26,11 @@ from kinetics.data.lab_nmr import (
     DEFAULT_LAB_NMR_DIR, build_lab_nmr_inventory, calculate_area_shares, calculate_window_integrals, estimate_noise,
     find_heated_windows, load_spectrum, load_text_spectrum, read_jdf, refine_window_phase, tabulate_area_shares,
 )
+from kinetics.data.observables import (
+    DEFAULT_ERROR_FLOOR, DEFAULT_OBSERVABLES_PATH, build_lab_inventory_for_observables, build_lab_observables,
+    calculate_replicate_scatter, describe_lab_observables, load_lab_observables, load_share_tables, tabulate_observable_shares,
+    write_lab_observables,
+)
 
 __all__ = [
     "load_snapshot", "get_dataset_records", "get_solvation_records", "count_elements", "calculate_molar_mass",
@@ -35,4 +41,8 @@ __all__ = [
     "DEFAULT_LAB_NMR_DIR", "build_lab_nmr_inventory", "read_jdf", "load_spectrum", "load_text_spectrum",
     "estimate_noise", "calculate_window_integrals", "refine_window_phase", "calculate_area_shares",
     "tabulate_area_shares", "find_heated_windows",
+    "DEFAULT_ERROR_FLOOR", "DEFAULT_OBSERVABLES_PATH", "build_lab_inventory_for_observables",
+    "build_lab_observables", "calculate_replicate_scatter",
+    "describe_lab_observables", "load_lab_observables", "load_share_tables", "tabulate_observable_shares",
+    "write_lab_observables",
 ]
