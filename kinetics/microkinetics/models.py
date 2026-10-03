@@ -3,6 +3,8 @@
 A ModelSpec fixes everything a reactor needs to turn the network into rate constants
 (thermo_mode, kinetic_model, family parameters) and records its status and assumptions, so that
 notebooks can compare several models and then select one by name. Register new models in MODELS.
+A model may carry its own network (a family split per reaction) and corrections to the computed
+free energies (species shifts); the registered models carry neither.
 
 Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván; barrier windows from Gogoi et al., J. Phys. Chem. C 2024, 128, 1654 (published)
@@ -18,8 +20,9 @@ from kinetics.microkinetics.parameters import (
 )
 from kinetics.microkinetics.rates import KINETIC_MODELS, calculate_network_rates
 from kinetics.data.network import NETWORK
+from kinetics.thermo.uncertainty import build_shifted_species_database
 
-MODEL_STATUSES = ('reference', 'sensitivity', 'provisional')
+MODEL_STATUSES = ('reference', 'sensitivity', 'provisional', 'fitted')
 
 
 @dataclass(frozen=True, eq=False)
@@ -31,6 +34,8 @@ class ModelSpec:
     thermo_mode: str = 'wb97mv'
     status: str = 'reference'
     assumptions: tuple = field(default_factory=tuple)
+    network: dict = None                                   # own network (e.g. a family split per reaction)
+    species_shifts_eV: dict = field(default_factory=dict)  # corrections to the free energies in EC, per species
 
     def __post_init__(self):
         if self.kinetic_model not in KINETIC_MODELS:
@@ -52,7 +57,15 @@ class ModelSpec:
         return sorted({p.get('shape', 'marcus') for p in self.family_params.values()})
 
     def calculate_rates(self, T_K: float, **options) -> pd.DataFrame:
-        """Rate constants of every reaction at T_K (options: network, species_db, viscosity_Pa_s)."""
+        """Rate constants of every reaction at T_K (options: network, species_db, viscosity_Pa_s).
+
+        A model with its own network uses it unless one is passed; its species shifts are applied on top of
+        the species database in use.
+        """
+        if options.get('network') is None and self.network is not None:
+            options['network'] = self.network
+        if self.species_shifts_eV:
+            options['species_db'] = build_shifted_species_database(self.species_shifts_eV, options.get('species_db'))
         return calculate_network_rates(T_K, **self.rate_options, **options)
 
     def with_barrier(self, g_eV: float, families: list = None, name: str = None) -> 'ModelSpec':

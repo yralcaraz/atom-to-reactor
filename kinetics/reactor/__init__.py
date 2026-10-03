@@ -2,7 +2,7 @@
 
     engine.py       mass-action right-hand side, analytic Jacobian and element balances
     batch.py        isothermal batch reactor
-    protocol.py     recipe, temperature program and multi-stage protocol reactor
+    protocol.py     recipe, temperature program, multi-stage protocol reactor and sample histories
     observables.py  characteristic times and tables extracted from a run
     validation.py   re-simulation of the Gogoi 2024 control experiments and water series for any model
 
@@ -10,9 +10,11 @@ Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 
-from kinetics.reactor.engine import MassActionSystem, calculate_element_totals
+from kinetics.reactor.engine import IntegrationBudgetExceeded, MassActionSystem, calculate_element_totals
 from kinetics.reactor.batch import simulate_batch_reactor
-from kinetics.reactor.protocol import Stage, build_protocol_schedule, calculate_recipe_molarities, simulate_protocol
+from kinetics.reactor.protocol import (
+    Stage, build_protocol_schedule, calculate_recipe_molarities, simulate_history, simulate_protocol,
+)
 from kinetics.reactor.observables import (
     calculate_remaining_fraction, calculate_worst_case_pressure_bar, find_crossing_time, summarize_batch_runs, tabulate_acquisitions,
     tabulate_trajectory,
@@ -24,8 +26,8 @@ from kinetics.reactor.validation import (
 )
 
 __all__ = [
-    "MassActionSystem", "calculate_element_totals", "simulate_batch_reactor",
-    "Stage", "build_protocol_schedule", "calculate_recipe_molarities", "simulate_protocol",
+    "IntegrationBudgetExceeded", "MassActionSystem", "calculate_element_totals", "simulate_batch_reactor",
+    "Stage", "build_protocol_schedule", "calculate_recipe_molarities", "simulate_history", "simulate_protocol",
     "calculate_remaining_fraction", "calculate_worst_case_pressure_bar", "find_crossing_time", "summarize_batch_runs", "tabulate_acquisitions",
     "tabulate_trajectory",
     "OBSERVABLE_REACTIONS", "OBSERVABLES", "calculate_phosphate_fractions", "calculate_water_series_c0",

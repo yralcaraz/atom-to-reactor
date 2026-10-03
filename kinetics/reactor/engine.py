@@ -19,6 +19,10 @@ from kinetics.data.snapshot import count_elements
 IMPLICIT_METHODS = ('Radau', 'BDF', 'LSODA')
 
 
+class IntegrationBudgetExceeded(RuntimeError):
+    """An integration needed more right-hand-side calls than its budget (see MassActionSystem.integrate)."""
+
+
 class MassActionSystem:
     """Right-hand side, Jacobian and integrator of a network over a fixed list of tracked species."""
 
@@ -64,10 +68,23 @@ class MassActionSystem:
         return self.S @ dr
 
     def integrate(self, c0: np.ndarray, k_f: np.ndarray, k_r: np.ndarray, t_eval: np.ndarray, *,
-                  method: str = 'Radau', rtol: float = 1e-8, atol: float = 1e-12):
-        """solve_ivp from t = 0 to t_eval[-1]."""
+                  method: str = 'Radau', rtol: float = 1e-8, atol: float = 1e-12, max_rhs_calls: int = None):
+        """solve_ivp from t = 0 to t_eval[-1].
+
+        max_rhs_calls: budget of right-hand-side calls; IntegrationBudgetExceeded is raised beyond it. It keeps a
+        search over parameters from stalling where the solver crawls (None: no limit, the default).
+        """
+        rhs = self.rhs
+        if max_rhs_calls is not None:
+            calls = [0]
+
+            def rhs(t, C, k_f, k_r):
+                calls[0] += 1
+                if calls[0] > max_rhs_calls:
+                    raise IntegrationBudgetExceeded(f'more than {max_rhs_calls} right-hand-side calls')
+                return self.rhs(t, C, k_f, k_r)
         return solve_ivp(
-            self.rhs, (0.0, float(t_eval[-1])), np.asarray(c0, dtype=float), method=method, t_eval=t_eval,
+            rhs, (0.0, float(t_eval[-1])), np.asarray(c0, dtype=float), method=method, t_eval=t_eval,
             rtol=rtol, atol=atol, args=(np.asarray(k_f), np.asarray(k_r)),
             jac=self.jacobian if method in IMPLICIT_METHODS else None,
         )

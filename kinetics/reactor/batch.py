@@ -22,7 +22,7 @@ def simulate_batch_reactor(c0_M: dict, *, T_K: float = 298.15, t_end_s: float = 
     The output grid is log-spaced from t_start_s, so fast transients after t = 0 are resolved.
     """
     spec = get_model(model)
-    net = network or NETWORK
+    net = network or spec.network or NETWORK
     species = list(c0_M)
     system = MassActionSystem(net, species, {sp: c0_M[sp] for sp in buffered_species if sp in c0_M})
 

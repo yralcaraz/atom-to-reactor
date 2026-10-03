@@ -119,7 +119,7 @@ def simulate_design(design: ExperimentDesign, model, *, network: dict = None, sp
                     points_per_segment: int = 80, rtol: float = 1e-8, atol: float = 1e-12) -> dict:
     """Integrate the design and return the trajectory and the readouts at every acquisition time."""
     spec = get_model(model)
-    net = network or NETWORK
+    net = network or spec.network or NETWORK
     species = list(design.c0_M)
     system = MassActionSystem(net, species, {'EC': design.c0_M['EC']} if 'EC' in species else {})
     all_samples = np.unique(np.concatenate([np.asarray(t, dtype=float) for t in design.sampling_h.values()]))

@@ -4,6 +4,9 @@ Stages run back to back; each is isothermal, its end state seeds the next, and r
 recomputed at each stage temperature. TMSPA is injected as a discrete dilute-and-add event at the start
 of the injection stage, which defines t = 0. Temperature changes are instantaneous.
 
+simulate_history is the general form without the recipe: any composition, any sequence of isothermal
+segments, the state returned at chosen times. It is what a fit calls for a sample with a known history.
+
 Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
@@ -15,8 +18,8 @@ import pandas as pd
 
 from kinetics.constants import ZERO_CELSIUS_K
 from kinetics.microkinetics.models import get_model
-from kinetics.data.network import NETWORK, NETWORK_SPECIES
-from kinetics.reactor.engine import MassActionSystem, calculate_element_totals
+from kinetics.data.network import NETWORK, NETWORK_SPECIES, list_species
+from kinetics.reactor.engine import IntegrationBudgetExceeded, MassActionSystem, calculate_element_totals
 from kinetics.data.snapshot import calculate_molar_mass
 
 # Densities of the pure liquids at room temperature [g/mL] (TMSPA: CAS 1017-19-2)
@@ -88,7 +91,7 @@ def simulate_protocol(stages: list = None, recipe: dict = None, *, model='peter_
     spec = get_model(model)
     stages = stages if stages is not None else build_protocol_schedule()[0]
     recipe = recipe if recipe is not None else calculate_recipe_molarities()
-    net = network or NETWORK
+    net = network or spec.network or NETWORK
     species = list(species or NETWORK_SPECIES)
     buffered = {sp: recipe['after'][sp] for sp in buffered_species if sp in species}
     system = MassActionSystem(net, species, buffered)
@@ -141,3 +144,61 @@ def simulate_protocol(stages: list = None, recipe: dict = None, *, model='peter_
         'recipe': recipe,
         'stages': stages,
     }
+
+
+def simulate_history(c0_M: dict, segments, sample_times_s, *, model, network: dict = None, species_db: dict = None,
+                     buffered_species=('EC',), method: str = 'BDF', rtol: float = 1e-8, atol: float = 1e-12,
+                     max_rhs_calls: int = None, viscosity_Pa_s: float = None) -> dict:
+    """Composition of one sample at chosen times along a piecewise-isothermal history.
+
+    c0_M: concentrations at t = 0 [M]; species of the network that are missing start at zero.
+    segments: ((T_K, duration_s), ...) run back to back from t = 0; temperature changes are instantaneous.
+    sample_times_s: times since t = 0 at which the state is returned (any order, inside the history).
+    max_rhs_calls: budget of right-hand-side calls per segment (None: no limit).
+
+    Returns 't_s' (the sample times, as given), 'C_M' (species × times), 'species', 'idx', 'success' and
+    'message'. On a solver failure or an exhausted budget 'success' is False and 'C_M' holds NaN from the
+    first time that was not reached; nothing is raised, so a search over parameters can carry on.
+    """
+    spec = get_model(model)
+    net = network or spec.network or NETWORK
+    species = list(NETWORK_SPECIES) if set(list_species(net)) <= set(NETWORK_SPECIES) else list_species(net)
+    species += [sp for sp in c0_M if sp not in species]
+    system = MassActionSystem(net, species, {sp: c0_M[sp] for sp in buffered_species if sp in c0_M})
+
+    times = np.asarray(sample_times_s, dtype=float)
+    segments = [(float(T_K), float(duration_s)) for T_K, duration_s in segments]
+    total_s = sum(d for _, d in segments)
+    if times.size and (times.min() < 0.0 or times.max() > total_s * (1.0 + 1e-12) + 1e-9):
+        raise ValueError(f'sample times must lie inside the history (0 to {total_s:g} s)')
+
+    c = np.array([float(c0_M.get(sp, 0.0)) for sp in species])
+    C_M = np.full((len(species), times.size), np.nan)
+    C_M[:, times <= 0.0] = c[:, None]
+    rate_cache, t0, success, message = {}, 0.0, True, 'reached the last sample time'
+    t_last = times.max() if times.size else 0.0
+    for T_K, duration_s in segments:
+        if t0 >= t_last or duration_s <= 0.0:
+            t0 += max(duration_s, 0.0)
+            continue
+        end = t0 + duration_s
+        inside = np.flatnonzero((times > t0) & (times <= end + 1e-9))
+        local = np.clip(times[inside] - t0, 0.0, duration_s)
+        t_eval = np.unique(np.append(local, duration_s))
+        if T_K not in rate_cache:
+            rates = spec.calculate_rates(T_K, network=net, species_db=species_db, viscosity_Pa_s=viscosity_Pa_s)
+            rate_cache[T_K] = (rates['k_f'].values, rates['k_r'].values)
+        try:
+            sol = system.integrate(c, *rate_cache[T_K], t_eval, method=method, rtol=rtol, atol=atol,
+                                   max_rhs_calls=max_rhs_calls)
+        except IntegrationBudgetExceeded as exc:
+            success, message = False, str(exc)
+            break
+        if not sol.success or sol.y.shape[1] != t_eval.size:
+            success, message = False, str(sol.message)
+            break
+        C_M[:, inside] = sol.y[:, np.searchsorted(t_eval, local)]
+        c = sol.y[:, -1]
+        t0 = end
+    return {'model': spec.name, 't_s': times, 'C_M': C_M, 'species': species, 'idx': system.idx,
+            'success': success, 'message': message}

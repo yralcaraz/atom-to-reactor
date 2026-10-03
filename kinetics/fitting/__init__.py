@@ -5,6 +5,7 @@
     structure.py    what a measurement implies whatever the barriers are (equilibrium, heating, water balance)
     readouts.py     NMR peaks a fit can integrate, derived from the measured shifts (Gogoi 2024)
     design.py       NMR readouts, candidate experiments and their expected parameter precision (Fisher information)
+    residuals.py    lab observables against a model under a scenario of the unknown ages: residuals and tables
 
 Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
@@ -34,7 +35,15 @@ from kinetics.fitting.design import (
     scan_design_precision, simulate_design, split_family_by_reaction,
 )
 
+from kinetics.fitting.residuals import (
+    FREE_AGE_BOUNDS_H, REPORT_SOLVER, SCENARIO_AGES_H, SCENARIOS, SEARCH_SOLVER, build_sample_history,
+    build_sample_set, calculate_predicted_shares, calculate_residuals, find_free_age, summarize_residuals,
+    tabulate_residuals,
+)
 __all__ = [
+    "FREE_AGE_BOUNDS_H", "REPORT_SOLVER", "SCENARIO_AGES_H", "SCENARIOS", "SEARCH_SOLVER", "build_sample_history",
+    "build_sample_set", "calculate_predicted_shares", "calculate_residuals", "find_free_age", "summarize_residuals",
+    "tabulate_residuals",
     "DEFAULT_G_GRID_EV", "FAMILIES", "find_barrier_bounds", "get_family_parameter", "project_bounds_to_entropy",
     "scan_family_barriers", "summarize_feasible_intervals",
     "DEFAULT_SCAN_GRID_EV", "SHARED_BARRIER", "build_observation", "build_share_window", "describe_observations",
