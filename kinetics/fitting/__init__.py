@@ -43,7 +43,8 @@ from kinetics.fitting.residuals import (
     tabulate_residuals,
 )
 from kinetics.fitting.candidates import (
-    FIT_STRUCTURES, FitParameter, FitStructure, embed_parent_theta, get_structure, tabulate_reaction_barriers,
+    FIT_STRUCTURES, FitParameter, FitStructure, build_fitted_model, embed_parent_theta, get_structure,
+    tabulate_reaction_barriers,
 )
 from kinetics.fitting.estimation import (
     DELTA_CHI2_95, FIT_RULE_MAX_Z, FitProblem, build_profile_grid, calculate_parameter_directions,
@@ -53,7 +54,7 @@ from kinetics.fitting.estimation import (
 )
 
 __all__ = [
-    "FIT_STRUCTURES", "FitParameter", "FitStructure", "embed_parent_theta", "get_structure",
+    "FIT_STRUCTURES", "FitParameter", "FitStructure", "build_fitted_model", "embed_parent_theta", "get_structure",
     "tabulate_reaction_barriers",
     "DELTA_CHI2_95", "FIT_RULE_MAX_Z", "FitProblem", "build_profile_grid", "calculate_parameter_directions",
     "calculate_prediction_band", "calculate_profile", "compare_structures", "find_confidence_interval",

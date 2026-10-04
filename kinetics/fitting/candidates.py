@@ -12,6 +12,8 @@ It turns a parameter vector into a self-contained ModelSpec (own network, own sp
     M3-split    M1-split with the same freed energies
     '+W'        any of them with a common available fraction of the added water (M4 of notebook 03)
 
+build_fitted_model turns a fit result into a ModelSpec that reactors take like a registered model.
+
 Freed energies are parameters d_j = ΔG_rxn,j − computed value for R1–R4. They are applied as species shifts,
 so R5–R7 follow (transfer = hydrolysis + condensation) and R8, R9 keep their computed values. Their
 constraint is Gaussian with the covariance of the MD standard errors (kinetics.thermo).
@@ -199,6 +201,38 @@ def tabulate_reaction_barriers(structure: FitStructure, theta: dict, temperature
                 out[rxn_id] = {'T_K': T, 'dG_barrier_eV': float(rates.loc[rxn_id, 'dG_barrier_f_eV']),
                                'dG_rxn_eV': float(rates.loc[rxn_id, 'dG_rxn_eV']), 'k_f': float(rates.loc[rxn_id, 'k_f'])}
     return out
+
+
+OBSERVED_AT_K = {'hydrolysis': 295.65, 'transfer': 295.65, 'condensation': 353.15, 'solvent_attack': 353.15}
+
+
+def build_fitted_model(fit: dict, name: str = None):
+    """Self-contained ModelSpec (status 'fitted') from a fit result of `fit_structure`.
+
+    It carries its network and species shifts, so reactors take it like a registered model, and each barrier is
+    anchored (T_ref) at the temperature where its family was observed: 22.5 °C for hydrolysis and transfer,
+    80 °C for condensation and solvent attack. With ΔS‡ = 0 the anchor changes nothing; it is where an
+    activation entropy would pivot. The values derive from confidential lab data, so the model is built from
+    the result file at run time and is not written into the registry: add it with MODELS[name] = ... if wanted.
+    """
+    structure = get_structure(fit['structure'])
+    model = structure.build(fit['theta'])['model']
+    params = {fam: dict(p) for fam, p in model.family_params.items()}
+    for family, entry in params.items():
+        anchor = next((T for key, T in OBSERVED_AT_K.items() if family.startswith(key)), None)
+        if anchor is not None:
+            entry['T_ref_K'] = anchor
+    scenario = fit.get('scenario', 'unstated')
+    return replace(
+        model, name=name or f"first_fit_{structure.name}_{scenario}", family_params=params, status='fitted',
+        label=f'First fit: {structure.label} ({scenario} scenario)',
+        assumptions=(
+            f"Fitted to the lab NMR observables under the '{scenario}' scenario of the unknown sample ages; "
+            'a diagnostic first fit, not a calibration',
+            f"chi2 {fit['chi2']:.1f} over {fit['n_residuals']} residuals, largest standardised residual {fit['max_abs_z']:.2f}",
+            'Barriers are anchored at the temperature where each family was observed; ΔS‡ = 0 is assumed, not fitted',
+            'Reaction energies of R1–R4 moved from their computed values within the covariance of the MD standard errors',
+        ))
 
 
 _M1 = FitStructure('M1', 'one Marcus barrier per family', 'level1', parent='M0-Marcus')
