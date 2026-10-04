@@ -42,6 +42,8 @@
 | `notebooks/results/03/` (all files) | CONFIDENTIAL | PB | Tables computed from the snapshot |
 | `notebooks/results/03/lab_shares_31P.csv`, `lab_shares_13C.csv`, `observations.csv`, `m0_intervals.csv`, `m1_intervals.csv`, `m1_region.csv`, `summary.csv`, `edges_hydrolysis_transfer.csv`, `plane_hydrolysis_transfer.csv` | CONFIDENTIAL | PB, NG | Also contain or depend on the raw lab spectra |
 | `degradation_timeseries.csv`, `notebooks/degradation_timeseries.csv` | CONFIDENTIAL | PB | Simulation output computed from the snapshot |
+| `data/lab_observables.json` | CONFIDENTIAL | NG, Y | Area shares and sample histories curated from the raw lab spectra. **Not stored in the repository** (built by `scripts/build_observables.py`) |
+| `notebooks/results/05/` (all files) | CONFIDENTIAL | PB, NG | Fits of the models to the lab observables. **Not stored in the repository** (written by `scripts/run_fit.py`) |
 
 ### Notebooks
 
@@ -54,6 +56,7 @@ All notebooks are CONFIDENTIAL because their stored outputs show snapshot values
 | `notebooks/03_experiment_plan.ipynb` | CONFIDENTIAL | Y, PB, G24 | Outputs from the snapshot |
 | `notebooks/03_feasible_region.ipynb` | CONFIDENTIAL | Y, PB, NG, G24 | Outputs from the snapshot and the lab spectra; names NG |
 | `notebooks/04_lab_nmr_data_overview.ipynb` | CONFIDENTIAL | Y, NG | Lab spectra, file names, personal paths |
+| `notebooks/05_first_fit.ipynb` | CONFIDENTIAL | Y, PB, NG | Outputs from the snapshot and the lab spectra; stored without outputs |
 
 ### Documents
 
@@ -68,6 +71,7 @@ All notebooks are CONFIDENTIAL because their stored outputs show snapshot values
 | `docs/guide-experiment_plan.md` | CONFIDENTIAL | Y, PB | Quotes numbers computed in NB03 from the snapshot |
 | `docs/methodology-feasible_region.md` | CONFIDENTIAL | Y, PB | Quotes numbers computed from the snapshot (NB03, Appendix A) |
 | `docs/improvement_plan.md` | REVIEW | Y | Internal historical audit; to be reviewed |
+| `docs/plan-first_fit.md` | CONFIDENTIAL | Y, PB, NG | Plan of the first fit; quotes numbers computed from the snapshot and shares measured in the lab spectra |
 
 ### Code
 
@@ -75,12 +79,17 @@ All notebooks are CONFIDENTIAL because their stored outputs show snapshot values
 |---|---|---|---|
 | `kinetics/` (all files except below) | PUBLIC | Y | Own code; reads data but contains none |
 | `kinetics/data/lab_nmr.py` | CONFIDENTIAL | Y, NG | Default data path is a personal OneDrive folder; public once only `LAB_NMR_DIR` is used |
+| `kinetics/data/observables.py` | CONFIDENTIAL | Y, NG | Names the folders of the raw lab data and records heating times read from their acquisition times |
 | `demo/` (all files) | PUBLIC | Y | Plotting code |
 | `tests/test_models_and_engine.py`, `test_pipeline_integration.py`, `test_solvation_uncertainty.py` | PUBLIC | Y | Need the snapshot to run, but contain no data |
 | `tests/test_barrier_models.py` | REVIEW | Y, PB | Hard-codes per-reaction barriers computed from the snapshot |
 | `tests/test_fitting.py` | REVIEW | Y, PB, G24 | Hard-codes barrier bounds computed from the snapshot and G24 |
 | `tests/test_lab_nmr.py` | CONFIDENTIAL | Y, NG | Names private lab files and acquisition dates |
+| `tests/test_observables.py`, `tests/synthetic_observables.py` | PUBLIC | Y | Invented shares in the layout of the lab set; the real file is read only when present |
+| `tests/test_estimation.py` | REVIEW | Y, PB | Hard-codes numbers computed from the snapshot (standard errors of reaction energies); reads expected intervals from `notebooks/results/03/` |
 | `scripts/sync_linear.py` | CONFIDENTIAL | Y | Internal project management (Linear) |
+| `scripts/build_observables.py` | CONFIDENTIAL | Y, NG | Builds the confidential observables file; reads the private share tables or the raw spectra |
+| `scripts/run_fit.py` | PUBLIC | Y | Runner of the first fit; contains no data |
 | `requirements.txt`, `.gitignore` | PUBLIC | Y | Configuration |
 
 ### Never committed

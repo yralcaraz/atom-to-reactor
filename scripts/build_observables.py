@@ -9,7 +9,7 @@ the heating episodes from the acquisition times; the CSV route takes the shares 
 the heating episodes transcribed from notebooks 03 and 04 (RECORDED_HISTORIES), and says so in the file.
 
 Classification: CONFIDENTIAL (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván; names folders of N. Gogoi, raw lab NMR spectra 2022–2023 (unpublished)
+Source: Y. Alcaraz Galván; reads share tables derived from N. Gogoi, raw lab NMR spectra 2022–2023 (unpublished)
 """
 
 import argparse
