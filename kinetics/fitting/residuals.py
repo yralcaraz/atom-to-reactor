@@ -56,8 +56,10 @@ PAPER_OBSERVATIONS = ('E1',)
 PAPER_SOFTNESS = 0.5          # softness of a one-sided paper window, as a fraction of its limit. DECLARED
 REPLICATE_MIN_SPECTRA = 3
 PENALTY = 1.0e3               # residual given to every value of a sample whose simulation failed
-SEARCH_SOLVER = {'method': 'BDF', 'rtol': 1e-6, 'atol': 1e-10, 'max_rhs_calls': 30000}
-REPORT_SOLVER = {'method': 'BDF', 'rtol': 1e-8, 'atol': 1e-12, 'max_rhs_calls': 300000}
+# The absolute tolerance has to sit far below a nanomolar: some fits explain a sample by an induction time that
+# is seeded by traces of that size, and with atol = 1e-10 M their χ² came out wrong by a factor of three
+SEARCH_SOLVER = {'method': 'BDF', 'rtol': 1e-6, 'atol': 1e-13, 'max_rhs_calls': 30000}
+REPORT_SOLVER = {'method': 'BDF', 'rtol': 1e-8, 'atol': 1e-14, 'max_rhs_calls': 300000}
 N_AGE_GRID = 41
 
 
@@ -119,7 +121,8 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
     paper: one-sided observations of Gogoi 2024 added to the set (ids of data/experimental_gogoi2024.json).
     floor_scale multiplies the declared error floor (0 removes it).
     overrides: {sample: {'hold_h': hours of its known pre-history, 'heated_duration_h': hours of every heating
-    episode}}, for the sensitivity to the times the files do not fix.
+    episode, 'added_M': {species: mol/L present at mixing on top of the recipe}}}, for the sensitivity to the
+    times the files do not fix and to what the recipe does not list.
     """
     if scenario not in SCENARIOS:
         raise ValueError(f"scenario must be one of {SCENARIOS}")
@@ -134,6 +137,8 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
             sample['pre_segments'] = [(T, 3600.0 * change['hold_h']) for T, _ in sample['pre_segments']]
         if 'heated_duration_h' in change:
             sample['heated'] = [(start, T, 3600.0 * change['heated_duration_h']) for start, T, _ in sample['heated']]
+        for species, added in change.get('added_M', {}).items():
+            sample['c0_M'][species] = sample['c0_M'].get(species, 0.0) + added
         if not sample['pre_segments']:                       # the age is unknown
             if scenario != 'free':
                 sample.update(age_mode='fixed', age_h=SCENARIO_AGES_H[scenario])

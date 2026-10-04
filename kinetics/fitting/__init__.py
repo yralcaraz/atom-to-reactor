@@ -47,8 +47,9 @@ from kinetics.fitting.candidates import (
     tabulate_reaction_barriers,
 )
 from kinetics.fitting.estimation import (
-    DELTA_CHI2_95, FIT_RULE_MAX_Z, FitProblem, build_profile_grid, calculate_parameter_directions,
-    calculate_prediction_band, calculate_profile, compare_structures, find_confidence_interval, fit_leave_one_out,
+    DELTA_CHI2_95, FIT_RULE_MAX_Z, FitProblem, add_profile_points, build_profile_grid, calculate_parameter_directions,
+    calculate_prediction_band, calculate_profile, compare_structures, extend_profile, find_confidence_interval,
+    fit_leave_one_out,
     fit_structure, get_profile_theta, load_fit_result, refine_profile_edges, simulate_synthetic_shares,
     write_fit_result,
 )
@@ -56,7 +57,8 @@ from kinetics.fitting.estimation import (
 __all__ = [
     "FIT_STRUCTURES", "FitParameter", "FitStructure", "build_fitted_model", "embed_parent_theta", "get_structure",
     "tabulate_reaction_barriers",
-    "DELTA_CHI2_95", "FIT_RULE_MAX_Z", "FitProblem", "build_profile_grid", "calculate_parameter_directions",
+    "DELTA_CHI2_95", "FIT_RULE_MAX_Z", "FitProblem", "add_profile_points", "build_profile_grid",
+    "calculate_parameter_directions", "extend_profile",
     "calculate_prediction_band", "calculate_profile", "compare_structures", "find_confidence_interval",
     "fit_leave_one_out", "fit_structure", "get_profile_theta", "load_fit_result", "refine_profile_edges",
     "simulate_synthetic_shares", "write_fit_result",

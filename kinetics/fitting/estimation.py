@@ -8,6 +8,8 @@ Unknown ages are a scenario of the sample set, not a prior.
     fit_structure                  Sobol screen of the box, then bounded least squares from the best points
     calculate_profile              χ² re-minimised over the other parameters along a grid of one parameter
     refine_profile_edges           more profile points inside the grid steps where an interval ends
+    extend_profile                 the profile re-minimised from other local optima as well (several basins)
+    add_profile_points             accepted local optima of the fit added to the profile
     find_confidence_interval       where a profile rises by Δχ² (3.84 = 95 % for one parameter); open sides stay open
     calculate_parameter_directions combinations of parameters the data determine, and those they do not
     fit_leave_one_out              the fit repeated without each sample in turn
@@ -19,8 +21,8 @@ Unknown ages are a scenario of the sample set, not a prior.
 Fit rule (fixed before fitting): a structure fits a scenario if no standardised residual exceeds 3 in absolute
 value. The pull of each freed reaction energy from its computed value counts as a residual.
 
-Search and derivatives use a loose solver tolerance (rtol 1e-6); the reported χ², residual table and final
-polish use rtol 1e-8. Parameters are searched in box coordinates u = 1 + (x − lower)/(upper − lower), so that a
+Search and derivatives use a loose relative solver tolerance (rtol 1e-6); the reported χ², residual table and
+final polish use rtol 1e-8. The absolute tolerance is tight in both (see residuals.SEARCH_SOLVER). Parameters are searched in box coordinates u = 1 + (x − lower)/(upper − lower), so that a
 relative finite-difference step is the same fraction of every box (about 1 meV for a barrier).
 
 Classification: PUBLIC (see CLASSIFICATION.md)
@@ -297,65 +299,105 @@ def get_profile_theta(row) -> dict:
 
 def refine_profile_edges(problem: FitProblem, profile: pd.DataFrame, names=None, *, delta: float = DELTA_CHI2_95,
                          n_extra: int = 2, max_nfev: int = 20, workers: int = 1) -> pd.DataFrame:
-    """The profile with n_extra more points inside each grid step in which it crosses `delta`.
+    """The profile with n_extra more points inside each grid step in which an interval ends.
 
-    Each new sub-fit starts from the solution at the inner end of its step. Open sides get no points.
+    The step is the one between the outermost value within `delta` and its rejected neighbour (as in
+    find_confidence_interval). Each new sub-fit starts from the solution at the accepted end of its step.
+    Open sides get no points.
     """
     names = list(names) if names is not None else list(profile['parameter'].unique())
     chains = []
     for name in names:
-        p = profile[profile['parameter'] == name].sort_values('value').reset_index(drop=True)
-        rise = p['chi2'] - p['chi2'].min()
-        i_best = int(rise.idxmin())
-        for indices in (range(i_best - 1, -1, -1), range(i_best + 1, len(p))):
-            previous = i_best
-            for i in indices:
-                if rise[i] >= delta:
-                    inner, outer = p.loc[previous, 'value'], p.loc[i, 'value']
-                    values = inner + (outer - inner) * np.arange(1, n_extra + 1) / (n_extra + 1.0)
-                    chains.append((name, values, get_profile_theta(p.loc[previous]), max_nfev))
-                    break
-                previous = i
+        p = profile[profile['parameter'] == name]
+        p = p.loc[p.groupby('value')['chi2'].idxmin()].sort_values('value').reset_index(drop=True)
+        accepted = np.flatnonzero((p['chi2'] - p['chi2'].min()).to_numpy() <= delta)
+        for inner, outer in ((accepted[0], accepted[0] - 1), (accepted[-1], accepted[-1] + 1)):
+            if 0 <= outer < len(p):
+                v_in, v_out = p.loc[inner, 'value'], p.loc[outer, 'value']
+                values = v_in + (v_out - v_in) * np.arange(1, n_extra + 1) / (n_extra + 1.0)
+                chains.append((name, values, get_profile_theta(p.loc[inner]), max_nfev))
     rows = [row for chain in _map(_profile_chain, chains, problem, workers) for row in chain]
     if not rows:
         return profile
-    reference = (profile['chi2'] - profile['delta']).iloc[0]
+    reference = float((profile['chi2'] - profile['delta']).iloc[0])
     extra = pd.DataFrame(rows)
     extra['delta'] = extra['chi2'] - reference
     return pd.concat([profile, extra], ignore_index=True).sort_values(['parameter', 'value']).reset_index(drop=True)
 
 
 def find_confidence_interval(profile: pd.DataFrame, name: str, delta: float = DELTA_CHI2_95) -> dict:
-    """Interval of one parameter where its profile stays within `delta` of its lowest χ².
+    """Interval of one parameter over which its profile stays within `delta` of its lowest χ².
 
-    An edge is placed between two grid values by interpolating sqrt(Δχ²), which is linear for a parabola.
-    A side on which the profile never rises by `delta` inside the grid is open (NaN). 'status' is 'interval',
-    'upper bound only', 'lower bound only' or 'not determined'. 'best' is the grid value with the lowest χ²;
-    'lower than fit' flags a profile that found a χ² more than 0.5 below the fit (a better optimum).
+    The interval runs from the lowest to the highest profile value that is within `delta`; 'separate ranges' is
+    True when values between them are not (several basins), in which case the interval is their envelope.
+    An edge is placed between the outermost accepted value and its rejected neighbour by interpolating
+    sqrt(Δχ²), which is linear for a parabola. A side whose last grid value is still accepted is open (NaN).
+    'status' is 'interval', 'upper bound only', 'lower bound only' or 'not determined'. 'best' is the value
+    with the lowest χ²; 'lower than fit' flags a profile that found a χ² more than 0.5 below the fit.
     """
-    p = profile[profile['parameter'] == name].sort_values('value')
+    rows = profile[profile['parameter'] == name]
+    p = rows.groupby('value', as_index=False)['chi2'].min().sort_values('value')
     value, chi2 = p['value'].to_numpy(), p['chi2'].to_numpy()
-    i_best = int(np.argmin(chi2))
-    rise = chi2 - chi2[i_best]
+    rise = chi2 - chi2.min()
+    accepted = np.flatnonzero(rise <= delta)
+    i_low, i_high = accepted[0], accepted[-1]
 
-    def crossing(indices):
-        # Interpolated in sqrt(rise): exact for a parabola, where a straight line between two grid points would
-        # put the edge too close to the best value (by half when the step is wider than the interval)
-        previous = i_best
-        for i in indices:
-            if rise[i] >= delta:
-                root_previous, root_i = np.sqrt(max(rise[previous], 0.0)), np.sqrt(rise[i])
-                f = (np.sqrt(delta) - root_previous) / (root_i - root_previous)
-                return float(value[previous] + f * (value[i] - value[previous]))
-            previous = i
-        return np.nan
+    def edge(i_out, i_in):
+        root_in, root_out = np.sqrt(max(rise[i_in], 0.0)), np.sqrt(rise[i_out])
+        f = (np.sqrt(delta) - root_in) / (root_out - root_in)
+        return float(value[i_in] + f * (value[i_out] - value[i_in]))
 
-    low, high = crossing(range(i_best - 1, -1, -1)), crossing(range(i_best + 1, len(value)))
+    low = edge(i_low - 1, i_low) if i_low > 0 else np.nan
+    high = edge(i_high + 1, i_high) if i_high < len(value) - 1 else np.nan
     status = {(True, True): 'interval', (False, True): 'upper bound only', (True, False): 'lower bound only',
               (False, False): 'not determined'}[(bool(np.isfinite(low)), bool(np.isfinite(high)))]
-    return {'parameter': name, 'best': float(value[i_best]), 'low': low, 'high': high, 'status': status,
+    return {'parameter': name, 'best': float(value[int(np.argmin(chi2))]), 'low': low, 'high': high, 'status': status,
             'grid_low': float(value[0]), 'grid_high': float(value[-1]),
-            'lower than fit': bool(p['delta'].min() < -0.5)}
+            'separate ranges': bool((rise[i_low:i_high + 1] > delta).any()),
+            'lower than fit': bool(rows['delta'].min() < -0.5)}
+
+
+def extend_profile(problem: FitProblem, profile: pd.DataFrame, starts: list, names=None, *, max_nfev: int = 12,
+                   workers: int = 1) -> pd.DataFrame:
+    """The profile re-minimised from other solutions as well; at every (parameter, value) the lower χ² is kept.
+
+    starts: parameter sets {name: value}, e.g. other local optima of the fit. A chain that only follows the
+    best fit can stay in its basin and overstate the profile where another basin is lower; each start here
+    walks the grid outward from its own value of the parameter.
+    """
+    names = list(names) if names is not None else list(profile['parameter'].unique())
+    chains = []
+    for name in names:
+        values = np.sort(profile.loc[profile['parameter'] == name, 'value'].unique())
+        for theta in starts:
+            below, above = values[values < theta[name]][::-1], values[values >= theta[name]]
+            chains += [(name, part, dict(theta), max_nfev) for part in (below, above) if len(part)]
+    rows = [row for chain in _map(_profile_chain, chains, problem, workers) for row in chain]
+    if not rows:
+        return profile
+    reference = float((profile['chi2'] - profile['delta']).iloc[0])
+    merged = pd.concat([profile, pd.DataFrame(rows)], ignore_index=True)
+    merged['nfev'] = merged.groupby(['parameter', 'value'])['nfev'].transform('sum')
+    merged = merged.loc[merged.groupby(['parameter', 'value'])['chi2'].idxmin()]
+    merged['delta'] = merged['chi2'] - reference
+    return merged.sort_values(['parameter', 'value']).reset_index(drop=True)
+
+
+def add_profile_points(profile: pd.DataFrame, optima: list, names=None, delta: float = DELTA_CHI2_95) -> pd.DataFrame:
+    """The profile with the fit's other local optima added where they lie within `delta` of its lowest χ².
+
+    optima: [{'theta': {...}, 'chi2': ...}] at the solver tolerance of the profile. A local optimum is an upper
+    bound of every profile at its own parameter values, so an accepted one widens an interval the chains missed.
+    """
+    names = list(names) if names is not None else list(profile['parameter'].unique())
+    reference = float((profile['chi2'] - profile['delta']).iloc[0])
+    lowest = profile['chi2'].min()
+    rows = [{'parameter': name, 'value': float(opt['theta'][name]), 'chi2': float(opt['chi2']), 'nfev': 0,
+             'delta': float(opt['chi2']) - reference, **{f'θ {k}': v for k, v in opt['theta'].items()}}
+            for opt in optima if opt['chi2'] - lowest <= delta for name in names if name in opt['theta']]
+    if not rows:
+        return profile
+    return pd.concat([profile, pd.DataFrame(rows)], ignore_index=True).sort_values(['parameter', 'value']).reset_index(drop=True)
 
 
 # ------------------------------------------------------------------------------
@@ -488,7 +530,9 @@ def _plain(value):
 def _restore(value):
     if isinstance(value, dict):
         if set(value) == {'__table__'}:
-            return pd.DataFrame(value['__table__'])
+            # JSON has no NaN: a missing number comes back as None, and a column of them would stay of object type
+            table = pd.DataFrame(value['__table__'])
+            return table.where(table.notna(), np.nan).infer_objects()
         return {k: _restore(v) for k, v in value.items()}
     if isinstance(value, list):
         return [_restore(v) for v in value]

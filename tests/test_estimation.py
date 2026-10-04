@@ -29,7 +29,8 @@ from kinetics.constants import ZERO_CELSIUS_K
 from kinetics.data import DEFAULT_OBSERVABLES_PATH, NETWORK, NETWORK_SPECIES, load_experimental_data, load_lab_observables
 from kinetics.fitting import (
     ExperimentDesign, FitProblem, calculate_parameter_directions, calculate_prediction_band, calculate_profile,
-    compare_structures, embed_parent_theta, find_confidence_interval, fit_leave_one_out, fit_structure, get_structure,
+    compare_structures, embed_parent_theta, extend_profile, find_confidence_interval, fit_leave_one_out, fit_structure,
+    get_structure,
     simulate_design, simulate_synthetic_shares, split_family_by_reaction, tabulate_reaction_barriers,
 )
 from kinetics.fitting.residuals import (
@@ -171,6 +172,10 @@ def test_sample_set_and_histories():
     assert by_name['TMSOH, glovebox']['pre_segments'][0][1] == 16 * 3600.0
     assert all(d == 8 * 3600.0 for _, _, d in by_name['2 % H2O']['heated'])
     build_sample_history(by_name['2 % H2O'])                 # 8 h holds still fit between the spectra
+    seeded = {s['name']: s for s in build_sample_set(observables, 'middle', overrides={'2 % H2O': {'added_M': {'TMSOH': 1e-6}}})}
+    assert seeded['2 % H2O']['c0_M']['TMSOH'] == middle['2 % H2O']['c0_M'].get('TMSOH', 0.0) + 1e-6
+    assert seeded['0.5 % H2O']['c0_M'] == middle['0.5 % H2O']['c0_M'], 'an addition applies to the named sample only'
+    assert 'TMSOH' not in observables['samples']['2 % H2O']['c0_M'], 'the observables record must not be changed'
     print('  ✓ sample sets: scenarios, known pre-history, heated segments, hold-out, exclusions and overrides')
 
 
@@ -322,12 +327,35 @@ def test_interval_finder():
     one_sided = parabola.assign(chi2=np.where(v > 0, 5.0, 5.0 + v ** 2))
     ci = find_confidence_interval(one_sided, 'p')
     assert ci['status'] == 'lower bound only' and np.isnan(ci['high']) and abs(ci['low'] - (1.0 - 0.196)) < 0.002
+    ci_low = ci['low']
     flat = parabola.assign(chi2=5.0)
     assert find_confidence_interval(flat, 'p')['status'] == 'not determined'
+    # Two basins: the interval is their envelope and says so; an accepted local optimum widens a profile
+    w = np.linspace(-5.0, 5.0, 41)
+    two = pd.DataFrame({'parameter': 'p', 'value': 1.0 + 0.1 * w, 'chi2': 5.0 + np.minimum((w + 2.0) ** 2, (w - 2.0) ** 2 + 1.0)})
+    two['delta'] = two['chi2'] - 5.0
+    ci = find_confidence_interval(two, 'p')
+    assert ci['separate ranges'] and abs(ci['low'] - 0.604) < 0.003 and abs(ci['high'] - 1.3685) < 0.003, ci
+    assert not find_confidence_interval(parabola, 'p')['separate ranges']
+    from kinetics.fitting import add_profile_points
+    narrow = parabola[np.abs(v) <= 3.0].copy()
+    widened = add_profile_points(narrow, [{'theta': {'p': 1.5}, 'chi2': 6.0}, {'theta': {'p': 1.7}, 'chi2': 30.0}])
+    assert len(widened) == len(narrow) + 1, 'a local optimum outside the accepted range of χ² is not a profile point'
+    ci = find_confidence_interval(widened, 'p')
+    assert ci['separate ranges'] and np.isnan(ci['high']) and ci['status'] == 'lower bound only', ci
     band = calculate_prediction_band(lambda theta: theta['a'] ** 2, [{'a': 1.0}, {'a': -3.0}, {'a': 2.0}])
     assert band['low'] == 1.0 and band['high'] == 9.0 and band['theta_high'] == {'a': -3.0}
+    # An open side survives a result file: JSON has no NaN, and it must come back as one
+    import tempfile
+    from kinetics.fitting import load_fit_result, write_fit_result
+    with tempfile.TemporaryDirectory() as folder:
+        path = write_fit_result({'intervals': pd.DataFrame([find_confidence_interval(one_sided, 'p')]), 'n': np.int64(3)},
+                                os.path.join(folder, 'result.json'))
+        stored = load_fit_result(path)
+    row = stored['intervals'].iloc[0]
+    assert stored['n'] == 3 and np.isnan(row['high']) and f"{row['high']:.2f}" == 'nan' and abs(row['low'] - ci_low) < 1e-12
     print('  ✓ intervals: ±1.96 σ on a parabola even on a coarse grid, an open side stays open, a flat profile is '
-          '"not determined"')
+          '"not determined", an open side survives a result file')
 
 
 def test_fit_recovers_and_reports_blind_spots(workers=4):
@@ -346,6 +374,11 @@ def test_fit_recovers_and_reports_blind_spots(workers=4):
     assert fit['chi2'] <= at_truth + 1e-6, (fit['chi2'], at_truth)
     assert fit['n_residuals'] == 13 and fit['n_parameters'] == 3 and fit['fits']
     profile = calculate_profile(problem, fit, ['g solvent_attack', 'g condensation', 'g hydrolysis'], max_nfev=10, workers=workers)
+    other = {**fit['theta'], 'g hydrolysis': 1.60, 'g condensation': min(fit['theta']['g condensation'] + 0.05, 1.69)}
+    extended = extend_profile(problem, profile, [other], ['g solvent_attack'], max_nfev=6, workers=workers)
+    assert len(extended) == len(profile), 'extending a profile keeps its grid'
+    both = extended.merge(profile, on=['parameter', 'value'], suffixes=('', '_first'))
+    assert (both['chi2'] <= both['chi2_first'] + 1e-9).all(), 'a second start can only lower a profile'
     for name in ('g solvent_attack', 'g condensation'):
         ci = find_confidence_interval(profile, name)
         assert not np.isfinite(ci['low']) or ci['low'] - 0.002 <= truth[name], ci
