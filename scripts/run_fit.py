@@ -183,6 +183,7 @@ def stage_recovery(args) -> None:
     passed = optimiser and misses <= max(1, round(0.15 * len(summary)))
     log(f"RECOVERY {'PASSED' if passed else 'FAILED'} (criterion: optimiser ok in every case and at most 15 % of the "
         'truths outside their 95 % interval)')
+    return passed
 
 
 # ------------------------------------------------------------------------------
@@ -498,6 +499,9 @@ def run_water_profile(scenario: str, args) -> dict:
 
 
 def stage_night(args) -> None:
+    # 0. The recovery check once more, with the code as it now stands (the first run is kept in recovery_first_run/)
+    if not stage_recovery(args):
+        raise SystemExit('the synthetic recovery failed: the night run stops here')
     fits = load_main_fits()
     selected = select_consistent(fits)
     profiled = [MAIN_STRUCTURE, 'M1'] + ([selected[0]] if selected and selected[0] not in (MAIN_STRUCTURE, 'M1') else [])
