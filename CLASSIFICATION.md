@@ -42,8 +42,8 @@
 | `notebooks/results/03/` (all files) | CONFIDENTIAL | PB | Tables computed from the snapshot |
 | `notebooks/results/03/lab_shares_31P.csv`, `lab_shares_13C.csv`, `observations.csv`, `m0_intervals.csv`, `m1_intervals.csv`, `m1_region.csv`, `summary.csv`, `edges_hydrolysis_transfer.csv`, `plane_hydrolysis_transfer.csv` | CONFIDENTIAL | PB, NG | Also contain or depend on the raw lab spectra |
 | `degradation_timeseries.csv`, `notebooks/degradation_timeseries.csv` | CONFIDENTIAL | PB | Simulation output computed from the snapshot |
-| `data/lab_observables.json` | CONFIDENTIAL | NG, Y | Area shares and sample histories curated from the raw lab spectra. **Not stored in the repository** (built by `scripts/build_observables.py`) |
-| `notebooks/results/05/` (all files) | CONFIDENTIAL | PB, NG | Fits of the models to the lab observables. **Not stored in the repository** (written by `scripts/run_fit.py`) |
+| `data/lab_observables.json` | CONFIDENTIAL | NG, Y | Area shares and sample histories curated from the raw lab spectra. Stored in the repository only while it stays private; built by `scripts/build_observables.py` |
+| `notebooks/results/05/` (all files) | CONFIDENTIAL | PB, NG | Fits of the models to the lab observables. Stored in the repository only while it stays private; written by `scripts/run_fit.py` |
 
 ### Notebooks
 

@@ -1,0 +1,39 @@
+[01:43:10] --- stage baselines (workers 12) ---
+[01:43:16] fit M0-BEP     middle                          chi2    3633.61  max |z|  60.09  fails  [all reactions 1.278]  (274 evaluations, 6 s)
+[01:43:25] fit M0-Marcus  middle                          chi2    3687.41  max |z|  59.72  fails  [all reactions 1.468]  (252 evaluations, 9 s)
+[01:46:35] fit M1         middle                          chi2     342.68  max |z|  16.06  fails  [hydrolysis 1.410, transfer 0.810, condensation 1.032, solvent_attack 1.305]  (3849 evaluations, 185 s)
+[01:46:43] fit M0-BEP     short                           chi2    3634.16  max |z|  60.09  fails  [all reactions 1.279]  (290 evaluations, 9 s)
+[01:46:53] fit M0-Marcus  short                           chi2    3689.66  max |z|  59.77  fails  [all reactions 1.469]  (268 evaluations, 10 s)
+[01:49:52] fit M1         short                           chi2    1066.94  max |z|  20.11  fails  [hydrolysis 0.940, transfer 1.021, condensation 1.125, solvent_attack 1.306]  (3389 evaluations, 174 s)
+[01:50:02] fit M0-BEP     long                            chi2    3630.04  max |z|  60.04  fails  [all reactions 1.276]  (324 evaluations, 10 s)
+[01:50:13] fit M0-Marcus  long                            chi2    3670.49  max |z|  59.36  fails  [all reactions 1.460]  (296 evaluations, 11 s)
+[01:52:48] fit M1         long                            chi2     320.48  max |z|  15.99  fails  [hydrolysis 1.397, transfer 0.701, condensation 1.091, solvent_attack 1.305]  (3504 evaluations, 151 s)
+[01:52:58] fit M0-BEP     free                            chi2    3630.18  max |z|  60.04  fails  [all reactions 1.276, log10 age 2 % H2O 2.225]  (404 evaluations, 10 s)
+[01:53:10] fit M0-Marcus  free                            chi2    3670.49  max |z|  59.36  fails  [all reactions 1.460, log10 age 2 % H2O 2.225]  (374 evaluations, 12 s)
+[01:57:03] fit M1         free                            chi2     300.62  max |z|  15.97  fails  [hydrolysis 1.315, transfer 0.904, condensation 1.104, solvent_attack 1.306, log10 age 2 % H2O 2.225]  (4834 evaluations, 229 s)
+[01:57:03] selection rule: no structure fits any scenario
+[01:57:03] check M0-BEP short: best barrier 1.279 eV lies in the notebook 03 interval of L1, L4, E1
+[01:57:03] check M0-BEP middle: best barrier 1.278 eV lies in the notebook 03 interval of L1, L4, E1
+[01:57:03] check M0-BEP long: best barrier 1.276 eV lies in the notebook 03 interval of L1, L4, E1
+[01:57:03] check M0-BEP free: best barrier 1.276 eV lies in the notebook 03 interval of L1, L4, E1
+[01:57:03] check M0-Marcus short: best barrier 1.469 eV lies in the notebook 03 interval of L1, L4, E1
+[01:57:03] check M0-Marcus middle: best barrier 1.468 eV lies in the notebook 03 interval of L1, L4, E1
+[01:57:03] check M0-Marcus long: best barrier 1.460 eV lies in the notebook 03 interval of L1, L4, E1
+[01:57:03] check M0-Marcus free: best barrier 1.460 eV lies in the notebook 03 interval of L1, L4, E1
+[01:57:03] --- stage baselines done in 13.9 min ---
+[01:57:04] --- stage extended (workers 12) ---
+[02:02:04] fit M1-split   middle                          chi2     301.30  max |z|  15.99  fails  [R1 1.458, R23 1.040, transfer 0.988, condensation 1.130, solvent_attack 1.306]  (5164 evaluations, 296 s)
+[02:12:06] fit M3         middle                          chi2     294.03  max |z|  16.10  fails  [hydrolysis 1.421, transfer 0.661, condensation 1.053, solvent_attack 1.307, dG R1 0.158, dG R2 -0.075, dG R3 -0.035, dG R4 0.077]  (12034 evaluations, 597 s)
+[02:24:24] fit M3-split   middle                          chi2      20.94  max |z|   1.93  FITS  [R1 1.286, R23 0.951, transfer 0.704, condensation 1.317, solvent_attack 1.310, dG R1 0.432, dG R2 0.201, dG R3 0.256, dG R4 -0.257]  (13416 evaluations, 734 s)
+[02:27:33] fit M1-split   short                           chi2    1020.98  max |z|  20.09  fails  [R1 1.140, R23 0.928, transfer 1.500, condensation 1.128, solvent_attack 1.306]  (3772 evaluations, 185 s)
+[02:39:41] fit M3         short                           chi2     536.48  max |z|  11.65  fails  [hydrolysis 0.872, transfer 0.648, condensation 1.349, solvent_attack 1.310, dG R1 0.624, dG R2 0.264, dG R3 0.280, dG R4 -0.325]  (12466 evaluations, 724 s)
+[02:50:06] fit M3-split   short                           chi2     534.64  max |z|  11.59  fails  [R1 0.894, R23 0.863, transfer 0.650, condensation 1.350, solvent_attack 1.310, dG R1 0.624, dG R2 0.265, dG R3 0.281, dG R4 -0.326]  (12646 evaluations, 620 s)
+[02:54:33] fit M1-split   long                            chi2     290.59  max |z|  15.43  fails  [R1 1.402, R23 1.107, transfer 1.035, condensation 1.214, solvent_attack 1.309]  (5914 evaluations, 263 s)
+[03:05:49] fit M3         long                            chi2      60.69  max |z|   4.14  fails  [hydrolysis 1.694, transfer 0.795, condensation 1.038, solvent_attack 1.305, dG R1 0.252, dG R2 0.013, dG R3 0.169, dG R4 0.015]  (13294 evaluations, 671 s)
+[03:17:19] fit M3-split   long                            chi2      23.49  max |z|   2.14  FITS  [R1 1.461, R23 0.891, transfer 0.717, condensation 1.421, solvent_attack 1.311, dG R1 0.561, dG R2 0.321, dG R3 0.371, dG R4 -0.489]  (13206 evaluations, 686 s)
+[03:21:57] fit M1-split   free                            chi2     281.91  max |z|  15.05  fails  [R1 1.314, R23 1.122, transfer 1.036, condensation 1.262, solvent_attack 1.308, log10 age 2 % H2O 2.225]  (5868 evaluations, 273 s)
+[03:34:13] fit M3         free                            chi2      28.02  max |z|   3.06  fails  [hydrolysis 1.482, transfer 0.607, condensation 1.016, solvent_attack 1.307, dG R1 0.201, dG R2 -0.035, dG R3 0.170, dG R4 0.062, log10 age 2 % H2O 2.225]  (14066 evaluations, 732 s)
+[03:46:26] fit M3-split   free                            chi2      18.65  max |z|   1.93  FITS  [R1 1.098, R23 1.000, transfer 0.985, condensation 1.352, solvent_attack 1.310, dG R1 0.456, dG R2 0.234, dG R3 0.291, dG R4 -0.329, log10 age 2 % H2O 2.225]  (15316 evaluations, 728 s)
+[03:46:26] selection rule: M3-split in the middle scenario (common age)
+[03:46:26] nesting check: chi2 never rises from a structure to the one that extends it
+[03:46:26] --- stage extended done in 109.4 min ---

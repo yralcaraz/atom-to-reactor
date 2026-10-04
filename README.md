@@ -130,7 +130,7 @@ The most used functions are re-exported from `kinetics` (see [kinetics/\_\_init\
 |---|---|---|
 | `data/tank_api_snapshot.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) for 24 species, MACE-OMol MD solvation energies in EC for 12, computed NMR shieldings and geometries | Computed; offline snapshot of Peter Broqvist's Tank dataset API (2026-09-24) |
 | `data/experimental_gogoi2024.json` | Measured ³¹P/²⁹Si/¹³C/¹H shifts, barrier windows, control experiments, water series | Measured; Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654 |
-| `data/lab_observables.json` | Area shares, uncertainties and sample histories of the lab NMR spectra (N. Gogoi, 2022–2023) | Measured, unpublished; **not stored in the repository**, built by `scripts/build_observables.py` |
+| `data/lab_observables.json` | Area shares, uncertainties and sample histories of the lab NMR spectra (N. Gogoi, 2022–2023) | Measured, unpublished; kept in the repository only while it stays private; built by `scripts/build_observables.py` |
 
 [data/README.md](data/README.md) documents every field and its limitations.
 
