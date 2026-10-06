@@ -1,7 +1,6 @@
 """Figures for the measured lab spectra (NB04): acquisition timeline, stacked spectra, processing check.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván; plots N. Gogoi, raw lab NMR spectra 2022–2023 (unpublished)
+Source: Y. Alcaraz Galván; plots NMR data from experiments
 """
 
 import matplotlib.dates as mdates

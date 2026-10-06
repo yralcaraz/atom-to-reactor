@@ -5,8 +5,7 @@ concatenated over the nuclei. Each nucleus block is scaled to unit norm. A greed
 the identifiable (lumped) reactions; the Net Analyte Signal (NAS) gives, per nucleus, the share of each
 fingerprint no other reaction can mimic; the pseudoinverse recovers per-step extents Δξ from spectra.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván; adapted from P. Broqvist, tmspa_hydrolysis_protocol.ipynb (BatteryAsTank, unpublished)
+Source: Y. Alcaraz Galván; adapted from P. Broqvist
 """
 
 from dataclasses import dataclass

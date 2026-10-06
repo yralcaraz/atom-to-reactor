@@ -1,6 +1,5 @@
 """Tests for the network helpers, the model registry, the mass-action engine and reactor observables.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

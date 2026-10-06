@@ -10,7 +10,6 @@ bonded to Si, or the protons on those carbons, for 'Si-CH3'. A species that carr
 but has no measured shift is not read: where its peak lies is unknown. The DFT shifts are tabulated next to
 the measured ones only for comparison.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

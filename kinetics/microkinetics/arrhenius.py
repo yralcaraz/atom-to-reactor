@@ -6,7 +6,6 @@ With a temperature-independent barrier the Eyring rate already has this form (A 
 Ea = ΔG‡), so the fit returns its inputs with R² = 1 (Finding 9). It becomes informative with g(T),
 a diffusion ceiling, or measured k(T).
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

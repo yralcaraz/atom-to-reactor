@@ -1,6 +1,5 @@
 """Figures for Blocks 8, 11–12: stacked spectra per acquisition, peak tracking and the water readout.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

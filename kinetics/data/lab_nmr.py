@@ -1,6 +1,6 @@
 """Measured NMR spectra from the lab (JEOL Delta .jdf files and their text exports).
 
-The raw files are private and are not stored in the repository. They are read from the directory given by
+The files are read from the directory given by
 the environment variable LAB_NMR_DIR (see `kinetics/paths.py` and `.env.example`).
 
     read_jdf                 header, acquisition parameters and data of one .jdf file
@@ -17,8 +17,7 @@ the environment variable LAB_NMR_DIR (see `kinetics/paths.py` and `.env.example`
 
 Chemical-shift axes are as acquired (lock-based, not referenced to an internal standard).
 
-Classification: PUBLIC (see CLASSIFICATION.md). The data it reads are private.
-Source: Y. Alcaraz Galván; reads N. Gogoi, raw lab NMR spectra 2022–2023 (unpublished)
+Source: Y. Alcaraz Galván; reads NMR data from experiments
 """
 
 import hashlib

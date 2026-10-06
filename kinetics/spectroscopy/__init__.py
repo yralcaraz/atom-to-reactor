@@ -4,7 +4,6 @@
     spectra.py       Lorentzian spectra from concentrations, OH exchange, water mass balance
     fingerprints.py  reaction fingerprints, identifiability and recovery of reaction extents
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

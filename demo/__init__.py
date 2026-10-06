@@ -4,6 +4,5 @@ Nothing here computes science; every function takes results from `kinetics` and 
 them. Modules follow the pipeline: thermo_plots, rate_plots, reactor_plots, nmr_plots,
 fingerprint_plots, with the shared visual language in style.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """

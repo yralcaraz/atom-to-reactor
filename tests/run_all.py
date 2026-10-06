@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Run every test script and report. Every test needs the private Tank snapshot (the species database and the
+"""Run every test script and report. Every test needs the Tank snapshot (the species database and the
 network are built from it, even for synthetic data), so all are skipped when it is absent.
 
     python tests/run_all.py
 
-The private data folder is given by ATOM_PRIVATE_DIR (see kinetics/paths.py and .env.example). Inside a test,
-the checks that need further private files (the legacy baseline, the lab observables, the raw spectra) skip
+The data folder is given by ATOM_DATA_DIR (see kinetics/paths.py and .env.example). Inside a test,
+the checks that need further data files (the legacy baseline, the lab observables, the raw spectra) skip
 themselves when the file is missing.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 
@@ -22,7 +21,7 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 from kinetics.data.snapshot import DEFAULT_SNAPSHOT_PATH
-from kinetics.paths import PRIVATE_DIR_VAR
+from kinetics.paths import DATA_DIR_VAR
 
 
 def main() -> int:
@@ -30,7 +29,7 @@ def main() -> int:
     results = {}
     for test in sorted(Path(__file__).parent.glob('test_*.py')):
         if not have_snapshot:
-            results[test.name] = 'skipped (needs the private Tank snapshot)'
+            results[test.name] = 'skipped (needs the Tank snapshot)'
             continue
         done = subprocess.run([sys.executable, str(test)], cwd=REPO, capture_output=True, text=True)
         results[test.name] = 'ok' if done.returncode == 0 else f'FAILED (exit {done.returncode})\n{done.stdout[-600:]}{done.stderr[-1200:]}'
@@ -38,7 +37,7 @@ def main() -> int:
     for name, status in results.items():
         print(f'{name:<{width}}  {status}')
     if not have_snapshot:
-        print(f'\n{PRIVATE_DIR_VAR} is not set or has no data/tank_api_snapshot.json: see .env.example')
+        print(f'\n{DATA_DIR_VAR} is not set or has no data/tank_api_snapshot.json: see .env.example')
     return int(any(status.startswith('FAILED') for status in results.values()))
 
 

@@ -5,7 +5,6 @@
 3. NMR catalog from DFT shieldings and the OH mass balance for water.
 4. Reaction fingerprints, identifiability and extent recovery.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

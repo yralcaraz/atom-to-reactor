@@ -9,7 +9,6 @@
     candidates.py   candidate structures of the first fit: which barriers and energies are free
     estimation.py   best fit, profile intervals, leave-one-out and what the data cannot determine
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

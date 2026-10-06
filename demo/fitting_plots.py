@@ -1,7 +1,6 @@
 """Figures for the feasible region (notebook 03): allowed barrier intervals, boundary maps, time scenarios and
 the structure tests (composition paths, heating, equilibrium locus).
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

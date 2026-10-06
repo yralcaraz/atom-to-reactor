@@ -23,7 +23,6 @@ The K shares of a spectrum sum to one, so their K residuals are scaled by sqrt((
     tabulate_residuals          the standardised residuals, one row per measured quantity
     summarize_residuals         χ², number of values and the largest standardised residual
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

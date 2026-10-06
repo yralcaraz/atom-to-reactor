@@ -1,6 +1,5 @@
 """Observables extracted from reactor results: characteristic times and composition at acquisitions.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

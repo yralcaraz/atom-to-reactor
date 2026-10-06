@@ -4,13 +4,12 @@
     python scripts/build_observables.py                 from the share tables exported by notebook 03 (CSV)
     python scripts/build_observables.py --from-raw      from the raw spectra (needs LAB_NMR_DIR)
 
-The file is written to the private data folder (ATOM_PRIVATE_DIR, see kinetics/paths.py), not to the repository.
+The file is written to the data folder (ATOM_DATA_DIR, see kinetics/paths.py).
 Both routes go through kinetics.data.build_lab_observables. The raw route recomputes the area shares and reads
-the heating episodes from the acquisition times; the CSV route takes the shares from the private results/03
+the heating episodes from the acquisition times; the CSV route takes the shares from the results/03
 folder and the heating episodes transcribed from notebooks 03 and 04 (RECORDED_HISTORIES), and says so in the file.
 
-Classification: PUBLIC (see CLASSIFICATION.md). The data it reads and writes are private.
-Source: Y. Alcaraz Galván; reads share tables derived from N. Gogoi, raw lab NMR spectra 2022–2023 (unpublished)
+Source: Y. Alcaraz Galván; reads share tables derived from the experimental NMR spectra
 """
 
 import argparse
@@ -41,7 +40,7 @@ def main():
         shares_P, shares_C = load_share_tables()
         observables = build_lab_observables(
             shares_P, shares_C,
-            built_from='results/03/lab_shares_31P.csv and lab_shares_13C.csv of the private data folder (area shares exported by '
+            built_from='results/03/lab_shares_31P.csv and lab_shares_13C.csv of the data folder (area shares exported by '
                        '03_feasible_region.ipynb); heating episodes transcribed from notebooks 03 and 04. '
                        'NOT rebuilt from the raw spectra')
     path = write_lab_observables(observables, args.out)

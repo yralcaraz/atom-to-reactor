@@ -6,7 +6,6 @@ Covers:
 3. Replicate scatter against the stated noise.
 4. The real file, when it is present: it reproduces the share tables exported by notebook 03 exactly.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 
@@ -91,7 +90,7 @@ def test_replicate_scatter():
 def test_real_file_reproduces_share_tables_if_available():
     csv = os.path.join(DEFAULT_SHARES_DIR, 'lab_shares_31P.csv')
     if not (os.path.exists(DEFAULT_OBSERVABLES_PATH) and os.path.exists(csv)):
-        print('  - skipped: lab_observables.json or the notebook 03 share tables not found in the private data folder (set ATOM_PRIVATE_DIR)')
+        print('  - skipped: lab_observables.json or the notebook 03 share tables not found in the data folder (set ATOM_DATA_DIR)')
         return
     observables = load_lab_observables()
     table = tabulate_observable_shares(observables)

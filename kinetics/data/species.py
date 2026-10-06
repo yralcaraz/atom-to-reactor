@@ -13,8 +13,7 @@ One record per snapshot species, keyed by `pipeline_id`:
 The snapshot has no frequencies or moments of inertia, so `frequencies_cm1` / `moments_amu_A2` are absent
 and the qRRHO route falls back to the stored Gibbs energy.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván; reads P. Broqvist, Tank dataset snapshot (unpublished)
+Source: Y. Alcaraz Galván; DFT and MD data by P. Broqvist
 """
 
 from copy import deepcopy

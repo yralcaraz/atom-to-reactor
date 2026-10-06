@@ -7,7 +7,6 @@ Colour does one job per figure: a diverging blue–grey–red scale for signed r
 one hue per age scenario in a fixed order, a single blue ramp for an ordered quantity (ΔS‡), red for a predicted
 share that breaks the fit rule.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

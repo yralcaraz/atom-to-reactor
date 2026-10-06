@@ -16,7 +16,6 @@ build_shifted_species_database), never per reaction, so the Wegscheider cycles s
 The values are standard errors already, so every σ returned here is the ±1 standard error of
 the solvation contribution and is used as stored (no further division by √n).
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

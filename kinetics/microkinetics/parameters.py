@@ -12,8 +12,7 @@ Parameter schema per reaction family (all keys optional except the barrier):
     'prior', 'source'           provenance and calibration intervals (not used in rates)
 The 'default' entry applies to any family without its own entry.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván; barrier windows from Gogoi et al., J. Phys. Chem. C 2024, 128, 1654 (published)
+Source: Y. Alcaraz Galván; barrier windows from Gogoi et al., J. Phys. Chem. C 2024, 128, 1654
 """
 
 from copy import deepcopy
@@ -30,7 +29,7 @@ FAMILY_BEP_PARAMETERS = {
     'default':        {'g_eV': 0.80, 'alpha': 0.50},
 }
 
-# Peter Broqvist's protocol reference (tmspa_hydrolysis_protocol.ipynb): one global E0 chosen so
+# Peter Broqvist's protocol reference: one global E0 chosen so
 # that TMSPA depletion spreads across the RT → 80 °C temperature steps.
 PETER_REFERENCE_PARAMETERS = {
     'default': {'g_eV': 1.15, 'alpha': 0.50},

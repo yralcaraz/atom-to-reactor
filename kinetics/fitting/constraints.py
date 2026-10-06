@@ -25,7 +25,6 @@ needs enough reaction ("TMSPA gone") is decided by t_max.
 A barrier is named by the model's family ('hydrolysis', ..., or 'hydrolysis_R1' in a split network), or by
 SHARED_BARRIER for one barrier on every reaction (Peter's single E0).
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

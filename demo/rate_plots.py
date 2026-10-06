@@ -1,6 +1,5 @@
 """Figures for Blocks 5–6: barrier models compared on the network, and k(T) over the protocol window.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

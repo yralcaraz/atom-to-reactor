@@ -7,7 +7,6 @@ Water series: ³¹P of TMSPA in EC/DEC with 0.5–5 vol% water at an unstated ti
 sample heated in steps to 80 °C. The windows are our reading of a qualitative description. Because the time
 is unknown, a model is tested on whether one common time satisfies every sample.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

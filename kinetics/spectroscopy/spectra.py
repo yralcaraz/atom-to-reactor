@@ -4,8 +4,7 @@ Every resolved site contributes a Lorentzian of area ∝ n_atoms · C. Labile OH
 than the NMR time scale and coalesce into one population-weighted peak. The solvent (EC) is not summed
 into the spectra. Intensities are in mM of nuclei.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván; adapted from P. Broqvist, tmspa_hydrolysis_protocol.ipynb (BatteryAsTank, unpublished)
+Source: Y. Alcaraz Galván; adapted from P. Broqvist
 """
 
 import numpy as np

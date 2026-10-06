@@ -7,8 +7,7 @@ Covers:
 4. Network reversal: identical dynamics when a reaction is written backwards (legacy BEP fails).
 5. Temperature-dependent intrinsic barrier, Level 1 calibration and the diffusion ceiling.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván; expected barriers computed from P. Broqvist, Tank dataset snapshot (unpublished)
+Source: Y. Alcaraz Galván; expected barriers computed from the Tank dataset snapshot (P. Broqvist)
 """
 
 import json
@@ -25,7 +24,7 @@ if repo_root not in sys.path:
 
 from kinetics import NETWORK, ModelSpec, calculate_rate_constants, load_species_database, simulate_batch_reactor
 from kinetics.constants import EV_TO_KJ_MOL
-from kinetics.paths import private_path
+from kinetics.paths import data_path
 from kinetics.microkinetics import (
     FAMILY_BEP_PARAMETERS, PETER_REFERENCE_PARAMETERS, calculate_barrier, invert_marcus_barrier, reversed_params,
 )
@@ -92,9 +91,9 @@ def test_limits():
 
 def test_legacy_bit_identity():
     print("\n--- 4. Legacy BEP/Marcus reproduce the pre-refactor baseline ---")
-    path = private_path('tests', 'block5_legacy_baseline.json')   # regression results computed from the snapshot: private
+    path = data_path('tests', 'block5_legacy_baseline.json')
     if not os.path.exists(path):
-        print(f"  - skipped: {path} not found (set ATOM_PRIVATE_DIR, see .env.example)")
+        print(f"  - skipped: {path} not found (set ATOM_DATA_DIR, see .env.example)")
         return
     records = json.load(open(path))['records']
     params = {'family_default': FAMILY_BEP_PARAMETERS, 'peter_reference': PETER_REFERENCE_PARAMETERS}

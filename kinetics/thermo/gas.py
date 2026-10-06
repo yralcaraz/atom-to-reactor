@@ -7,7 +7,6 @@ Thermo modes (the `thermo_mode` argument used across the pipeline):
               The snapshot has no frequencies, so for its species this falls back to the stored G
               (with a warning) and only the standard-state shift differs from 'wb97mv'.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

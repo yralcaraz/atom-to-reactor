@@ -1,4 +1,0 @@
-#!/bin/sh
-# Refuse a commit that contains private data (see CLASSIFICATION.md and scripts/check_public.py).
-# Enable once with:  git config core.hooksPath .githooks
-exec "${PYTHON:-python3}" "$(git rev-parse --show-toplevel)/scripts/check_public.py" --staged

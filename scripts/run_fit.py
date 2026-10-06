@@ -12,14 +12,13 @@
     python scripts/run_fit.py predictions    hold-out and checks, storage at 25 °C, Peter's protocol with its ΔS‡ band
 
 Every job writes one file under notebooks/results/05/ and is skipped when that file exists, so a stage can be
-interrupted and started again. The results derive from confidential lab data and are not stored in the repository.
+interrupted and started again.
 
-Rules fixed before any fit (see the plan of the first fit, an internal document): scenarios 'short' (1 h), 'middle' (1 d), 'long' (7 d)
+Rules fixed before any fit: scenarios 'short' (1 h), 'middle' (1 d), 'long' (7 d)
 and 'free' (each unknown age between 1 h and 7 d); a structure fits a scenario if no standardised residual
 exceeds 3; the first consistent parameter set is that of the smallest structure that fits, a common-age scenario
 taking precedence over free ages.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

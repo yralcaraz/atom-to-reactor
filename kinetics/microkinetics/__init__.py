@@ -6,7 +6,6 @@
     models.py      ModelSpec and the registry of named models to compare and select
     arrhenius.py   modified-Arrhenius regression of k(T)
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

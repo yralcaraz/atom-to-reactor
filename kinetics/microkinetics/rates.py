@@ -12,7 +12,6 @@ Kinetic models (the `kinetic_model` argument):
 Each model has a fallback parameter set used when `family_params` is None or lacks a family.
 Reactions flagged 'canonical': False in the network use the reversed family parameters.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

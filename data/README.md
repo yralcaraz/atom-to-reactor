@@ -1,33 +1,25 @@
 # Data inventory
 
-| File | Kind | Content | In the repository | Loaded by |
+| File | Kind | Content | Location | Loaded by |
 |---|---|---|---|---|
-| `experimental_gogoi2024.json` | Measured, published | NMR shifts, barrier windows, control experiments, water series (Gogoi et al. 2024) | yes | `kinetics/data/experimental.py` |
-| `tank_api_snapshot.json` | Computed, unpublished | Gas-phase DFT, MD solvation in EC, NMR shieldings, geometries (P. Broqvist, Tank dataset) | **no: private data folder** | `kinetics/data/snapshot.py`, `species.py` |
-| `lab_observables.json` | Measured, unpublished | Curated area shares and sample histories of the lab NMR spectra (N. Gogoi, 2022–2023) | **no: private data folder** | `kinetics/data/observables.py` |
-| raw lab spectra (`.jdf`) | Measured, unpublished | JEOL Delta spectra (N. Gogoi) | **no: `LAB_NMR_DIR`** | `kinetics/data/lab_nmr.py` |
+| `experimental_gogoi2024.json` | Measured, from the literature | NMR shifts, barrier windows, control experiments, water series (Gogoi et al. 2024) | this folder | `kinetics/data/experimental.py` |
+| `tank_api_snapshot.json` | Computed | Gas-phase DFT, MD solvation in EC, NMR shieldings, geometries (Tank dataset) | data folder | `kinetics/data/snapshot.py`, `species.py` |
+| `lab_observables.json` | Measured | Area shares and sample histories from the experimental NMR spectra | data folder | `kinetics/data/observables.py` |
+| NMR spectra (`.jdf`) | Measured | NMR data from experiments (JEOL Delta) | `LAB_NMR_DIR` | `kinetics/data/lab_nmr.py` |
 
-## Private data
+## Data folder
 
-The Tank dataset and the lab spectra are unpublished work of other people and are not redistributed. The code
-reads them from folders that each user points to with two environment variables (see `.env.example` and
-`kinetics/paths.py`):
+The data files are read from folders set with two environment variables (see `.env.example` and `kinetics/paths.py`):
 
 | Variable | Folder |
 |---|---|
-| `ATOM_PRIVATE_DIR` | `data/` (the snapshot, `lab_observables.json`, `lab_sample_folders.json`), `results/` (tables that reproduce private inputs) and `tests/` (the regression baseline) |
-| `LAB_NMR_DIR` | the raw lab spectra |
+| `ATOM_DATA_DIR` | `data/` (the snapshot, `lab_observables.json`, `lab_sample_folders.json`), `results/` (tables written by notebooks 01 and 03) and `tests/` (the regression baseline) |
+| `LAB_NMR_DIR` | the NMR spectra |
 
-Without them the package imports, but nothing that needs the snapshot runs: the species database, the network
-thermochemistry and every test are built from it. What this repository shows without the private data is the code,
-the fit results (`notebooks/results/`) and the notebooks with their figures. To obtain the Tank snapshot, ask
-Prof. Peter Broqvist; for the lab spectra, Neha Gogoi (Ångström Laboratory, Uppsala).
+The species database, the network thermochemistry and every test are built from the snapshot, so the numerical
+pipeline needs `ATOM_DATA_DIR`. The DFT and MD data are from Peter Broqvist's Tank dataset.
 
-**Credit.** All DFT and MD data are from Peter Broqvist's Tank dataset (unpublished). Results in this repository that
-derive from them (rate constants, barriers, fitted parameters, figures) are computed from his data and say so in their
-`Source` line.
-
-## Snapshot: `tank_api_snapshot.json` (private)
+## Snapshot: `tank_api_snapshot.json`
 
 An offline snapshot of the Tank dataset API, captured on 2026-09-24. It is the only source of thermochemistry,
 solvation, NMR and geometry data in this repo. **All of it is computed.**
@@ -39,7 +31,7 @@ solvation, NMR and geometry data in this repo. **All of it is computed.**
 | `nmr` | Per-atom computed NMR shieldings, keyed by `dataset_uuid` |
 | `structure` | Optimised geometry (elements and Cartesian coordinates in Å) |
 
-What to keep in mind when using it (the values are in the private file):
+What to keep in mind when using it:
 
 - **Energies** are in Hartree (`energy_scf_eh`, `zpe_eh`, `enthalpy_eh`, `gibbs_eh`); G is at 298.15 K and 1 bar in the rigid-rotor/harmonic-oscillator approximation.
 - **`n_modes` is a count, not the frequencies.** No vibrational frequencies or Hessians are stored, so the `qRRHO` mode cannot be run with real data.
@@ -47,9 +39,9 @@ What to keep in mind when using it (the values are in the private file):
 - **Shieldings** are absolute values of a single static geometry. They are DFT results, not measurements: chemically equivalent nuclei are not averaged and anisotropies are included. `kinetics/spectroscopy/symmetry.py` averages and references them (TMS for ²⁹Si/¹³C/¹H, H₃PO₄ for ³¹P). They give peak positions only, so they cannot be used to fit kinetics.
 - **Species:** 11 are wired into the reaction network (TMSPA, BMSPA, MMSPA, H3PO4, H2O, TMSOH, HMDSO, EC, TMSOEG, TMSOdiEG, CO2); the others are references and solvents. There is no fluorine/HF chemistry and no Li⁺.
 
-## Lab observables: `lab_observables.json` (private)
+## Lab observables: `lab_observables.json`
 
-Built by `scripts/build_observables.py` from the area shares of the lab ³¹P and ¹³C spectra. Per sample it holds the
+Built by `scripts/build_observables.py` from the area shares of the ³¹P and ¹³C spectra. Per sample it holds the
 recipe, what is known of its temperature history, and the shares with two measured uncertainties (noise, baseline
 spread). The time from mixing to the first spectrum is unknown for every sample.
 

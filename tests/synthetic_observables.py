@@ -3,7 +3,6 @@
 The numbers are invented: they have the layout of the lab set (same samples, same number of spectra, same
 kind of history) but none of its values.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

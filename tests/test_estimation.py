@@ -9,9 +9,8 @@ Covers:
    samples cannot see is reported as not determined, nesting never raises χ².
 6. With the lab file present: the windows of notebook 03 give its barrier intervals through the new forward path.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván; expected intervals read from notebooks/results/03 (computed from P. Broqvist, Tank
-dataset snapshot and N. Gogoi, raw lab NMR spectra, both unpublished)
+Source: Y. Alcaraz Galván; expected intervals read from notebooks/results/03 (computed from the Tank
+dataset snapshot and the experimental NMR spectra)
 """
 
 import os
@@ -503,7 +502,7 @@ def _notebook_03_observations(observables):
 
 def test_windows_reproduce_notebook_03_if_available(tolerance_eV=0.005):
     if not os.path.exists(DEFAULT_OBSERVABLES_PATH):
-        print('  - skipped: lab_observables.json not found in the private data folder (set ATOM_PRIVATE_DIR)')
+        print('  - skipped: lab_observables.json not found in the data folder (set ATOM_DATA_DIR)')
         return None
     observations = _notebook_03_observations(load_lab_observables())
     level1, peter = get_model('level1'), get_model('peter_reference')

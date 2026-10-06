@@ -3,7 +3,6 @@
 In 'wb97mv' mode the standard-state shift is omitted (as in Peter Broqvist's notebooks); it cancels in
 every reaction of the default network because each step conserves the number of molecules.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

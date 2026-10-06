@@ -11,7 +11,6 @@ functions turn measurements into statements of that kind, using stoichiometry an
     calculate_rt_equivalent_hours  room-temperature time that a heating history is worth, for a given barrier
     calculate_required_water_M     water needed to convert a measured amount of TMSPA
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

@@ -6,8 +6,7 @@ notebooks can compare several models and then select one by name. Register new m
 A model may carry its own network (a family split per reaction) and corrections to the computed
 free energies (species shifts); the registered models carry neither.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván; barrier windows from Gogoi et al., J. Phys. Chem. C 2024, 128, 1654 (published)
+Source: Y. Alcaraz Galván; barrier windows from Gogoi et al., J. Phys. Chem. C 2024, 128, 1654
 """
 
 from dataclasses import dataclass, field, replace

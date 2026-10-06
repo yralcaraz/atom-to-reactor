@@ -1,14 +1,13 @@
 """Block 1 — Inputs: the computed-data snapshot, the species database, the reaction network and the
 experimental reference data.
 
-    snapshot.py      read-only access to the Tank snapshot (DFT, MD solvation, NMR, geometries; private data folder)
+    snapshot.py      read-only access to the Tank snapshot (DFT, MD solvation, NMR, geometries; read from the data folder)
     species.py       species database built from the snapshot (energies converted to eV)
     network.py       the 9-reaction network, its species and stoichiometry helpers
     experimental.py  Gogoi et al. 2024: measured shifts, barrier windows, control experiments, water series
-    lab_nmr.py       measured lab spectra (JEOL .jdf, private, read from LAB_NMR_DIR): inventory and processing
+    lab_nmr.py       measured NMR spectra (JEOL .jdf, read from LAB_NMR_DIR): inventory and processing
     observables.py   curated lab observables (shares, uncertainties, sample histories) that a fit reads
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

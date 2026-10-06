@@ -95,10 +95,10 @@ The notebooks are demonstrations. The science lives in `kinetics/`, and the figu
 |---|---|---|
 | [01_multiscale_microkinetics_theory](notebooks/01_multiscale_microkinetics_theory.ipynb) | Blocks 1–11: input data, free energies in EC, reaction thermodynamics and Wegscheider cycles, barrier models, model selection against experiment, k(T), batch reactor, sensitivity, virtual ²⁹Si NMR | [theory](docs/theory-multiscale_microkinetics.md) |
 | [02_operando_experimental_protocol](notebooks/02_operando_experimental_protocol.ipynb) | Bench protocol simulation, model comparison, predicted multinuclear NMR, water from ¹H, which reactions the spectra can tell apart | [guide](docs/guide-operando_experimental_protocol.md) |
-| [03_experiment_plan](notebooks/03_experiment_plan.ipynb) | What the data constrain today (barrier bounds), where the model fails (water series), NMR readouts and timing, which experiment determines which parameter, tentative plan. Written before the lab spectra existed | guide (internal) |
-| [03_feasible_region](notebooks/03_feasible_region.ipynb) | Every observation (lab spectra and Gogoi 2024) as a constraint: barrier intervals for a ladder of model structures, tests no barrier can pass. Stored without outputs | method (internal) |
+| [03_experiment_plan](notebooks/03_experiment_plan.ipynb) | What the data constrain today (barrier bounds), where the model fails (water series), NMR readouts and timing, which experiment determines which parameter, tentative plan. Written before the lab spectra existed | — |
+| [03_feasible_region](notebooks/03_feasible_region.ipynb) | Every observation (lab spectra and Gogoi 2024) as a constraint: barrier intervals for a ladder of model structures, tests no barrier can pass. Stored without outputs | — |
 | [04_lab_nmr_data_overview](notebooks/04_lab_nmr_data_overview.ipynb) | The raw lab NMR spectra: samples, acquisition settings, what changes in time, what is unclear in the files | — |
-| [05_first_fit](notebooks/05_first_fit.ipynb) | First fit of the candidate structures to the lab observables under four scenarios of the unknown mixing times: misfit per observation, profile intervals, what the data cannot determine. Shows results computed by `scripts/run_fit.py`; stored without outputs | plan (internal) |
+| [05_first_fit](notebooks/05_first_fit.ipynb) | First fit of the candidate structures to the lab observables under four scenarios of the unknown mixing times: misfit per observation, profile intervals, what the data cannot determine. Shows results computed by `scripts/run_fit.py`; stored without outputs | — |
 | [05_Alternative_first_fit_ladder](notebooks/05_Alternative_first_fit_ladder.ipynb) | The results of notebook 05 in step-by-step order, one model structure added at a time. Shows results computed by `scripts/run_fit.py`; nothing is fitted in the notebook | — |
 
 ## Repository layout
@@ -107,7 +107,7 @@ The notebooks are demonstrations. The science lives in `kinetics/`, and the figu
 atom-to-reactor/
 ├── kinetics/                 the package, one folder per pipeline stage
 │   ├── constants.py          physical constants and unit conversions
-│   ├── paths.py              where the private data live (environment variables; no path in the code)
+│   ├── paths.py              location of the data files (environment variables)
 │   ├── data/                 Block 1      snapshot, species database, network, experimental data
 │   ├── thermo/               Blocks 2–4   G in solution, standard-state shift, solvation σ, ΔG_rxn
 │   ├── microkinetics/        Blocks 5–6   barrier models, family parameters, rates, model registry, Arrhenius
@@ -116,13 +116,12 @@ atom-to-reactor/
 │   └── fitting/              Block 14     barrier bounds, NMR readouts, experiment design, residuals, fits and profiles
 ├── demo/                     figures and display tables for the notebooks (no science)
 ├── notebooks/                01 theory · 02 operando protocol · 03 experiment plan, feasible region · 04 lab data · 05 first fit
-├── data/                     published reference data and the data inventory (see data/README.md); the private data are not here
+├── data/                     reference data and the data inventory (see data/README.md)
 ├── docs/                     theory, the guide to notebook 02, references
-├── tests/                    test scripts (run_all.py runs them; they need the private snapshot)
+├── tests/                    test scripts (run_all.py runs them)
 ├── scripts/                  build_observables.py (lab observables file) · run_fit.py (staged first fit)
 ├── MODULES.md                functional specification of the modules
-├── CLASSIFICATION.md         what is public and what is private, and the rule
-├── .env.example              the two variables that point to the private data
+├── .env.example              the two variables that point to the data folders
 └── requirements.txt
 ```
 
@@ -130,21 +129,15 @@ The most used functions are re-exported from `kinetics` (see [kinetics/\_\_init\
 
 ## Data
 
-| File | Content | Origin | In the repository |
-|---|---|---|---|
-| `data/experimental_gogoi2024.json` | Measured ³¹P/²⁹Si/¹³C/¹H shifts, barrier windows, control experiments, water series | Measured; Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654 | yes |
-| `tank_api_snapshot.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) for 24 species, MACE-OMol MD solvation energies in EC for 12, computed NMR shieldings and geometries | Computed; offline snapshot of Peter Broqvist's Tank dataset API (2026-09-24), unpublished | no: private data folder |
-| `lab_observables.json` | Area shares, uncertainties and sample histories of the lab NMR spectra | Measured by N. Gogoi, 2022–2023, unpublished; built by `scripts/build_observables.py` | no: private data folder |
-| raw lab spectra | JEOL Delta `.jdf` files | N. Gogoi, unpublished | no: `LAB_NMR_DIR` |
+| File | Content | Origin |
+|---|---|---|
+| `data/experimental_gogoi2024.json` | Measured ³¹P/²⁹Si/¹³C/¹H shifts, barrier windows, control experiments, water series | Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654 |
+| `tank_api_snapshot.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) for 24 species, MACE-OMol MD solvation energies in EC for 12, computed NMR shieldings and geometries | Computed; offline snapshot of Peter Broqvist's Tank dataset API (2026-09-24) |
+| `lab_observables.json` | Area shares, uncertainties and sample histories of the NMR spectra | NMR data from experiments; built by `scripts/build_observables.py` |
+| NMR spectra | JEOL Delta `.jdf` files | NMR data from experiments |
 
-**Data availability.** The DFT and MD data are Peter Broqvist's unpublished Tank dataset and the NMR spectra are Neha
-Gogoi's unpublished measurements. They are not redistributed. The code reads them from two folders given by the
-environment variables `ATOM_PRIVATE_DIR` and `LAB_NMR_DIR` (copy [.env.example](.env.example) to `.env`; see
-[kinetics/paths.py](kinetics/paths.py)). Without them the repository shows its code, the fit results
-(`notebooks/results/`) and the notebooks with their figures; the numerical pipeline and the tests need the snapshot
-(ask Prof. Peter Broqvist). Everything computed from his data says so in its `Source` line. What is public and what is
-private is fixed in [CLASSIFICATION.md](CLASSIFICATION.md).
-
+The last three are read from two folders set with the environment variables `ATOM_DATA_DIR` and `LAB_NMR_DIR`
+(copy [.env.example](.env.example) to `.env`; see [kinetics/paths.py](kinetics/paths.py)).
 [data/README.md](data/README.md) documents every file and the limitations of the data.
 
 ## Documentation
@@ -155,7 +148,6 @@ private is fixed in [CLASSIFICATION.md](CLASSIFICATION.md).
 | [theory-multiscale_microkinetics](docs/theory-multiscale_microkinetics.md) | Theory: statistical mechanics, solvation cycle, barrier models, reactor equations | Rev 1; names predate the 2026-09-29 layout ¹ |
 | [guide-operando_experimental_protocol](docs/guide-operando_experimental_protocol.md) | Guide to notebook 02 | Stable |
 | [reference-api_migration](docs/reference-api_migration.md) | Old → current function and module names | Stable |
-| Internal documents | The method of the feasible region, the guides to notebooks 03 and 05, the plan of the first fit, the audit of the first notebook, the pipeline overview | Not in the repository: kept in the private project folder |
 
 ¹ [reference-api_migration.md](docs/reference-api_migration.md) maps the old names to the current code.
 

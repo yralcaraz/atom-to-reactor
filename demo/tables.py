@@ -2,7 +2,6 @@
 
 Tables are returned as DataFrames of formatted strings, so they render without optional pandas extras.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

@@ -6,7 +6,6 @@
     uncertainty.py     σ of the solvation contribution to a reaction; corrections applied per species
     reaction.py        ΔG_rxn, K_eq, network table, Wegscheider cycles
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

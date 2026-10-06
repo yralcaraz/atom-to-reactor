@@ -21,7 +21,6 @@ constraint is Gaussian with the covariance of the MD standard errors (kinetics.t
 The search box of each barrier is DECLARED: it is narrower than the 0.60–1.70 eV scanned in notebook 03 where
 no observation allows the excluded part and the solver crawls there (solvent attack below 1.10 eV).
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 
@@ -212,7 +211,7 @@ def build_fitted_model(fit: dict, name: str = None):
     It carries its network and species shifts, so reactors take it like a registered model, and each barrier is
     anchored (T_ref) at the temperature where its family was observed: 22.5 °C for hydrolysis and transfer,
     80 °C for condensation and solvent attack. With ΔS‡ = 0 the anchor changes nothing; it is where an
-    activation entropy would pivot. The values derive from confidential lab data, so the model is built from
+    activation entropy would pivot. The model is built from
     the result file at run time and is not written into the registry: add it with MODELS[name] = ... if wanted.
     """
     structure = get_structure(fit['structure'])

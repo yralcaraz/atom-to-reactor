@@ -1,6 +1,6 @@
 """Curated lab observables: everything a fit reads from the lab NMR spectra, in one file.
 
-The file (`lab_observables.json`, kept in the private data folder, see `kinetics/paths.py`) holds, per sample: the recipe, what is
+The file (`lab_observables.json`, in the data folder, see `kinetics/paths.py`) holds, per sample: the recipe, what is
 known of its temperature history, and the area shares of every quantitative spectrum with their two measured
 uncertainties (noise, baseline spread). It is built from two share tables in the format of
 `kinetics.data.lab_nmr.tabulate_area_shares` (plus the columns 'sample' and 'hours_since_first'), so the same
@@ -17,9 +17,8 @@ builder runs from the raw spectra or from the tables exported by notebook 03.
 What the files do not record is kept explicit: the time from mixing to a sample's first spectrum ('age') is
 unknown for every sample, and the heating episodes carry a 'basis' saying where each number comes from.
 
-Classification: PUBLIC (see CLASSIFICATION.md). The data it reads and writes are private.
-Source: Y. Alcaraz Galván; sample histories transcribed from the acquisition times of N. Gogoi, raw lab NMR
-spectra 2022–2023 (unpublished), as recorded in notebooks 03 and 04
+Source: Y. Alcaraz Galván; sample histories transcribed from the acquisition times of the experimental NMR
+spectra, as recorded in notebooks 03 and 04
 """
 
 import json
@@ -29,11 +28,11 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
-from kinetics.paths import PRIVATE_DIR_VAR, private_path
+from kinetics.paths import DATA_DIR_VAR, data_path
 
-DEFAULT_OBSERVABLES_PATH = private_path('data', 'lab_observables.json')
-DEFAULT_SHARES_DIR = private_path('results', '03')
-DEFAULT_SAMPLE_FOLDERS_PATH = private_path('data', 'lab_sample_folders.json')
+DEFAULT_OBSERVABLES_PATH = data_path('data', 'lab_observables.json')
+DEFAULT_SHARES_DIR = data_path('results', '03')
+DEFAULT_SAMPLE_FOLDERS_PATH = data_path('data', 'lab_sample_folders.json')
 
 PHOSPHATE_WINDOWS = ('TMSPA', 'BMSPA', 'MMSPA', 'H3PO4')        # ³¹P: one P per molecule
 SILYL_WINDOWS = ('TMSOH', 'HMDSO', 'TMSOEG')                    # ¹³C, Si–CH3 region: three methyl C per Si
@@ -128,25 +127,25 @@ OPEN_AUDIT = [
 
 
 def load_share_tables(directory: str = DEFAULT_SHARES_DIR) -> tuple:
-    """(³¹P table, ¹³C table) as exported by notebook 03 (`lab_shares_31P.csv`, `lab_shares_13C.csv`, private)."""
+    """(³¹P table, ¹³C table) as exported by notebook 03 (`lab_shares_31P.csv`, `lab_shares_13C.csv`, in the data folder)."""
     tables = []
     for name in ('lab_shares_31P.csv', 'lab_shares_13C.csv'):
         path = os.path.join(directory, name)
         if not os.path.exists(path):
-            raise FileNotFoundError(f'{path} not found: the share tables are private data (set {PRIVATE_DIR_VAR}, '
+            raise FileNotFoundError(f'{path} not found: the share tables are read from the data folder (set {DATA_DIR_VAR}, '
                                     f'see .env.example)')
         tables.append(pd.read_csv(path, index_col=0, parse_dates=['acquired_at']))
     return tuple(tables)
 
 
 def load_lab_sample_folders(path: str = DEFAULT_SAMPLE_FOLDERS_PATH) -> dict:
-    """Names of the raw lab folders (and file titles) that hold each sample, from the private data folder.
+    """Names of the raw lab folders (and file titles) that hold each sample, read from the data folder.
 
     {'raw_sample_folders': {sample: [folder, ...]}  (notebook 03 §2.1),
      'sample_of_folder': {folder: sample}, 'sample_of_title': {title: sample}  (notebook 04 §1)}.
-    The folder names identify the raw data, so they are not in the code."""
+    """
     if not os.path.exists(path):
-        raise FileNotFoundError(f'{path} not found: the raw folder names are private data (set {PRIVATE_DIR_VAR}, '
+        raise FileNotFoundError(f'{path} not found: the folder names are read from the data folder (set {DATA_DIR_VAR}, '
                                 f'see .env.example)')
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
@@ -161,7 +160,7 @@ def build_lab_inventory_for_observables(root) -> tuple:
     """(³¹P share table, ¹³C share table, {sample: heated windows}) from the raw spectra under `root`.
 
     The selection is that of notebook 03 §2.1: ³¹P at room temperature with the NOE off and a relaxation delay
-    of at least 5 s; ¹³C (Si–CH3 region) of the two TMSOH samples. Needs the private raw data.
+    of at least 5 s; ¹³C (Si–CH3 region) of the two TMSOH samples. Needs the raw spectra (LAB_NMR_DIR).
     """
     from kinetics.data.lab_nmr import build_lab_nmr_inventory, find_heated_windows, tabulate_area_shares
     inventory = build_lab_nmr_inventory(root).drop_duplicates('data_md5')
@@ -277,8 +276,7 @@ def build_lab_observables(shares_P: pd.DataFrame, shares_C: pd.DataFrame, *, bui
                                       'NOE and relaxation for the Si-CH3 carbons of every species')
     return {
         '_meta': {
-            'classification': 'PRIVATE (not stored in the repository; see CLASSIFICATION.md)',
-            'source': 'Y. Alcaraz Galván; N. Gogoi, raw lab NMR spectra 2022–2023 (unpublished)',
+            'source': 'Y. Alcaraz Galván; NMR data from experiments',
             'built_from': built_from,
             'built_at_utc': datetime.now(timezone.utc).isoformat(timespec='seconds'),
             'shares': 'share of the summed area of the windows of one spectrum: median over three baselines; '
@@ -299,10 +297,10 @@ def write_lab_observables(observables: dict, path: str = DEFAULT_OBSERVABLES_PAT
 
 
 def load_lab_observables(path: str = DEFAULT_OBSERVABLES_PATH) -> dict:
-    """The observables dict from `lab_observables.json` in the private data folder (a fresh copy on every call)."""
+    """The observables dict from `lab_observables.json` in the data folder (a fresh copy on every call)."""
     if not os.path.exists(path):
-        raise FileNotFoundError(f'{path} not found: build it with scripts/build_observables.py; the file is private '
-                                f'(set {PRIVATE_DIR_VAR}, see .env.example)')
+        raise FileNotFoundError(f'{path} not found: build it with scripts/build_observables.py '
+                                f'(set {DATA_DIR_VAR}, see .env.example)')
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 

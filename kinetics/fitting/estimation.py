@@ -25,7 +25,6 @@ Search and derivatives use a loose relative solver tolerance (rtol 1e-6); the re
 final polish use rtol 1e-8. The absolute tolerance is tight in both (see residuals.SEARCH_SOLVER). Parameters are searched in box coordinates u = 1 + (x − lower)/(upper − lower), so that a
 relative finite-difference step is the same fraction of every box (about 1 meV for a barrier).
 
-Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván
 """
 

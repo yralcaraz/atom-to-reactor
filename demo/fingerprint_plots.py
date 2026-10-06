@@ -1,7 +1,6 @@
 """Figures for Block 13: nucleus selectivity and recovery of reaction extents.
 
-Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván; adapted from P. Broqvist, tmspa_hydrolysis_protocol.ipynb (BatteryAsTank, unpublished)
+Source: Y. Alcaraz Galván; adapted from P. Broqvist
 """
 
 import matplotlib.pyplot as plt
