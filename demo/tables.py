@@ -146,6 +146,24 @@ def format_structure_table(summary: pd.DataFrame, scenarios=('short', 'middle', 
     return pd.DataFrame.from_dict(rows, orient='index').rename_axis('χ² (largest |z|), ✓ = no |z| above 3', axis=1)
 
 
+def format_rung_table(summary: pd.DataFrame, barriers: pd.DataFrame, structure: str, ages: dict,
+                      reactions=('R1', 'R2', 'R3', 'R5', 'R4', 'R8')) -> pd.DataFrame:
+    """Best fit of one structure at each assumed age: χ², the worst miss and where it is, and ΔG‡ of each reaction [eV].
+
+    ages: {scenario: label of its row}. ΔG‡ is the barrier that results from the fitted intrinsic barrier and the
+    reaction energy, given at the temperature where the family of the reaction is observed.
+    """
+    fits = summary[summary['structure'] == structure].set_index('scenario')
+    dG = barriers[barriers['structure'] == structure].pivot(index='scenario', columns='reaction', values='dG_barrier_eV')
+    rows = {}
+    for scenario, label in ages.items():
+        f = fits.loc[scenario]
+        rows[label] = {'χ²': f"{f['chi2']:.0f}" if f['chi2'] >= 100 else f"{f['chi2']:.1f}", 'worst miss': f"{f['max |z|']:.1f}",
+                       'fits': '✓' if f['fits'] else '✗', 'where the worst miss is': f['worst'],
+                       **{f'ΔG‡ {r}': f'{dG.loc[scenario, r]:.2f}' for r in reactions}}
+    return pd.DataFrame.from_dict(rows, orient='index').rename_axis('Age at 1st spectrum', axis=1)
+
+
 def format_interval(row, spec: str = '.3f') -> str:
     """One profile interval as text: 'a–b', '≥ a', '≤ b' or 'not determined'."""
     low, high = row['low'], row['high']

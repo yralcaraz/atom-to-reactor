@@ -57,6 +57,7 @@ All notebooks are CONFIDENTIAL because their stored outputs show snapshot values
 | `notebooks/03_feasible_region.ipynb` | CONFIDENTIAL | Y, PB, NG, G24 | Outputs from the snapshot and the lab spectra; names NG |
 | `notebooks/04_lab_nmr_data_overview.ipynb` | CONFIDENTIAL | Y, NG | Lab spectra, file names, personal paths |
 | `notebooks/05_first_fit.ipynb` | CONFIDENTIAL | Y, PB, NG | Outputs from the snapshot and the lab spectra; stored without outputs |
+| `notebooks/05_Alternative_first_fit_ladder.ipynb` | CONFIDENTIAL | Y, PB, NG | The results of notebook 05 in step-by-step order; outputs from the snapshot and the lab spectra |
 
 ### Documents
 
