@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Build data/lab_observables.json, the one file a fit reads from the lab NMR spectra.
+"""Build lab_observables.json, the one file a fit reads from the lab NMR spectra.
 
     python scripts/build_observables.py                 from the share tables exported by notebook 03 (CSV)
-    python scripts/build_observables.py --from-raw      from the raw spectra (needs LAB_NMR_DIR or the OneDrive copy)
+    python scripts/build_observables.py --from-raw      from the raw spectra (needs LAB_NMR_DIR)
 
+The file is written to the private data folder (ATOM_PRIVATE_DIR, see kinetics/paths.py), not to the repository.
 Both routes go through kinetics.data.build_lab_observables. The raw route recomputes the area shares and reads
-the heating episodes from the acquisition times; the CSV route takes the shares from notebooks/results/03/ and
-the heating episodes transcribed from notebooks 03 and 04 (RECORDED_HISTORIES), and says so in the file.
+the heating episodes from the acquisition times; the CSV route takes the shares from the private results/03
+folder and the heating episodes transcribed from notebooks 03 and 04 (RECORDED_HISTORIES), and says so in the file.
 
-Classification: CONFIDENTIAL (see CLASSIFICATION.md)
+Classification: PUBLIC (see CLASSIFICATION.md). The data it reads and writes are private.
 Source: Y. Alcaraz Galván; reads share tables derived from N. Gogoi, raw lab NMR spectra 2022–2023 (unpublished)
 """
 
@@ -35,12 +36,12 @@ def main():
     if args.from_raw:
         shares_P, shares_C, heated = build_lab_inventory_for_observables(DEFAULT_LAB_NMR_DIR)
         observables = build_lab_observables(shares_P, shares_C, heated_windows=heated,
-                                            built_from=f'raw spectra in {DEFAULT_LAB_NMR_DIR}')
+                                            built_from='raw spectra (folder given by LAB_NMR_DIR)')
     else:
         shares_P, shares_C = load_share_tables()
         observables = build_lab_observables(
             shares_P, shares_C,
-            built_from='notebooks/results/03/lab_shares_31P.csv and lab_shares_13C.csv (area shares exported by '
+            built_from='results/03/lab_shares_31P.csv and lab_shares_13C.csv of the private data folder (area shares exported by '
                        '03_feasible_region.ipynb); heating episodes transcribed from notebooks 03 and 04. '
                        'NOT rebuilt from the raw spectra')
     path = write_lab_observables(observables, args.out)

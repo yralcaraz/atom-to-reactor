@@ -5,7 +5,7 @@ isotropic shieldings are averaged and referenced, δ = σ(reference) − σ(samp
 are flagged as labile (fast exchange). A catalog maps {element: {species: [(δ_ppm, n_atoms, labile)]}}.
 
 Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván
+Source: Y. Alcaraz Galván; adapted from P. Broqvist, tmspa_hydrolysis_protocol.ipynb (BatteryAsTank, unpublished)
 """
 
 import warnings

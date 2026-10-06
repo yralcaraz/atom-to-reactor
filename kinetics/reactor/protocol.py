@@ -8,7 +8,8 @@ simulate_history is the general form without the recipe: any composition, any se
 segments, the state returned at chosen times. It is what a fit calls for a sample with a known history.
 
 Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván
+Source: Y. Alcaraz Galván; bench protocol (recipe and temperature steps) from P. Broqvist,
+tmspa_hydrolysis_protocol.ipynb (BatteryAsTank, unpublished)
 """
 
 from typing import NamedTuple, Optional

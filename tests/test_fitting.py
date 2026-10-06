@@ -1,6 +1,6 @@
 """Tests for Block 14: feasibility bounds from the control experiments, the water-series checks and experiment design.
 
-Classification: REVIEW (see CLASSIFICATION.md)
+Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván; expected bounds computed from P. Broqvist, Tank dataset snapshot (unpublished) and Gogoi et al., J. Phys. Chem. C 2024, 128, 1654 (published)
 """
 

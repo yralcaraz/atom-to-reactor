@@ -34,3 +34,13 @@ venv.bak/
 
 .env
 *.env
+
+# Private data (see CLASSIFICATION.md): they live in the private data folder, never in the repository.
+# These patterns are a backstop in case a file is copied here by mistake.
+data/tank_api_snapshot.json
+data/lab_observables.json
+data/lab_sample_folders.json
+notebooks/results/03/lab_shares_*.csv
+tests/data/
+docs-internal/
+*.jdf

@@ -1,7 +1,7 @@
 """Measured NMR spectra from the lab (JEOL Delta .jdf files and their text exports).
 
 The raw files are private and are not stored in the repository. They are read from the directory given by
-the environment variable LAB_NMR_DIR, or from the thesis OneDrive copy when it is not set.
+the environment variable LAB_NMR_DIR (see `kinetics/paths.py` and `.env.example`).
 
     read_jdf                 header, acquisition parameters and data of one .jdf file
     build_lab_nmr_inventory  one row per .jdf file with the acquisition metadata (no spectral processing)
@@ -17,7 +17,7 @@ the environment variable LAB_NMR_DIR, or from the thesis OneDrive copy when it i
 
 Chemical-shift axes are as acquired (lock-based, not referenced to an internal standard).
 
-Classification: CONFIDENTIAL (see CLASSIFICATION.md)
+Classification: PUBLIC (see CLASSIFICATION.md). The data it reads are private.
 Source: Y. Alcaraz Galván; reads N. Gogoi, raw lab NMR spectra 2022–2023 (unpublished)
 """
 
@@ -32,9 +32,9 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
-DEFAULT_LAB_NMR_DIR = os.environ.get('LAB_NMR_DIR', str(
-    Path.home() / 'Library/CloudStorage/OneDrive-Uppsalauniversitet/TFM - Master Thesis'
-    / '03 - Validation & writing/VAL - Experimental validation/VAL - NMR raw data - Gogoi 2023'))
+from kinetics.paths import LAB_NMR_DIR_VAR, lab_nmr_dir
+
+DEFAULT_LAB_NMR_DIR = str(lab_nmr_dir() or f'<{LAB_NMR_DIR_VAR} is not set: see .env.example>')
 
 # Delta stores times as seconds since this epoch
 _JEOL_EPOCH = datetime(1990, 1, 1)
@@ -115,6 +115,8 @@ def build_lab_nmr_inventory(root=DEFAULT_LAB_NMR_DIR) -> pd.DataFrame:
     """One row per .jdf file under root, sorted by acquisition time, with the acquisition settings that decide
     whether a spectrum is quantitative (scans, relaxation delay, pulse angle, NOE) and an MD5 of the data."""
     root = Path(root)
+    if not root.is_dir():
+        raise FileNotFoundError(f'Raw lab spectra folder not found: set {LAB_NMR_DIR_VAR} (see .env.example)')
     rows = []
     for path in sorted(root.rglob('*.jdf')):
         jdf = read_jdf(path)

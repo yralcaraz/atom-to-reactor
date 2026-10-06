@@ -1,7 +1,9 @@
-"""Read-only access to the Tank dataset API snapshot (`data/tank_api_snapshot.json`).
+"""Read-only access to the Tank dataset API snapshot (`tank_api_snapshot.json`).
 
-The snapshot is the single data source of the pipeline (see `data/README.md`). It is parsed once
-and cached; the returned structures are shared, so callers must not mutate them.
+The snapshot is the single data source of the pipeline (see `data/README.md`). It is unpublished data of
+P. Broqvist (Tank dataset: DFT, MD solvation, computed NMR shieldings, geometries) and is not stored in the
+repository: it is read from the private data folder (`ATOM_PRIVATE_DIR`, see `kinetics/paths.py`). It is parsed
+once and cached; the returned structures are shared, so callers must not mutate them.
 
 Classification: PUBLIC (see CLASSIFICATION.md)
 Source: Y. Alcaraz Galván; reads P. Broqvist, Tank dataset snapshot (unpublished)
@@ -12,8 +14,9 @@ import os
 from collections import Counter
 from functools import lru_cache
 
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_SNAPSHOT_PATH = os.path.join(_REPO_ROOT, "data", "tank_api_snapshot.json")
+from kinetics.paths import PRIVATE_DIR_VAR, private_path
+
+DEFAULT_SNAPSHOT_PATH = private_path("data", "tank_api_snapshot.json")
 
 # Standard atomic weights [g/mol] for the elements present in the snapshot
 ATOMIC_MASS_G_MOL = {
@@ -26,7 +29,8 @@ ATOMIC_MASS_G_MOL = {
 def load_snapshot(path: str = DEFAULT_SNAPSHOT_PATH) -> dict:
     """Parsed snapshot JSON (cached per path)."""
     if not os.path.exists(path):
-        raise FileNotFoundError(f"Snapshot not found: {path}")
+        raise FileNotFoundError(f"Snapshot not found: {path} (the Tank snapshot is private data: set {PRIVATE_DIR_VAR}, "
+                                f"see .env.example)")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 

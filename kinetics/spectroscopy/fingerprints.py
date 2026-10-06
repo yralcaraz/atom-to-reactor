@@ -6,7 +6,7 @@ the identifiable (lumped) reactions; the Net Analyte Signal (NAS) gives, per nuc
 fingerprint no other reaction can mimic; the pseudoinverse recovers per-step extents Δξ from spectra.
 
 Classification: PUBLIC (see CLASSIFICATION.md)
-Source: Y. Alcaraz Galván
+Source: Y. Alcaraz Galván; adapted from P. Broqvist, tmspa_hydrolysis_protocol.ipynb (BatteryAsTank, unpublished)
 """
 
 from dataclasses import dataclass

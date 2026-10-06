@@ -91,7 +91,7 @@ def test_replicate_scatter():
 def test_real_file_reproduces_share_tables_if_available():
     csv = os.path.join(DEFAULT_SHARES_DIR, 'lab_shares_31P.csv')
     if not (os.path.exists(DEFAULT_OBSERVABLES_PATH) and os.path.exists(csv)):
-        print('  - skipped: data/lab_observables.json or the notebook 03 share tables not found')
+        print('  - skipped: lab_observables.json or the notebook 03 share tables not found in the private data folder (set ATOM_PRIVATE_DIR)')
         return
     observables = load_lab_observables()
     table = tabulate_observable_shares(observables)

@@ -1,7 +1,7 @@
 """Block 1 — Inputs: the computed-data snapshot, the species database, the reaction network and the
 experimental reference data.
 
-    snapshot.py      read-only access to data/tank_api_snapshot.json (DFT, MD solvation, NMR, geometries)
+    snapshot.py      read-only access to the Tank snapshot (DFT, MD solvation, NMR, geometries; private data folder)
     species.py       species database built from the snapshot (energies converted to eV)
     network.py       the 9-reaction network, its species and stoichiometry helpers
     experimental.py  Gogoi et al. 2024: measured shifts, barrier windows, control experiments, water series
@@ -28,8 +28,8 @@ from kinetics.data.lab_nmr import (
 )
 from kinetics.data.observables import (
     DEFAULT_ERROR_FLOOR, DEFAULT_OBSERVABLES_PATH, build_lab_inventory_for_observables, build_lab_observables,
-    calculate_replicate_scatter, describe_lab_observables, load_lab_observables, load_share_tables, tabulate_observable_shares,
-    write_lab_observables,
+    calculate_replicate_scatter, describe_lab_observables, load_lab_observables, load_lab_sample_folders,
+    load_share_tables, tabulate_observable_shares, write_lab_observables,
 )
 
 __all__ = [
@@ -43,6 +43,6 @@ __all__ = [
     "tabulate_area_shares", "find_heated_windows",
     "DEFAULT_ERROR_FLOOR", "DEFAULT_OBSERVABLES_PATH", "build_lab_inventory_for_observables",
     "build_lab_observables", "calculate_replicate_scatter",
-    "describe_lab_observables", "load_lab_observables", "load_share_tables", "tabulate_observable_shares",
+    "describe_lab_observables", "load_lab_observables", "load_lab_sample_folders", "load_share_tables", "tabulate_observable_shares",
     "write_lab_observables",
 ]

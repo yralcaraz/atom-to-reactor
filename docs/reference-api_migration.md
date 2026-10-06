@@ -122,4 +122,4 @@ A baseline of the pre-refactor API was compared with the new code. It covered so
 
 - **Bit-identical:** thermochemistry, rate constants, NMR catalog, selectivity and σ.
 - **Solver-level differences only:** reactor trajectories agree to ≤ 5·10⁻¹⁰ M. The analytic Jacobian slightly changes the Radau steps; the fast Marcus and Level 1 runs also no longer overflow in finite differences.
-- **Legacy oracle:** `tests/data/block5_legacy_baseline.json` (144 records) is still reproduced to < 10⁻¹².
+- **Legacy oracle:** `block5_legacy_baseline.json` (144 records, kept in the private data folder, `tests/`) is still reproduced to < 10⁻¹².

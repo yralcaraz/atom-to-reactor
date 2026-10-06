@@ -1,57 +1,57 @@
 # Data inventory
 
-| File | Kind | Content | Loaded by |
-|---|---|---|---|
-| `tank_api_snapshot.json` | Computed | Gas-phase DFT, MD solvation in EC, NMR shieldings, geometries | `kinetics/data/snapshot.py`, `species.py` |
-| `experimental_gogoi2024.json` | Measured | NMR shifts, barrier windows, control experiments, water series (Gogoi et al. 2024) | `kinetics/data/experimental.py` |
+| File | Kind | Content | In the repository | Loaded by |
+|---|---|---|---|---|
+| `experimental_gogoi2024.json` | Measured, published | NMR shifts, barrier windows, control experiments, water series (Gogoi et al. 2024) | yes | `kinetics/data/experimental.py` |
+| `tank_api_snapshot.json` | Computed, unpublished | Gas-phase DFT, MD solvation in EC, NMR shieldings, geometries (P. Broqvist, Tank dataset) | **no: private data folder** | `kinetics/data/snapshot.py`, `species.py` |
+| `lab_observables.json` | Measured, unpublished | Curated area shares and sample histories of the lab NMR spectra (N. Gogoi, 2022–2023) | **no: private data folder** | `kinetics/data/observables.py` |
+| raw lab spectra (`.jdf`) | Measured, unpublished | JEOL Delta spectra (N. Gogoi) | **no: `LAB_NMR_DIR`** | `kinetics/data/lab_nmr.py` |
 
-There are no kinetic time series in the repo yet. The test baseline `tests/data/block5_legacy_baseline.json` is regression data for the tests, not input data.
+## Private data
 
-## Snapshot: `tank_api_snapshot.json`
+The Tank dataset and the lab spectra are unpublished work of other people and are not redistributed. The code
+reads them from folders that each user points to with two environment variables (see `.env.example` and
+`kinetics/paths.py`):
 
-An offline snapshot of Peter Broqvist's Tank dataset API (`http://127.0.0.1:8000/api`), captured on 2026-09-24. It is the only source of thermochemistry, solvation, NMR and geometry data in this repo. **All of it is computed.**
+| Variable | Folder |
+|---|---|
+| `ATOM_PRIVATE_DIR` | `data/` (the snapshot, `lab_observables.json`, `lab_sample_folders.json`), `results/` (tables that reproduce private inputs) and `tests/` (the regression baseline) |
+| `LAB_NMR_DIR` | the raw lab spectra |
 
-| Endpoint | Records | Content |
-|---|---|---|
-| `datasets` | 24 | Gas-phase DFT summary per species |
-| `solvation` | 12 | MACE-OMol MD solvation energies in EC |
-| `nmr` | 24 | Per-atom computed NMR shieldings, keyed by `dataset_uuid` |
-| `structure` | 24 | Optimised geometry (elements + Cartesian coordinates in Å) |
+Without them the package imports, but nothing that needs the snapshot runs: the species database, the network
+thermochemistry and every test are built from it. What this repository shows without the private data is the code,
+the fit results (`notebooks/results/`) and the notebooks with their figures. To obtain the Tank snapshot, ask
+Prof. Peter Broqvist; for the lab spectra, Neha Gogoi (Ångström Laboratory, Uppsala).
 
-### `datasets` (gas-phase DFT)
+**Credit.** All DFT and MD data are from Peter Broqvist's Tank dataset (unpublished). Results in this repository that
+derive from them (rate constants, barriers, fitted parameters, figures) are computed from his data and say so in their
+`Source` line.
 
-- **Level of theory:** ωB97M-V/def2-TZVPD with VV10 non-local dispersion, for all 24 species. Every species is neutral and closed-shell.
-- **Energies (Hartree):** `energy_scf_eh`, `zpe_eh`, `enthalpy_eh`, `gibbs_eh`. G is at 298.15 K and 1 bar. The rigid-rotor/harmonic-oscillator entropy follows as S = (H − G)/T; for H₂O it is 188.6 J/(mol·K) against 188.8 J/(mol·K) experimentally.
-- **Other properties:** `dipole_debye`, `polarizability_iso_ang3`, `homo_ev`, `lumo_ev`, `gap_ev`, `optical_gap_ev`.
-- **Flags only, no data:**
-  - `has_xps`, `has_xas`, `xas_edges`, `has_optical`, `n_xps_sites`: the spectra themselves were not captured.
-  - `n_warnings`: the warning texts were not captured.
-- **`n_modes` is a count, not the frequencies.** No vibrational frequencies, Hessians or moments of inertia are in the snapshot, so the `qRRHO` mode cannot be run with real data.
-- **`n_modes` is below 3N−6 for five species:** TMSPA (123 of 126), BMSPA (89 of 90), HMDSO (74 of 75), TMSOdiEG (80 of 81) and c6h6f2li2o6-2 (59 of 60). All five have `n_warnings` ≥ 1. The likely cause is imaginary or discarded soft modes, which would bias `gibbs_eh`. This is not yet confirmed (TFM open question DFT-02).
+## Snapshot: `tank_api_snapshot.json` (private)
 
-**Species.**
-- **Reaction network (11):** TMSPA, BMSPA, MMSPA, H3PO4, H2O, TMSOH, HMDSO (the network calls it `siloxyl`), EC, TMSOEG, TMSOdiEG, CO2.
-- **Not wired into the network (13):** TMS (NMR reference), PH3, DMSO, DEC, DMC, DME, VC, propylene_carbonate, C2H4, bis_2_oxoethyl_oxalate, dilithium_4_carboxylatooxybutyl_carbonate, c6h6f2li2o6 and c6h6f2li2o6-2 (two entries with the same formula).
-- **Not in the snapshot:** no fluorine/HF chemistry species (TMSF, HF, LiPF6, POF3, PF5) and no Li⁺.
+An offline snapshot of the Tank dataset API, captured on 2026-09-24. It is the only source of thermochemistry,
+solvation, NMR and geometry data in this repo. **All of it is computed.**
 
-### `solvation` (MACE-OMol MD in EC)
+| Endpoint | Content |
+|---|---|
+| `datasets` | Gas-phase DFT summary per species (ωB97M-V/def2-TZVPD, neutral closed-shell species) |
+| `solvation` | MACE-OMol MD solvation energies in EC |
+| `nmr` | Per-atom computed NMR shieldings, keyed by `dataset_uuid` |
+| `structure` | Optimised geometry (elements and Cartesian coordinates in Å) |
 
-- **Species (12):** the 11 network species plus VC. The model is `MACE-OMol-extra_large` at 298.15 K. Each box has 14 EC and the solute; the pure-EC reference box has 15 EC.
-- **ΔE_solv:** `delta_e_solv_kjmol` = E(solution) − (14/15)·E(pure EC) − E(gas solute), all MD averages. This is an energy, not a free energy: there is no solvation entropy.
-- **`uncertainty_kjmol`:** the quadrature sum of `raw_metadata` `E_gas_std_eV`, `E_solution_std_eV` and `E_solvent_std_eV`. Despite the `_std` key names, these are standard errors of the mean MD energies (TFM question SLV-01, resolved), so they are used as stored.
-  - The pure-EC term (0.202 eV) is one shared run and cancels in 2 → 2 reactions (see `kinetics/thermo/uncertainty.py`).
-- **Also in `raw_metadata`:** `E_*_mean_eV`, `E_solvent_scaled_eV`, `solution_start_density_g_cm3`, `smiles`.
+What to keep in mind when using it (the values are in the private file):
 
-### `nmr` (computed shieldings)
+- **Energies** are in Hartree (`energy_scf_eh`, `zpe_eh`, `enthalpy_eh`, `gibbs_eh`); G is at 298.15 K and 1 bar in the rigid-rotor/harmonic-oscillator approximation.
+- **`n_modes` is a count, not the frequencies.** No vibrational frequencies or Hessians are stored, so the `qRRHO` mode cannot be run with real data.
+- **Solvation** `delta_e_solv_kjmol` is an energy, not a free energy: there is no solvation entropy. `uncertainty_kjmol` combines the standard errors of the three mean MD energies, and the pure-EC reference run is shared, so its term cancels in 2 → 2 reactions (see `kinetics/thermo/uncertainty.py`).
+- **Shieldings** are absolute values of a single static geometry. They are DFT results, not measurements: chemically equivalent nuclei are not averaged and anisotropies are included. `kinetics/spectroscopy/symmetry.py` averages and references them (TMS for ²⁹Si/¹³C/¹H, H₃PO₄ for ³¹P). They give peak positions only, so they cannot be used to fit kinetics.
+- **Species:** 11 are wired into the reaction network (TMSPA, BMSPA, MMSPA, H3PO4, H2O, TMSOH, HMDSO, EC, TMSOEG, TMSOdiEG, CO2); the others are references and solvents. There is no fluorine/HF chemistry and no Li⁺.
 
-- **Content:** per atom, `element`, `atom_index` (matching `structure`), absolute `isotropic_ppm` shielding and `anisotropy_ppm`. `parse_strategy` = `summary_table` for all 24, i.e. parsed from the program's shielding summary.
-- **Coverage:** 211 H, 94 C, 68 O, 12 Si, 5 P and 4 F values. Li (and S in DMSO) are not included.
-- **These are DFT results, not measurements.**
-  - They are absolute shieldings per atom of a single static geometry. Chemically equivalent methyl H in TMS differ by about 0.01 ppm, whereas a solution spectrum would average them.
-  - They include anisotropies, which solution NMR does not measure.
-  - They exist for every dataset, including the Li salts.
-- **Use:** `kinetics/spectroscopy/symmetry.py` averages them over equivalent nuclei and references them (TMS for ²⁹Si/¹³C/¹H, H₃PO₄ for ³¹P). They give peak positions only, with no concentrations or times, so they cannot be used to fit kinetics.
-- **Accuracy against Gogoi et al. 2024:** ³¹P within about 2.6 ppm. ²⁹Si is systematically 3–6 ppm high (see the theory doc, Block 8.2).
+## Lab observables: `lab_observables.json` (private)
+
+Built by `scripts/build_observables.py` from the area shares of the lab ³¹P and ¹³C spectra. Per sample it holds the
+recipe, what is known of its temperature history, and the shares with two measured uncertainties (noise, baseline
+spread). The time from mixing to the first spectrum is unknown for every sample.
 
 ## Measured data: `experimental_gogoi2024.json`
 
@@ -62,4 +62,4 @@ The only experimental data in the repo come from Gogoi et al., *J. Phys. Chem. C
 - **`control_experiments`:** four simple mixtures (TMSOH in EC at RT and 80 °C; TMSPA + TMSOH at RT), each with a window on one observable. `kinetics/reactor/validation.py` re-simulates them for any model.
 - **`water_series`:** ³¹P of 5 vol% TMSPA with 0.5, 1, 2 and 5 vol% water at RT (time after mixing not stated), and the 2 vol% sample heated to 80 °C. The windows on the P fractions are our reading of the text and figures (status `reading`). `evaluate_water_series` and `evaluate_heating_observation` test a model against them (notebook 03, §4).
 
-The windows are derived in TFM *KIN - DRAFT - Level 1 formulation refined scaling relations - 260928*, §4.4. Entries marked `assumed` rest on a detection limit or reaction time the paper does not state. There is no quantitative constraint on hydrolysis (R1–R3); the water series is used only as a test of the model structure. Lab data from the Ångström group (Erik) are pending.
+The windows are derived in TFM *KIN - DRAFT - Level 1 formulation refined scaling relations - 260928*, §4.4. Entries marked `assumed` rest on a detection limit or reaction time the paper does not state. There is no quantitative constraint on hydrolysis (R1–R3); the water series is used only as a test of the model structure.
