@@ -4,7 +4,7 @@ A structure says which barriers are separate parameters, whether the reaction en
 ladder may move within their computed uncertainty, and whether part of the added water may be unavailable.
 It turns a parameter vector into a self-contained ModelSpec (own network, own species shifts).
 
-    M0-BEP      one barrier for all nine reactions, capped BEP (the structure of `peter_reference`)
+    M0-BEP      one barrier for all nine reactions, capped BEP (the structure of `reference_bep`)
     M0-Marcus   one barrier for all nine reactions, Marcus
     M1          one Marcus barrier per family (the structure of `level1`)
     M1-split    M1 with R1 separate from R2 and R3 (R2 and R3 share one barrier)
@@ -238,7 +238,7 @@ _M1 = FitStructure('M1', 'one Marcus barrier per family', 'level1', parent='M0-M
 _M1_SPLIT = FitStructure('M1-split', 'Marcus barrier per family, R1 separate from R2 and R3', 'level1',
                          split=SPLIT_HYDROLYSIS, parent='M1')
 FIT_STRUCTURES = {
-    'M0-BEP': FitStructure('M0-BEP', 'one barrier for all reactions, capped BEP', 'peter_reference', shared_barrier=True),
+    'M0-BEP': FitStructure('M0-BEP', 'one barrier for all reactions, capped BEP', 'reference_bep', shared_barrier=True),
     'M0-Marcus': FitStructure('M0-Marcus', 'one barrier for all reactions, Marcus', 'level1', shared_barrier=True),
     'M1': _M1,
     'M1-split': _M1_SPLIT,

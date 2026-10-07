@@ -13,7 +13,7 @@ from kinetics.microkinetics.barriers import (
     BARRIER_MODELS, REVERSAL_INVARIANT, calculate_barrier, invert_marcus_barrier, reversed_params,
 )
 from kinetics.microkinetics.parameters import (
-    FAMILY_BEP_PARAMETERS, LEVEL1_PARAMETERS, PETER_REFERENCE_PARAMETERS, normalize_family_params,
+    FAMILY_BEP_PARAMETERS, LEVEL1_PARAMETERS, REFERENCE_BEP_PARAMETERS, normalize_family_params,
 )
 from kinetics.microkinetics.rates import (
     KINETIC_MODELS, calculate_eyring_rate, calculate_network_rates, calculate_rate_constants,
@@ -23,7 +23,7 @@ from kinetics.microkinetics.arrhenius import build_arrhenius_table, fit_modified
 
 __all__ = [
     "BARRIER_MODELS", "REVERSAL_INVARIANT", "calculate_barrier", "invert_marcus_barrier", "reversed_params",
-    "FAMILY_BEP_PARAMETERS", "LEVEL1_PARAMETERS", "PETER_REFERENCE_PARAMETERS", "normalize_family_params",
+    "FAMILY_BEP_PARAMETERS", "LEVEL1_PARAMETERS", "REFERENCE_BEP_PARAMETERS", "normalize_family_params",
     "KINETIC_MODELS", "calculate_eyring_rate", "calculate_network_rates", "calculate_rate_constants",
     "MODELS", "ModelSpec", "describe_models", "get_model", "tabulate_family_barriers",
     "build_arrhenius_table", "fit_modified_arrhenius",

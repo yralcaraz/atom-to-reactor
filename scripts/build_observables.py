@@ -8,6 +8,7 @@ The file is written to the data folder (ATOM_DATA_DIR, see kinetics/paths.py).
 Both routes go through kinetics.data.build_lab_observables. The raw route recomputes the area shares and reads
 the heating episodes from the acquisition times; the CSV route takes the shares from the results/03
 folder and the heating episodes transcribed from notebooks 03 and 04 (RECORDED_HISTORIES), and says so in the file.
+Only the raw route holds the 13C spectra of the tubes with phosphate (the second nucleus of those samples).
 
 Source: Y. Alcaraz Galván; reads share tables derived from the experimental NMR spectra
 """
@@ -34,7 +35,7 @@ def main():
 
     if args.from_raw:
         shares_P, shares_C, heated = build_lab_inventory_for_observables(DEFAULT_LAB_NMR_DIR)
-        observables = build_lab_observables(shares_P, shares_C, heated_windows=heated,
+        observables = build_lab_observables(shares_P, shares_C, heated_windows=heated, strict=True,
                                             built_from='raw spectra (folder given by LAB_NMR_DIR)')
     else:
         shares_P, shares_C = load_share_tables()

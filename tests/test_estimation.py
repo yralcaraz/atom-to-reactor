@@ -26,6 +26,7 @@ for path in (repo_root, os.path.dirname(os.path.abspath(__file__))):
 
 from kinetics.constants import ZERO_CELSIUS_K
 from kinetics.data import DEFAULT_OBSERVABLES_PATH, NETWORK, NETWORK_SPECIES, load_experimental_data, load_lab_observables
+from kinetics.data.observables import SILYL_WINDOWS
 from kinetics.fitting import (
     ExperimentDesign, FitProblem, calculate_parameter_directions, calculate_prediction_band, calculate_profile,
     compare_structures, embed_parent_theta, extend_profile, find_confidence_interval, fit_leave_one_out, fit_structure,
@@ -151,14 +152,15 @@ def test_sample_set_and_histories():
     middle = {s['name']: s for s in build_sample_set(observables, 'middle')}
     assert list(middle) == ['0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe', 'TMSOH, glovebox', 'E1']
     assert all(s['age_h'] == 24.0 for s in middle.values() if s['age_mode'] == 'fixed')
-    assert middle['TMSOH, glovebox']['age_mode'] == 'none' and middle['2 % H2O']['replicate']
-    assert not middle['TMSOH, probe']['replicate'], 'a spectrum at 80 °C is not a repeat of the room-temperature ones'
+    assert all(len(s['blocks']) == 1 for s in middle.values() if s['kind'] == 'lab'), 'one nucleus per tube in this set'
+    assert middle['TMSOH, glovebox']['age_mode'] == 'none' and middle['2 % H2O']['blocks'][0]['replicate']
+    assert not middle['TMSOH, probe']['blocks'][0]['replicate'], 'a spectrum at 80 °C is not a repeat of the room-temperature ones'
     segments, times = build_sample_history(middle['2 % H2O'])
     assert len(segments) == 14 and abs(sum(d for _, d in segments) / 3600.0 - (24.0 + 145.0)) < 1e-9
     assert [round(T - ZERO_CELSIUS_K) for T, _ in segments[2::2]] == [30, 40, 50, 60, 70, 80]
-    assert np.allclose(times / 3600.0, 24.0 + np.array([0.1, 33.0, 72.0, 96.0, 120.0, 145.0]))
+    assert np.allclose(times[0] / 3600.0, 24.0 + np.array([0.1, 33.0, 72.0, 96.0, 120.0, 145.0]))
     segments, times = build_sample_history(middle['TMSOH, glovebox'])
-    assert segments[0] == (353.15, 8 * 3600.0) and abs(times[0] / 3600.0 - 8.1) < 1e-9
+    assert segments[0] == (353.15, 8 * 3600.0) and abs(times[0][0] / 3600.0 - 8.1) < 1e-9
     free = {s['name']: s for s in build_sample_set(observables, 'free')}
     assert [free[n]['age_mode'] for n in ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe')] == \
         ['profile', 'parameter', 'profile', 'fixed']
@@ -171,6 +173,12 @@ def test_sample_set_and_histories():
     assert by_name['TMSOH, glovebox']['pre_segments'][0][1] == 16 * 3600.0
     assert all(d == 8 * 3600.0 for _, _, d in by_name['2 % H2O']['heated'])
     build_sample_history(by_name['2 % H2O'])                 # 8 h holds still fit between the spectra
+    capped = {s['name']: s for s in build_sample_set(observables, 'middle', overrides={'2 % H2O': {'heated_duration_h': 30.0}})}
+    heated = capped['2 % H2O']['heated']
+    assert all(start + d <= following + 1e-6 for (start, _, d), (following, _, _) in zip(heated, heated[1:])), \
+        'a longer hold stops where the next heating episode starts'
+    assert heated[-1][2] == 30 * 3600.0 and any(d < 30 * 3600.0 for _, _, d in heated[:-1])
+    build_sample_history(capped['2 % H2O'])
     seeded = {s['name']: s for s in build_sample_set(observables, 'middle', overrides={'2 % H2O': {'added_M': {'TMSOH': 1e-6}}})}
     assert seeded['2 % H2O']['c0_M']['TMSOH'] == middle['2 % H2O']['c0_M'].get('TMSOH', 0.0) + 1e-6
     assert seeded['0.5 % H2O']['c0_M'] == middle['0.5 % H2O']['c0_M'], 'an addition applies to the named sample only'
@@ -182,13 +190,14 @@ def test_replicate_block_and_limits():
     observables = build_synthetic_observables()
     samples = build_sample_set(observables, 'middle', exclude=('0.5 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe',
                                                                'TMSOH, glovebox', 'E1'))
-    block = samples[0]
+    tube = samples[0]
+    block = tube['blocks'][0]
     assert block['replicate'] and block['birge'] == 1.0
     from kinetics.fitting.residuals import _rows_of_sample, _whiten
     # A model that predicts the same composition in every spectrum, off by a common amount in one window
     offset = np.zeros_like(block['measured'])
     offset[:, 2] = 0.02
-    rows = pd.DataFrame(_rows_of_sample(block, block['measured'] + offset, 24.0))
+    rows = pd.DataFrame(_rows_of_sample(tube, [block['measured'] + offset], 24.0))
     drift = rows[rows['kind'] == 'drift']
     assert np.max(np.abs(drift['z'])) < 1e-9, 'six identical spectra and a constant prediction: no drift residual'
     mean = rows[rows['kind'] == 'mean'].set_index('quantity')
@@ -200,7 +209,7 @@ def test_replicate_block_and_limits():
     # A drift in one spectrum is weighed with the independent error only
     bump = np.zeros_like(block['measured'])
     bump[3, 1] = 0.01
-    rows = pd.DataFrame(_rows_of_sample(block, block['measured'] + bump, 24.0))
+    rows = pd.DataFrame(_rows_of_sample(tube, [block['measured'] + bump], 24.0))
     z = rows[(rows['kind'] == 'drift') & (rows['quantity'] == 'BMSPA drift, spectrum 4')]['z'].iloc[0]
     assert 2.0 < z < 0.01 / block['sigma_ind'][3, 1] + 1e-9, z
     # One-sided paper term: zero inside the limit, linear outside; a failed simulation costs PENALTY per value
@@ -224,11 +233,11 @@ def test_free_ages_and_tables():
     assert residuals.size == 45 and all(d['ok'] for d in details.values())
     # The age found inside the evaluation is the best of a brute-force scan
     tube = next(s for s in free if s['name'] == 'TMSPa + TMSOH (A)')
-    from kinetics.fitting.residuals import _whiten
+    from kinetics.fitting.residuals import _whiten_sample
     ages = np.geomspace(*FREE_AGE_BOUNDS_H, 200)
-    scan = [np.sum(_whiten(tube, calculate_predicted_shares(tube, MID, age_h=a)) ** 2) for a in ages]
+    scan = [np.sum(_whiten_sample(tube, calculate_predicted_shares(tube, MID, age_h=a)) ** 2) for a in ages]
     found = details['TMSPa + TMSOH (A)']['age_h']
-    chi2_found = np.sum(_whiten(tube, calculate_predicted_shares(tube, MID, age_h=found)) ** 2)
+    chi2_found = np.sum(_whiten_sample(tube, calculate_predicted_shares(tube, MID, age_h=found)) ** 2)
     assert FREE_AGE_BOUNDS_H[0] <= found <= FREE_AGE_BOUNDS_H[1]
     assert chi2_found <= min(scan) + 0.02, (chi2_found, min(scan), found)
     # A fixed scenario is the free one evaluated at those ages
@@ -262,7 +271,8 @@ def test_search_and_report_tolerances_agree():
                 continue
             coarse = calculate_predicted_shares(sample, model, solver=SEARCH_SOLVER)
             fine = calculate_predicted_shares(sample, model, solver=REPORT_SOLVER)
-            worst = max(worst, np.max(np.abs(coarse - fine) / sample['sigma_ind']))
+            worst = max([worst] + [np.max(np.abs(c - f) / block['sigma_ind'])
+                                   for block, c, f in zip(sample['blocks'], coarse, fine)])
     assert worst < 0.1, worst
     print(f'  ✓ rtol 1e-6 and 1e-8 agree within {worst:.1e} standard errors on every share')
 
@@ -279,7 +289,7 @@ def test_structures_build_models():
     assert names['M1-split'][:5] == ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack']
     assert names['M3-split+W'][5:] == ['dG R1', 'dG R2', 'dG R3', 'dG R4', 'water fraction', 'log10 age 2 % H2O']
     # M0 reproduces the registered models at their own barrier; M1 reproduces level1
-    for structure, registered, g in (('M0-BEP', 'peter_reference', 1.15), ('M0-Marcus', 'level1', 1.15)):
+    for structure, registered, g in (('M0-BEP', 'reference_bep', 1.15), ('M0-Marcus', 'level1', 1.15)):
         built = get_structure(structure).build({'g all reactions': g})
         expected = get_model(registered).with_barrier(g).calculate_rates(300.0)
         assert np.array_equal(built['model'].calculate_rates(300.0)['k_f'].values, expected['k_f'].values), structure
@@ -427,8 +437,8 @@ def _violation(c0, T_K, t_min_s, t_max_s, windows, model):
     C, idx = np.maximum(sim['C_M'], 0.0), sim['idx']
     values = {
         'tmspa_share': lambda: _shares_from_state(C, idx, '31P')[:, 0],
-        'ring_opened': lambda: _shares_from_state(C, idx, '13C')[:, 2],
-        'hmdso': lambda: _shares_from_state(C, idx, '13C')[:, 1],
+        'ring_opened': lambda: _shares_from_state(C, idx, '13C', SILYL_WINDOWS)[:, 2],
+        'hmdso': lambda: _shares_from_state(C, idx, '13C', SILYL_WINDOWS)[:, 1],
         'tmspa_conversion': lambda: 1.0 - C[idx['TMSPA']] / c0['TMSPA'],
     }
     out = np.zeros(len(times))
@@ -505,13 +515,13 @@ def test_windows_reproduce_notebook_03_if_available(tolerance_eV=0.005):
         print('  - skipped: lab_observables.json not found in the data folder (set ATOM_DATA_DIR)')
         return None
     observations = _notebook_03_observations(load_lab_observables())
-    level1, peter = get_model('level1'), get_model('peter_reference')
+    level1, reference = get_model('level1'), get_model('reference_bep')
     structures = {
         'hydrolysis': lambda g: level1.with_family_params('hydrolysis', g_eV=g),
         'transfer': lambda g: level1.with_family_params('transfer', g_eV=g),
         'condensation': lambda g: level1.with_family_params('condensation', g_eV=g),
         'solvent_attack': lambda g: level1.with_family_params('solvent_attack', g_eV=g),
-        'M0 · capped BEP, one E0': peter.with_barrier,
+        'M0 · capped BEP, one E0': reference.with_barrier,
         'M0 · Marcus, one g': level1.with_barrier,
     }
     expected = pd.concat([pd.read_csv(os.path.join(RESULTS_03, name), index_col=0)

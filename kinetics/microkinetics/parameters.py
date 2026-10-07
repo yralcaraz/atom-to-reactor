@@ -29,9 +29,9 @@ FAMILY_BEP_PARAMETERS = {
     'default':        {'g_eV': 0.80, 'alpha': 0.50},
 }
 
-# Peter Broqvist's protocol reference: one global E0 chosen so
+# Reference for the bench protocol (P. Broqvist): one global E0 chosen so
 # that TMSPA depletion spreads across the RT → 80 °C temperature steps.
-PETER_REFERENCE_PARAMETERS = {
+REFERENCE_BEP_PARAMETERS = {
     'default': {'g_eV': 1.15, 'alpha': 0.50},
 }
 

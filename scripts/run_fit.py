@@ -9,14 +9,15 @@
     python scripts/run_fit.py refit          fits of M3 and M3-split checked at the tightened search tolerance, redone if needed
     python scripts/run_fit.py night          profiles, leave-one-sample-out, indistinguishability, sensitivities
     python scripts/run_fit.py traces         the main structure with a trace of TMSOH at mixing: as fitted, and fitted again
-    python scripts/run_fit.py predictions    hold-out and checks, storage at 25 °C, Peter's protocol with its ΔS‡ band
+    python scripts/run_fit.py predictions    hold-out and checks, storage at 25 °C, the bench protocol with its ΔS‡ band
 
-Every job writes one file under notebooks/results/05/ and is skipped when that file exists, so a stage can be
-interrupted and started again.
+Every job writes one file under the results directory (notebooks/results/05/, the first fit, unless --results
+names another) and is skipped when that file exists, so a stage can be interrupted and started again. A new fit
+needs a new directory: in one that holds results the old fits are returned as they are.
 
 Rules fixed before any fit: scenarios 'short' (1 h), 'middle' (1 d), 'long' (7 d)
-and 'free' (each unknown age between 1 h and 7 d); a structure fits a scenario if no standardised residual
-exceeds 3; the first consistent parameter set is that of the smallest structure that fits, a common-age scenario
+and 'free' (each unknown age between 1 h and 30 d; 7 d in the first fit); a structure fits a scenario if no
+standardised residual exceeds 3; the first consistent parameter set is that of the smallest structure that fits, a common-age scenario
 taking precedence over free ages.
 
 Source: Y. Alcaraz Galván
@@ -57,9 +58,14 @@ from kinetics.reactor import (
 
 RESULTS = REPO / 'notebooks' / 'results' / '05'
 
-# Search effort per structure: (Sobol screen points, starts polished, least-squares iterations per start)
-EFFORT = {'M0-BEP': (128, 6, 30), 'M0-Marcus': (128, 6, 30), 'M1': (512, 12, 40), 'M1-split': (512, 12, 40),
-          'M3': (2048, 16, 40), 'M3-split': (2048, 16, 40)}
+# Search effort per structure: (Sobol screen points, starts polished, least-squares iterations per start).
+# M0, M1 and M1-split did not fit in the first run (chi2 above 280) and get a light search; the first run missed
+# the minimum of the freed-energy structures twice, so M3 and M3-split get four times the screen and twice the starts
+EFFORT = {'M0-BEP': (32, 2, 20), 'M0-Marcus': (32, 2, 20), 'M1': (128, 4, 30), 'M1-split': (128, 4, 30),
+          'M3': (8192, 32, 40), 'M3-split': (8192, 32, 40)}
+# Check fits of the main structure on changed data (trace of TMSOH, full search of a sensitivity variant): they
+# start from the main fit, so they keep the search of the first run
+CHECK_EFFORT = (2048, 16, 40)
 
 
 def log(message: str) -> None:
@@ -575,7 +581,7 @@ def run_sensitivities(structure: str, scenario: str, args) -> pd.DataFrame:
         if not fit['fits']:
             # A variant is not called a failure on a reduced search: it is fitted again with the full one
             full = run_one(structure, scenario, args, tag=tag + '__full_search', starts=[main['theta'], fit['theta']],
-                           sample_options=options, prior_scale=prior_scale)
+                           sample_options=options, prior_scale=prior_scale, effort=CHECK_EFFORT)
             fit, search = (full, 'full') if full['chi2'] < fit['chi2'] else (fit, 'full, no better')
         rows.append({'variant': variant, 'scenario': scenario, 'search': search, 'chi2': fit['chi2'],
                      'max |z|': fit['max_abs_z'], 'worst': fit['worst'], 'fits': fit['fits'], **fit['theta'],
@@ -764,13 +770,13 @@ def stage_traces(args) -> None:
             if not fit['fits']:
                 continue
             new = run_one(MAIN_STRUCTURE, scenario, args, tag=f'__TMSOH_{label}', starts=[fit['theta']] + starts,
-                          sample_options=trace_options(level))
+                          sample_options=trace_options(level), effort=CHECK_EFFORT)
             problem = FitProblem(MAIN_STRUCTURE, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
             record(scenario, level, 'fitted again', problem, new['theta'], evaluations=new['n_evaluations'])
 
 
 # ------------------------------------------------------------------------------
-# predictions: hold-out and checks, storage at 25 °C, Peter's protocol with its ΔS‡ band
+# predictions: hold-out and checks, storage at 25 °C, the bench protocol with its ΔS‡ band
 # ------------------------------------------------------------------------------
 STORAGE_C0_M = {'TMSPA': 0.050, 'H2O': 0.020, 'EC': 4.5}      # the sealed electrolyte of notebook 01, Block 8
 STORAGE_T_K = 298.15
@@ -817,6 +823,17 @@ def check_hold_out(structure: str, scenario: str, theta: dict) -> pd.DataFrame:
     built = get_structure(structure).build(theta)
     samples = sample_set(scenario, roles=('hold_out',), paper=())
     return tabulate_residuals(built['model'], samples, ages=built['ages'], water_fraction=built['water_fraction'])
+
+
+def check_later_spectra(structure: str, scenario: str, fit: dict) -> pd.DataFrame:
+    """Spectra of a fitted sample that are only a check (role 'check' on a second nucleus), at the age the fit
+    gave that sample. Empty when the observables hold none."""
+    built = get_structure(structure).build(fit['theta'])
+    samples = sample_set(scenario, roles=('check',), paper=(), exclude=('TMSPa alone',))
+    if not samples:
+        return pd.DataFrame()
+    return tabulate_residuals(built['model'], samples, ages={**fit['ages'], **built['ages']},
+                              water_fraction=built['water_fraction'])
 
 
 CO_PRODUCTS = ('none', 'TMSOH', 'HMDSO')
@@ -915,9 +932,10 @@ def tabulate_sample_trajectories(structure: str, scenario: str, fit: dict, trace
             rows += [{'structure': structure, 'scenario': scenario, 'sample': sample['name'], 'kind': 'model',
                       'TMSOH at mixing (M)': level, 't_h': t / 3600.0, **dict(zip(windows, y))} for t, y in zip(times, shares)]
         age_h = fit['ages'][sample['name']]
+        block = next(b for b in sample['blocks'] if b['nucleus'] == '31P')
         rows += [{'structure': structure, 'scenario': scenario, 'sample': sample['name'], 'kind': 'measured',
                   'TMSOH at mixing (M)': np.nan, 't_h': age_h + t / 3600.0, **dict(zip(windows, y))}
-                 for t, y in zip(sample['t_spec_s'], sample['measured'])]
+                 for t, y in zip(block['t_spec_s'], block['measured'])]
     return pd.DataFrame(rows)
 
 
@@ -925,7 +943,7 @@ def stage_predictions(args) -> None:
     fits = load_main_fits()
     selected = select_consistent(fits)
     structures = [MAIN_STRUCTURE, 'M1'] + ([selected[0]] if selected and selected[0] not in (MAIN_STRUCTURE, 'M1') else [])
-    hold_out, alone, paper, storage, protocol, traces, trajectories = [], [], [], [], [], [], []
+    hold_out, alone, paper, storage, protocol, traces, trajectories, later = [], [], [], [], [], [], [], []
     stages, _ = build_protocol_schedule()
     recipe = calculate_recipe_molarities()
     for structure in structures:
@@ -935,6 +953,8 @@ def stage_predictions(args) -> None:
             theta = fits[(structure, scenario)]['theta']
             built = get_structure(structure).build(theta)
             hold_out.append(check_hold_out(structure, scenario, theta).assign(structure=structure, scenario=scenario))
+            later.append(check_later_spectra(structure, scenario, fits[(structure, scenario)])
+                         .assign(structure=structure, scenario=scenario))
             checked = {'the fit': theta}
             for label in TRACE_REFIT_M if structure == MAIN_STRUCTURE else ():
                 if fit_path(structure, scenario, f'__TMSOH_{label}').exists():
@@ -968,13 +988,14 @@ def stage_predictions(args) -> None:
                     row.update({'t90 water (h), fitted with the trace': again['t90_water_h'],
                                 'chi2 fitted with the trace': refit['chi2'], 'fits with the trace': refit['fits']})
                 traces.append(row)
-            # Peter's protocol: TMSPA left at each acquisition over the declared range of ΔS‡
+            # Bench protocol: TMSPA left at each acquisition over the declared range of ΔS‡
             for dS in DS_RANGE_J_MOL_K:
                 sim = simulate_protocol(stages, recipe, model=with_activation_entropy(built['model'], dS))
                 left = calculate_remaining_fraction(sim)
                 protocol += [{'structure': structure, 'scenario': scenario, 'dS (J/mol/K)': dS, 'hold T (°C)': T,
                               'TMSPA left': float(v)} for T, v in left.items()]
     pd.concat(hold_out, ignore_index=True).to_csv(RESULTS / 'hold_out.csv', index=False)
+    pd.concat(later, ignore_index=True).to_csv(RESULTS / 'check_later_spectra.csv', index=False)
     pd.DataFrame(alone).to_csv(RESULTS / 'check_tmspa_alone.csv', index=False)
     pd.DataFrame(paper).to_csv(RESULTS / 'check_paper.csv', index=False)
     pd.DataFrame(storage).to_csv(RESULTS / 'prediction_storage.csv', index=False)
@@ -1000,13 +1021,14 @@ def main():
     parser.add_argument('--results', default=None, help='results directory (default notebooks/results/05)')
     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
     args = parser.parse_args()
-    global RESULTS
+    global RESULTS, CHECK_EFFORT
     if args.results:
         RESULTS = Path(args.results).resolve()
     if args.quick:
         args.scale, args.profile_nfev = 0.05, 3
         for name in EFFORT:
             EFFORT[name] = (EFFORT[name][0], 2, 5)
+        CHECK_EFFORT = (CHECK_EFFORT[0], 2, 5)
     warnings.filterwarnings('ignore', category=RuntimeWarning)
     RESULTS.mkdir(parents=True, exist_ok=True)
     log(f'--- stage {args.stage} (workers {args.workers}) ---')

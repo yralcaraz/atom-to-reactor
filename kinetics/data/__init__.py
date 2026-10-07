@@ -27,8 +27,8 @@ from kinetics.data.lab_nmr import (
 )
 from kinetics.data.observables import (
     DEFAULT_ERROR_FLOOR, DEFAULT_OBSERVABLES_PATH, build_lab_inventory_for_observables, build_lab_observables,
-    calculate_replicate_scatter, describe_lab_observables, load_lab_observables, load_lab_sample_folders,
-    load_share_tables, tabulate_observable_shares, write_lab_observables,
+    calculate_replicate_scatter, describe_lab_observables, list_spectrum_sets, load_lab_observables,
+    load_lab_sample_folders, load_share_tables, tabulate_observable_shares, write_lab_observables,
 )
 
 __all__ = [
@@ -41,7 +41,7 @@ __all__ = [
     "estimate_noise", "calculate_window_integrals", "refine_window_phase", "calculate_area_shares",
     "tabulate_area_shares", "find_heated_windows",
     "DEFAULT_ERROR_FLOOR", "DEFAULT_OBSERVABLES_PATH", "build_lab_inventory_for_observables",
-    "build_lab_observables", "calculate_replicate_scatter",
+    "build_lab_observables", "calculate_replicate_scatter", "list_spectrum_sets",
     "describe_lab_observables", "load_lab_observables", "load_lab_sample_folders", "load_share_tables", "tabulate_observable_shares",
     "write_lab_observables",
 ]

@@ -1,6 +1,6 @@
 """Block 3B — Solution-phase Gibbs energy: G_sol = G°_gas + ΔE_solv + ΔG°→*.
 
-In 'wb97mv' mode the standard-state shift is omitted (as in Peter Broqvist's notebooks); it cancels in
+In 'wb97mv' mode the standard-state shift is omitted (as in the reference notebooks of P. Broqvist); it cancels in
 every reaction of the default network because each step conserves the number of molecules.
 
 Source: Y. Alcaraz Galván

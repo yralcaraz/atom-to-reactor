@@ -26,7 +26,7 @@ from kinetics import NETWORK, ModelSpec, calculate_rate_constants, load_species_
 from kinetics.constants import EV_TO_KJ_MOL
 from kinetics.paths import data_path
 from kinetics.microkinetics import (
-    FAMILY_BEP_PARAMETERS, PETER_REFERENCE_PARAMETERS, calculate_barrier, invert_marcus_barrier, reversed_params,
+    FAMILY_BEP_PARAMETERS, REFERENCE_BEP_PARAMETERS, calculate_barrier, invert_marcus_barrier, reversed_params,
 )
 
 X_GRID = np.linspace(-3.0, 3.0, 121)
@@ -96,7 +96,8 @@ def test_legacy_bit_identity():
         print(f"  - skipped: {path} not found (set ATOM_DATA_DIR, see .env.example)")
         return
     records = json.load(open(path))['records']
-    params = {'family_default': FAMILY_BEP_PARAMETERS, 'peter_reference': PETER_REFERENCE_PARAMETERS}
+    # Keys as stored in the baseline file, which predates the rename of the reference model
+    params = {'family_default': FAMILY_BEP_PARAMETERS, 'peter_reference': REFERENCE_BEP_PARAMETERS}
     worst = 0.0
     for r in records:
         with warnings.catch_warnings():

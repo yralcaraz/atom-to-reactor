@@ -10,7 +10,7 @@ Axioms (TFM KIN - DRAFT - Level 1 formulation, §2):
     A3 bounds               max(0, x) <= F(x)
     A4 anchoring            F(0) = g
     A6 Leffler bounds       0 <= α(x) <= 1
-'bep_cap' is the legacy Peter Broqvist form and violates A2, A3 and A5; it is kept only to reproduce
+'bep_cap' is the legacy reference form (P. Broqvist) and violates A2, A3 and A5; it is kept only to reproduce
 earlier results.
 
 Source: Y. Alcaraz Galván

@@ -1,11 +1,12 @@
-"""Figures for the first fit (notebook 05): residual maps, parameters across scenarios, profiles, influence of
+"""Figures for the fits of notebook 05: residual maps, parameters across scenarios, profiles, influence of
 each sample, recovery of known parameters, sample trajectories and the protocol band; and, for the step-by-step
 version of the notebook, compositions against measurements, the ladder of structures, barriers on a half-life
-ruler, energy shifts, the trace scan and the storage ranges.
+ruler, energy shifts, the trace scan, the storage ranges, the check of a tube that was not fitted and the
+verdict of every test at every assumed age.
 
 Colour does one job per figure: a diverging blue–grey–red scale for signed residuals and shifts (grey = none),
 one hue per age scenario in a fixed order, a single blue ramp for an ordered quantity (ΔS‡), red for a predicted
-share that breaks the fit rule.
+share or a test that breaks the fit rule.
 
 Source: Y. Alcaraz Galván
 """
@@ -13,11 +14,12 @@ Source: Y. Alcaraz Galván
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap, TwoSlopeNorm
 from matplotlib.lines import Line2D
 
 from demo.style import BLUE_RAMP, GRID, INK, INK_MUTED, INK_SOFT, RULE, SERIES, SURFACE
 from kinetics.constants import H_SI, KB_EV, KB_SI, ZERO_CELSIUS_K
+from kinetics.data.observables import PHOSPHATE_WINDOWS
 
 SCENARIO_ORDER = ('short', 'middle', 'long', 'free')
 SCENARIO_LABELS = {'short': 'short (1 h)', 'middle': 'middle (1 d)', 'long': 'long (7 d)', 'free': 'free ages'}
@@ -233,7 +235,7 @@ def plot_recovery(summary, title: str = None):
 
 
 def plot_protocol_band(protocol, *, structure: str, scenarios=None, title: str = None, labels: dict = None):
-    """TMSPA left at each acquisition of Peter's protocol, for each activation entropy in the declared range.
+    """TMSPA left at each acquisition of the bench protocol, for each activation entropy in the declared range.
 
     One panel per scenario; one line per ΔS‡, light to dark from the most negative to the most positive.
     """
@@ -255,7 +257,7 @@ def plot_protocol_band(protocol, *, structure: str, scenarios=None, title: str =
     axes.flat[0].set_ylabel('TMSPA left (fraction)')
     handles = [Line2D([], [], color=color, linewidth=1.8, label=f'ΔS‡ = {dS:+.0f}') for color, dS in zip(BLUE_RAMP[1:], entropies)]
     fig.legend(handles=handles, loc='outside lower center', ncols=len(handles), title='J mol⁻¹ K⁻¹', title_fontsize=8)
-    fig.suptitle(title or f"Peter's protocol with the {structure} best fit: the band of the unknown activation entropy",
+    fig.suptitle(title or f"Bench protocol with the {structure} best fit: the band of the unknown activation entropy",
                  x=0.01, ha='left', fontsize=11)
     return axes
 
@@ -319,6 +321,7 @@ def plot_compositions(cases: dict, panels: list, *, limit: float = 3.0, predicte
     cases: {row label: residual table of one model in one scenario}. panels: sample names, or (sample, n) for the
     n-th spectrum of a sample with several (default: the last). Dot: measured share ± 1 standard error; triangle: a
     published upper limit. Bar: predicted share, red where its miss |z| exceeds the fit rule, with the miss above it.
+    A sample read on two nuclei shows its ³¹P windows first and its ¹³C windows after a rule.
     """
     specs = [(p, None) if isinstance(p, str) else tuple(p) for p in panels]
     tables = {label: tabulate_compositions(table) for label, table in cases.items()}
@@ -348,6 +351,10 @@ def plot_compositions(cases: dict, panels: list, *, limit: float = 3.0, predicte
                         markersize=4.5, markeredgecolor=SURFACE, markeredgewidth=0.9, elinewidth=1.1, capsize=2.5, zorder=4)
             ax.plot(x[is_limit], rows['measured'][is_limit], linestyle='none', marker='v', markersize=6, color=INK,
                     markeredgecolor=SURFACE, markeredgewidth=0.9, zorder=4)
+            phosphate = rows['quantity'].isin(PHOSPHATE_WINDOWS).to_numpy()
+            both = phosphate.any() and (~phosphate & ~is_limit).any()
+            if both:
+                ax.axvline(phosphate.sum() - 0.5, color=RULE, linewidth=0.9)
             names = ['ring-opened' if limited else q for q, limited in zip(rows['quantity'], is_limit)]
             ax.set_xticks(x, names, fontsize=7)
             ax.set_xlim(-0.6, len(rows) - 0.4)
@@ -357,7 +364,8 @@ def plot_compositions(cases: dict, panels: list, *, limit: float = 3.0, predicte
             ax.tick_params(length=0)
             if ax in axes[0]:
                 note = f'spectrum {number or spectra} of {spectra}' if spectra > 1 else rows['averaged'].iloc[0]
-                ax.set_title(f'{sample}\n{note}', fontsize=8.5, loc='left')
+                nuclei = '' if is_limit.all() else '³¹P | ¹³C' if both else '³¹P' if phosphate.any() else '¹³C'
+                ax.set_title(f'{sample}\n' + ' · '.join(part for part in (nuclei, note) if part), fontsize=8.5, loc='left')
         row[0].set_ylabel(label, rotation=0, ha='right', va='center', fontsize=9, color=INK)
     handles = [Line2D([], [], marker='o', linestyle='', color=INK, markersize=4.5, label='measured share ± 1 standard error')]
     if any_limit:
@@ -365,7 +373,7 @@ def plot_compositions(cases: dict, panels: list, *, limit: float = 3.0, predicte
     if predicted:
         handles += [Line2D([], [], marker='s', linestyle='', color=BLUE_RAMP[0], markersize=8, label=f'predicted, miss within {limit:g}'),
                     Line2D([], [], marker='s', linestyle='', color=SERIES[7], markersize=8, label=f'predicted, miss above {limit:g} (number: the miss)')]
-    fig.legend(handles=handles, loc='outside lower center', ncols=len(handles))
+    fig.legend(handles=handles, loc='outside lower center', ncols=len(handles) if fig.get_figwidth() >= 8.0 else 2)
     fig.suptitle(title or 'Area shares: predicted against measured', x=0.01, ha='left', fontsize=11)
     return axes
 
@@ -568,4 +576,69 @@ def plot_storage_ranges(storage, seeded=None, *, structure: str, scenarios=('mid
                            markeredgewidth=1.6, label='fitted again with that trace')]
     fig.legend(handles=handles, loc='outside lower center', ncols=2)
     fig.suptitle(title or f'{structure}: storage prediction at each assumed age', x=0.01, ha='left', fontsize=11)
+    return ax
+
+
+def plot_tube_check(measured, cases: dict, *, start=None, labels: dict = None, title: str = None):
+    """Shares of one spectrum of a tube that was not fitted: measured, and predicted by the fit at each assumed age.
+
+    measured: table indexed by window with 'share' and 'sigma'. cases: {scenario: predicted share per window}, one
+    bar per scenario. start: the same table for an earlier spectrum of the tube, drawn as open circles.
+    """
+    labels = labels or AGE_LABELS
+    windows = list(measured.index)
+    x = np.arange(len(windows))
+    width = 0.72 / len(cases)
+    fig, ax = plt.subplots(figsize=(7.6, 3.5), layout='constrained')
+    for k, (scenario, predicted) in enumerate(cases.items()):
+        ax.bar(x + width * (k - (len(cases) - 1) / 2), [predicted[w] for w in windows], width=0.88 * width,
+               color=SCENARIO_COLORS[scenario], linewidth=0, label=f'predicted, {labels[scenario]}')
+    if start is not None:
+        ax.plot(x - 0.43, start['share'].reindex(windows), linestyle='none', marker='o', markersize=6.5, markerfacecolor=SURFACE,
+                markeredgecolor=INK, markeredgewidth=1.3, zorder=4, label='measured, first spectrum')
+    ax.errorbar(x, measured['share'], yerr=measured['sigma'], fmt='o', color=INK, markersize=5.5, markeredgecolor=SURFACE,
+                markeredgewidth=1.0, elinewidth=1.2, capsize=3, zorder=5, label='measured ± 1 standard error')
+    ax.set_xticks(x, windows)
+    ax.set_xlim(-0.6, len(windows) - 0.4)
+    ax.set_ylim(-0.05, 1.0)
+    ax.set_ylabel('share of the ³¹P area')
+    ax.grid(axis='x', visible=False)
+    ax.tick_params(axis='x', length=0)
+    fig.legend(loc='outside lower center', ncols=3)
+    fig.suptitle(title or 'A tube that was not fitted: predicted against measured', x=0.01, ha='left', fontsize=11)
+    return ax
+
+
+def plot_verdicts(worst, *, limit: float = 3.0, title: str = None):
+    """The fit rule applied to every test (rows) at each assumed age (columns).
+
+    worst: table of the worst miss |z| of each test, NaN where the test was not run. A cell is blue where the worst
+    miss is within the rule and red, with ✗, where it is above. The number is the worst miss.
+    """
+    values = worst.to_numpy(dtype=float)
+    failed = np.ma.masked_invalid(np.where(np.isnan(values), np.nan, values > limit))
+    lines = max(str(label).count('\n') + 1 for label in worst.index)
+    fig, ax = plt.subplots(figsize=(5.6 + 1.15 * worst.shape[1], 1.1 + (0.26 + 0.14 * lines) * worst.shape[0]), layout='constrained')
+    ax.imshow(failed, cmap=ListedColormap([BLUE_RAMP[0], SERIES[7]]), vmin=0.0, vmax=1.0, aspect='auto', alpha=0.75)
+    for i in range(values.shape[0]):
+        for j in range(values.shape[1]):
+            v = values[i, j]
+            if np.isnan(v):
+                _cell_text(ax, j, i, 'not run')
+            else:
+                _cell_text(ax, j, i, (f'{v:.1f}' if v < 9.95 else f'{v:.0f}') + (' ✗' if v > limit else ' ✓'), strong=v > limit)
+    ax.set_xticks(range(worst.shape[1]), worst.columns, fontsize=9)
+    ax.set_yticks(range(worst.shape[0]), worst.index, fontsize=8.5)
+    ax.tick_params(length=0, top=True, labeltop=True, bottom=False, labelbottom=False)
+    ax.set_xticks(np.arange(-0.5, worst.shape[1]), minor=True)
+    ax.set_yticks(np.arange(-0.5, worst.shape[0]), minor=True)
+    ax.grid(False)
+    ax.grid(which='minor', color=SURFACE, linewidth=2)
+    ax.tick_params(which='minor', length=0)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    handles = [Line2D([], [], marker='s', linestyle='', color=BLUE_RAMP[0], alpha=0.75, markersize=9, label=f'✓ worst miss ≤ {limit:g}'),
+               Line2D([], [], marker='s', linestyle='', color=SERIES[7], alpha=0.75, markersize=9, label=f'✗ worst miss above {limit:g}')]
+    fig.legend(handles=handles, loc='outside lower center', ncols=2)
+    fig.suptitle(title or 'Every test at every assumed age: worst miss', x=0.01, ha='left', fontsize=11)
     return ax

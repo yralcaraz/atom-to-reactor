@@ -73,7 +73,7 @@ Figure Layout:
 ┌──────────────────────────────────────────────┬──────────────────────────────────────────────┐
 │  Panel A: Barrier Sweep (E0 = 1.00 – 1.30 eV)│  Panel B: Registered Models Comparison       │
 │                                              │                                              │
-│  1.0 ──┐                                     │  1.0 ──┐ (peter_reference: gradual decay)    │
+│  1.0 ──┐                                     │  1.0 ──┐ (reference_bep: gradual decay)    │
 │  0.8   │ E0 = 1.30 eV (almost no reaction)   │  0.8   │                                     │
 │  0.6   │                                     │  0.6   │                                     │
 │  0.4   │ E0 = 1.15 eV (reference, sigmoidal) │  0.4   │                                     │
@@ -91,7 +91,7 @@ Figure Layout:
   - $E_0 = 1.30\text{ eV}$: Reaction is too slow; only $8\%$ reacts even after the final $80^\circ\text{C}$ hold.
   - $E_0 = 1.15\text{ eV}$ (highlighted in bold blue): Produces an ideal sigmoidal depletion curve where $\text{TMSPA}$ conversion is nicely distributed across $50^\circ\text{C}$ ($73\%$ left), $60^\circ\text{C}$ ($34\%$ left), and $70^\circ\text{C}$ ($4\%$ left).
 * **Panel B (Registered Microkinetic Models):**
-  - `peter_reference` ($E_0 = 1.15\text{ eV}$): Exhibits the gradual depletion described above.
+  - `reference_bep` ($E_0 = 1.15\text{ eV}$): Exhibits the gradual depletion described above.
   - `family_bep`, `family_marcus`, `level1`: Show **zero remaining TMSPA** at all temperatures ($0.000$ at $20^\circ\text{C}$).
 
 ### 2.3 Physical & Chemical Interpretation

@@ -78,7 +78,7 @@ def build_protocol_schedule(rt_C: float = 20.0, stir_h: float = 24.0, equilibrat
     return stages, pd.DataFrame(rows)
 
 
-def simulate_protocol(stages: list = None, recipe: dict = None, *, model='peter_reference', network: dict = None,
+def simulate_protocol(stages: list = None, recipe: dict = None, *, model='reference_bep', network: dict = None,
                       species: list = None, species_db: dict = None, injection_stage_idx: int = 2,
                       buffered_species=('EC',), points_per_stage: int = 120, rtol: float = 1e-8,
                       atol: float = 1e-12, viscosity_Pa_s: float = None) -> dict:

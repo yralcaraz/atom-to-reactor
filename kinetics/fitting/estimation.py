@@ -470,8 +470,8 @@ def compare_structures(fits: dict) -> pd.DataFrame:
 def simulate_synthetic_shares(structure, theta: dict, samples: list, *, seed: int = None, solver: dict = None) -> list:
     """Copy of a sample set whose measured shares are the prediction of (structure, θ), plus noise when a seed is given.
 
-    The noise follows the error model of each sample: an independent part per spectrum and window, and for
-    repeated spectra a part common to the spectra. It is drawn per window, so noisy shares need not sum to one;
+    The noise follows the error model of each block of a sample: an independent part per spectrum and window,
+    and for repeated spectra a part common to the spectra. It is drawn per window, so noisy shares need not sum to one;
     forcing the sum would leak the error of a large window into the small ones.
     One-sided paper observations are kept as they are. For a sample whose age is found inside an evaluation
     (free scenario), the shares are generated at the age the generating model prefers.
@@ -487,11 +487,12 @@ def simulate_synthetic_shares(structure, theta: dict, samples: list, *, seed: in
         predicted = details[sample['name']]['predicted']
         if predicted is None:
             raise RuntimeError(f"the generating model cannot be simulated for {sample['name']}")
-        shares = np.array(predicted, dtype=float)
-        if rng is not None:
-            shares += sample['sigma_ind'] * rng.standard_normal(shares.shape)
-            shares += sample['sigma_common'] * rng.standard_normal(shares.shape[1])
-        sample['measured'] = shares
+        for block, block_shares in zip(sample['blocks'], predicted):
+            shares = np.array(block_shares, dtype=float)
+            if rng is not None:
+                shares += block['sigma_ind'] * rng.standard_normal(shares.shape)
+                shares += block['sigma_common'] * rng.standard_normal(shares.shape[1])
+            block['measured'] = shares
     return out
 
 

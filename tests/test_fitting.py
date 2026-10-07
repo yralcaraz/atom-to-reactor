@@ -43,7 +43,7 @@ def test_family_parameter_updates():
     assert get_family_parameter(variant, 'transfer') == get_family_parameter(model, 'transfer')
     assert get_family_parameter(model, 'hydrolysis') == 0.80, 'the registered model must not change'
     # A family without its own entry starts from 'default'
-    reference = get_model('peter_reference').with_family_params('condensation', g_eV=1.4)
+    reference = get_model('reference_bep').with_family_params('condensation', g_eV=1.4)
     assert get_family_parameter(reference, 'condensation') == 1.4
     assert get_family_parameter(reference, 'hydrolysis') == 1.15
 

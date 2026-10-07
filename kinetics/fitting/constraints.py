@@ -23,7 +23,7 @@ needs enough reaction ("TMSPA gone") is decided by t_max.
     trace_boundaries            edges of each observation's region in the plane of two barriers
 
 A barrier is named by the model's family ('hydrolysis', ..., or 'hydrolysis_R1' in a split network), or by
-SHARED_BARRIER for one barrier on every reaction (Peter's single E0).
+SHARED_BARRIER for one barrier on every reaction (the single E0 of `reference_bep`).
 
 Source: Y. Alcaraz Galván
 """

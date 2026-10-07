@@ -95,15 +95,21 @@ def test_real_file_reproduces_share_tables_if_available():
     observables = load_lab_observables()
     table = tabulate_observable_shares(observables)
     source = pd.concat(load_share_tables(), ignore_index=True)
-    assert len(table) == len(source) == 56, (len(table), len(source))
+    # The tables of notebook 03 hold one nucleus per sample: the spectra of a second nucleus (raw route) are extra rows
+    extra = sum(len(spectrum['shares']) for sample in observables['samples'].values()
+                for more in sample.get('more_nuclei', {}).values() for spectrum in more['spectra'])
+    assert len(source) == 56 and len(table) == 56 + extra, (len(table), len(source), extra)
     merged = source.assign(acquired_at=source['acquired_at'].map(lambda t: pd.Timestamp(t).isoformat())).merge(
         table, on=['sample', 'acquired_at', 'window'], suffixes=('_csv', ''), validate='one_to_one')
     assert len(merged) == 56
+    # A file built from the tables holds their numbers; one built from the raw spectra recomputes them (rounding)
+    tolerance = 1e-12 if observables['_meta']['built_from'].startswith('raw spectra') else 0.0
     for column in ('share', 'sigma_noise', 'sigma_baseline'):
-        assert (merged[column] == merged[f'{column}_csv']).all(), f'{column} differs from the CSV'
-    assert (merged['t_since_first_h'] == merged['hours_since_first']).all()
+        assert (merged[column] - merged[f'{column}_csv']).abs().max() <= tolerance, f'{column} differs from the CSV'
+    assert (merged['t_since_first_h'] - merged['hours_since_first']).abs().max() <= tolerance
     scatter = calculate_replicate_scatter(observables, '2 % H2O')
-    print(f"  ✓ real file: 56 shares of 15 spectra identical to the notebook 03 tables "
+    print(f"  ✓ real file: 56 shares of 15 spectra {'identical' if tolerance == 0.0 else 'equal within 1e-12'} to the "
+          f"notebook 03 tables, {extra} more shares of a second nucleus "
           f"(built from: {observables['_meta']['built_from'][:40]}…)")
     print(f"    replicate scatter of the six 2 % spectra: chi2 {scatter['chi2']:.1f} on {scatter['dof']} dof, "
           f"Birge ratio {scatter['birge']:.2f}")

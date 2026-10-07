@@ -15,7 +15,7 @@ import pandas as pd
 
 from kinetics.microkinetics.barriers import REVERSAL_INVARIANT
 from kinetics.microkinetics.parameters import (
-    FAMILY_BEP_PARAMETERS, LEVEL1_PARAMETERS, PETER_REFERENCE_PARAMETERS, resolve_family_params,
+    FAMILY_BEP_PARAMETERS, LEVEL1_PARAMETERS, REFERENCE_BEP_PARAMETERS, resolve_family_params,
 )
 from kinetics.microkinetics.rates import KINETIC_MODELS, calculate_network_rates
 from kinetics.data.network import NETWORK
@@ -92,11 +92,11 @@ class ModelSpec:
 
 
 MODELS = {
-    'peter_reference': ModelSpec(
-        name='peter_reference',
-        label='Peter reference: capped BEP, E0 = 1.15 eV for all reactions',
+    'reference_bep': ModelSpec(
+        name='reference_bep',
+        label='Reference: capped BEP, E0 = 1.15 eV for all reactions',
         kinetic_model='bep_eyring',
-        family_params=PETER_REFERENCE_PARAMETERS,
+        family_params=REFERENCE_BEP_PARAMETERS,
         status='reference',
         assumptions=(
             'One E0 for all 9 reactions, chosen so that TMSPA depletion spreads over the 20-80 °C holds '
@@ -144,12 +144,16 @@ MODELS = {
 }
 
 
+# Names under which a model appears in result files written before it was renamed
+LEGACY_MODEL_NAMES = {'peter_reference': 'reference_bep'}
+
+
 def get_model(model) -> ModelSpec:
-    """ModelSpec from a registry name (a ModelSpec is returned unchanged)."""
+    """ModelSpec from a registry name (a ModelSpec is returned unchanged; a legacy name resolves to the current one)."""
     if isinstance(model, ModelSpec):
         return model
     try:
-        return MODELS[model]
+        return MODELS[LEGACY_MODEL_NAMES.get(model, model)]
     except KeyError:
         raise KeyError(f"Unknown model '{model}'. Registered: {list(MODELS)}") from None
 

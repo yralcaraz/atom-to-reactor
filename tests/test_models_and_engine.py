@@ -42,11 +42,11 @@ def test_network_cycles_and_wegscheider():
 def test_model_registry():
     table = describe_models()
     assert list(table.index) == list(MODELS)
-    assert not table.loc['peter_reference', 'reversal invariant']
+    assert not table.loc['reference_bep', 'reversal invariant']
     assert table.loc['level1', 'reversal invariant']
-    swept = get_model('peter_reference').with_barrier(1.30)
+    swept = get_model('reference_bep').with_barrier(1.30)
     assert swept.family_params['default']['g_eV'] == 1.30
-    assert MODELS['peter_reference'].family_params['default']['g_eV'] == 1.15, "with_barrier must not mutate"
+    assert MODELS['reference_bep'].family_params['default']['g_eV'] == 1.15, "with_barrier must not mutate"
     try:
         get_model('nope')
     except KeyError:
@@ -97,10 +97,10 @@ def test_experimental_reference_and_checks():
     assert shifts['peak'].notna().all() and shifts['source'].notna().all(), 'every shift names its peak and figure'
     constraints = get_barrier_windows()
     assert set(constraints.index) == {'R4', 'R5', 'R8'}
-    checks = evaluate_control_experiments(['peter_reference', 'level1'])
+    checks = evaluate_control_experiments(['reference_bep', 'level1'])
     assert len(checks) == 8 and checks['predicted'].between(-1e-9, 1 + 1e-9).all()
-    table = tabulate_family_barriers(['peter_reference', 'level1'])
-    assert table.loc['solvent_attack', 'level1'] == 1.32 and table.loc['hydrolysis', 'peter_reference'] == 1.15
+    table = tabulate_family_barriers(['reference_bep', 'level1'])
+    assert table.loc['solvent_attack', 'level1'] == 1.32 and table.loc['hydrolysis', 'reference_bep'] == 1.15
 
 
 if __name__ == "__main__":
