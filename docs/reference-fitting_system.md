@@ -5,7 +5,7 @@
 | **Status** | Draft |
 | **Source** | Y. Alcaraz Galván |
 | **Scope** | The fit of the kinetic models to the lab NMR data as one system: what is compared with what, what is minimised, which files take part, the stages of the runner and the files they write. Read from the code; no fit was run to write it. |
-| **Applies to** | Branch `fit/first-fit`, 2026-10-07 |
+| **Applies to** | Branch `fit/first-fit`, 2026-10-07. Sections 1–7 describe the system of the second fit; section 8 lists what the third fit changed |
 | **See also** | [reference-fit_models.md](reference-fit_models.md) for the equations and free parameters of each model; [MODULES.md](../MODULES.md) §7 for every function with its input and output |
 
 The work on the data has two parts, and they share the same models and reactors:
@@ -249,3 +249,20 @@ Both notebooks write their tables to `notebooks/results/03/`.
 - **Stage names.** `night` and `refit` are named after how the first run was done, not after what they compute: `night` is the inference stage, `refit` a repair.
 - **Search effort.** `EFFORT` in `run_fit.py` sets the size of the screen per structure. The first and the second fit use different values, so a results folder is only reproduced with the `EFFORT` it was run with (the second fit records its code state in its own folder).
 - **Tests.** [test_estimation.py](../tests/test_estimation.py) covers the fit core, [test_fitting.py](../tests/test_fitting.py) the modules of section 6, [test_observables.py](../tests/test_observables.py) the observables file. They use [tests/synthetic_observables.py](../tests/synthetic_observables.py), so none needs the lab data.
+
+## 8. Changes of the third fit (2026-10-07)
+
+Reasons and limits are in [plan-fit_improvement.md](plan-fit_improvement.md). What changed in the system:
+
+| Where | Change |
+|---|---|
+| [observables.py](../kinetics/data/observables.py) | "TMSPa alone" has role `fit` and `unknown_M = {'H2O': (0, 0.3)}`: the range in M a fit may give its water |
+| [residuals.py](../kinetics/fitting/residuals.py) | A sample carries `unknown_M`. `calculate_residuals`, `tabulate_residuals`, `find_free_age` and `calculate_predicted_shares` take `added_M`: amounts at mixing on top of the recipe |
+| [candidates.py](../kinetics/fitting/candidates.py) | New parameter kind `recipe`: `c0 H2O TMSPa alone` [M], added from the sample set like an age. `build` returns `added_M` |
+| [estimation.py](../kinetics/fitting/estimation.py) | `FitProblem` and `simulate_synthetic_shares` pass `added_M`. A `recipe` parameter is profiled on multiples of its best value |
+| [run_fit.py](../scripts/run_fit.py) | `select_consistent`: free ages first, and a fit rejected by the trace rule is skipped. `tabulate_trace_verdicts` writes `trace_verdict.csv`. Recovery case C (free ages, water unknown). Leave-one-out includes the tube. `registered` leaves the tube out |
+
+- **Parameter vector.** Barriers, then `dG R1…R4`, `water fraction`, `c0 H2O TMSPa alone`, `log10 age <sample>`.
+- **Values.** The lab sample set has 85 values (77 in the second fit): the tube adds two spectra of four shares.
+- **Trace rule.** A fit is accepted only if its parameters, unchanged, still fit with 1 µM and with 1 mM TMSOH at mixing in the tubes whose recipe holds TMSPA and no TMSOH.
+- **Earlier fits.** A fit made before these changes is reproduced by building the sample set with `exclude=('TMSPa alone',)`. The observables file of the second fit is kept in the data folder as `lab_observables_second_fit_261006.json`.

@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | Proposal, not implemented |
+| **Status** | Implemented in the code on 2026-10-07 (section 3). The third fit was launched the same day at 16:52; its results go to `notebooks/results/05_fit3/` and are not in this document |
 | **Source** | Y. Alcaraz Galván |
 | **Scope** | What to change in the fit after the first and second fits, why, where in the code, how to judge the result, and what the plan cannot settle. |
-| **Applies to** | Branch `fit/first-fit`, commit `d2c5a0b` plus the uncommitted second-fit changes (2026-10-07) |
-| **Evidence** | First fit (`notebooks/results/05/`), second fit (`notebooks/results/05_fit2/`, read on 2026-10-07 while its last stages were still running) and screening runs of 2026-10-07 (Appendix A; not stored in the repository) |
+| **Applies to** | Branch `fit/first-fit`, commit `e3b051b` plus the changes of section 3 |
+| **Evidence** | First fit (`notebooks/results/05/`), second fit (`notebooks/results/05_fit2/`, finished 2026-10-07 15:24) and screening runs of 2026-10-07 (Appendix A; not stored in the repository) |
 | **Confidentiality** | Quotes numbers derived from the lab NMR spectra. Do not commit before it is classified. |
 
 Words used here:
@@ -24,7 +24,7 @@ The model structure stays as it is (M3-split). Three things change around it:
 |---|---|---|
 | C1 | Free ages become the base reading; equal ages stay as a sensitivity run | 0 |
 | C2 | The tube "TMSPa alone" enters the fit, with its water content as an unknown | 1 |
-| C3 | Every fit must also hold with a trace of TMSOH at mixing (acceptance rule) | 0 |
+| C3 | Trace rule: the parameters of a fit, unchanged, must still fit with a trace of TMSOH at mixing | 0 |
 
 Expected effect: the barrier of the transfer reactions (R5–R7), today only bounded from above, gets a value (about 0.7–0.8 eV in the screening), and the readings that depend on a perfectly pure start are rejected by rule.
 
@@ -56,18 +56,17 @@ The 0.5 % H2O tube has 93 % TMSPA left; the 2 % tube has none. With one water mo
 
 Second fit, M3-split, TMSOH added at mixing to the two water tubes:
 
-| Reading | χ², parameters unchanged, 1 µM | Fitted again, 1 µM | Fitted again, 1 mM | ΔG‡ R1 (none → 1 µM) |
-|---|---|---|---|---|
-| 1 day | 2128 | χ² 32.7, fits | χ² 54.0, worst miss 3.77, fails | 1.32 → 1.67 |
-| 7 days | 1449 (already at 1 nM) | χ² 34.0, fits | pending | 1.67 → 1.55 |
-| Free ages | 30.4 | χ² 30.4, fits | pending | 1.09 → 1.09 |
-
-In the first fit the 1 mM column was: 1 day fails (worst miss 3.86), 7 days fits with ΔG‡ R1 moved to 1.69 eV, free ages unchanged.
+| Reading | χ² without trace | χ², parameters unchanged, 1 µM | χ², parameters unchanged, 1 mM | Fitted again, 1 µM | Fitted again, 1 mM |
+|---|---|---|---|---|---|
+| 1 day | 32.7 | 2128 | 1449 | χ² 32.7, fits, ΔG‡ R1 1.32 → 1.67 | χ² 54.0, worst miss 3.77, fails |
+| 7 days | 32.4 | 1449 (already at 1 nM) | 1450 | χ² 34.0, fits, ΔG‡ R1 1.67 → 1.55 | χ² 39.8, worst miss 2.50, fits |
+| Free ages | 30.4 | 30.4 | 30.6 | χ² 30.4, same parameters | χ² 30.4, same parameters |
 
 **Result**
 
-- The equal-age fits depend on a start that is pure to better than 1 µM. No reagent is.
-- The free-age fit does not react to the trace at any level.
+- The equal-age parameter sets depend on a start that is pure to better than 1 µM. No reagent is.
+- Fitted again with the trace, an equal-age reading can sometimes be rescued, but with other barriers each time.
+- The free-age parameter set does not react to the trace at any level.
 
 --> Free ages are the base reading (C1), and the trace test becomes a rule (C3).
 
@@ -101,7 +100,8 @@ No. A silyl group can already pass between phosphates through TMSOH and HMDSO (R
 **Result**
 
 - With `g transfer` at 0.7–0.8 eV the same model reproduces the tube, at a cost of 3 to 5 in χ² on the fitted tubes.
-- Unchanged with 1 µM TMSOH at mixing.
+- Unchanged with up to 0.1 mM TMSOH at mixing (χ² 36.9 → 38.1 on the 85 values of the third-fit sample set).
+- With 1 mM it fails: χ² 146, and the 0.5 % tube is predicted with 22 % BMSPA against 6 % measured. A fast transfer step multiplies a TMSOH impurity in a tube that holds water. Found on 2026-10-07 after the code was written; see section 5.
 - Other ideas were tried and dropped (Appendix A): simpler energy corrections, a higher order in water, hydrolysis catalysed by P–OH, and a direct silyl exchange between phosphates. The last one works equally well but adds a reaction that the literature search did not confirm, and it is not needed.
 
 --> Put the tube into the fit (C2). The structure stays M3-split.
@@ -141,38 +141,37 @@ Nothing changes in the residuals: with free ages, a tube that was never heated a
 
 | File | Change |
 |---|---|
-| [observables.py](../kinetics/data/observables.py) | `LAB_SAMPLES['TMSPa alone']`: role `check` → `fit`; a new key that declares which species of the recipe is unknown (H2O). Rebuild `lab_observables.json` with `scripts/build_observables.py`. |
-| [residuals.py](../kinetics/fitting/residuals.py) | `_lab_sample` carries the declaration. `calculate_residuals`, `tabulate_residuals` and `_profile_age` take `added_M = {sample: {species: mol/L}}` and pass it to `_initial_composition`. Today this only exists at build time (`overrides`). |
-| [candidates.py](../kinetics/fitting/candidates.py) | A parameter `water TMSPa alone` (kind `recipe`, box 0–0.3 M, DECLARED) added in `FitStructure.parameters(samples)` the way an age is. `build` returns `added_M`. |
-| [estimation.py](../kinetics/fitting/estimation.py) | `FitProblem.residuals` and `.table` pass `built['added_M']`. `build_profile_grid` already gives a linear grid to any kind other than barrier or energy. |
-| [run_fit.py](../scripts/run_fit.py) | `FITTED_SAMPLES` gains the tube (leave-one-out). `RECOVERY_TRUTHS` gains a case with free ages and a known water value. `check_tmspa_alone` stays only for fits made without the tube. Results go to a new folder (`notebooks/results/05_fit3/`). |
-| [test_estimation.py](../tests/test_estimation.py), `synthetic_observables.py` | A synthetic tube with unknown water: the fit returns the water and the barriers used to make it. |
+| [observables.py](../kinetics/data/observables.py) | `LAB_SAMPLES['TMSPa alone']`: role `check` → `fit`, and `'unknown_M': {'H2O': (0.0, 0.3)}`, the range in M a fit may give the water (DECLARED). `lab_observables.json` rebuilt from the raw spectra: the shares are identical, only the role, the new key and one flag differ. The second-fit file is kept beside it as `lab_observables_second_fit_261006.json`. |
+| [residuals.py](../kinetics/fitting/residuals.py) | A sample carries `unknown_M`. `calculate_residuals`, `tabulate_residuals`, `find_free_age` and `calculate_predicted_shares` take `added_M` (amounts at mixing on top of the recipe) and pass it to `_initial_composition`, also when the age is found inside the evaluation (`_profile_age`). |
+| [candidates.py](../kinetics/fitting/candidates.py) | A parameter `c0 H2O TMSPa alone` (kind `recipe`, unit M) added in `FitStructure.parameters(samples)` the way an age is. `build` returns `added_M`. `embed_parent_theta` passes it on. |
+| [estimation.py](../kinetics/fitting/estimation.py) | `FitProblem` and `simulate_synthetic_shares` pass `added_M`. The profile grid of a `recipe` parameter is a set of multiples of its best value (`RECIPE_FACTORS`). |
+| [run_fit.py](../scripts/run_fit.py) | `FITTED_SAMPLES` gains the tube (leave-one-out). `RECOVERY_TRUTHS`: cases A and B get a water value, and a new case C has free ages, a transfer barrier of 0.75 eV and the water profiled. `complete_start` gives a start without the parameter 50 mM. The `registered` stage leaves the tube out, because a registered model has no value for its water. |
+| [test_estimation.py](../tests/test_estimation.py) | The sample set and parameter lists with the tube; `added_M` changes only the residuals of its own sample; a new test recovers 60 mM from synthetic shares inside a closed interval. |
 
-One difference from the present check: `check_tmspa_alone` starts from the composition of the first spectrum. In the fit the tube starts from the recipe plus the unknown water, and its age is found like that of any other tube. Both spectra are then predicted, not only the second.
+To reproduce the second fit with this code, build the sample set with `exclude=('TMSPa alone',)`: χ² 32.706 (1 day) and 30.369 (free ages) come back exactly.
+
+`check_tmspa_alone` is kept in the `predictions` stage as a second reading. It starts from the composition of the first spectrum. In the fit the tube starts from the recipe plus the unknown water, and its age is found like that of any other tube, so both spectra are predicted.
 
 ### C3. Trace rule
 
 | File | Change |
 |---|---|
-| [run_fit.py](../scripts/run_fit.py) | `stage_traces` already refits with 1 µM and 1 mM TMSOH. Add: (a) the trace goes to every tube whose recipe has TMSPA and no TMSOH, which now includes "TMSPa alone"; (b) a verdict table `trace_verdict.csv`; (c) `select_consistent` only accepts a fit that passes. |
+| [run_fit.py](../scripts/run_fit.py) | `tabulate_trace_verdicts` evaluates every fit that fits, with its parameters unchanged, at 1 µM and 1 mM TMSOH in every tube whose recipe has TMSPA and no TMSOH (`TRACE_SAMPLES`, which now includes "TMSPa alone"). It writes `trace_verdict.csv`. `select_consistent` skips a fit that is rejected. `stage_traces` still scans and refits the main structure, for information. |
 
-A fit passes when, fitted again at 1 µM and at 1 mM:
+A fit passes when its own parameter set, unchanged, still fits (worst miss at most 3) at both levels. The two levels are DECLARED.
 
-1. it still fits (worst miss at most 3), and
-2. no ΔG‡ that had a closed interval moves by more than 0.05 eV.
-
-The two levels and the 0.05 eV are DECLARED.
+The first draft of this plan judged the fit made again with the trace, and asked that no determined barrier move by more than 0.05 eV. That was dropped: the second fit showed the threshold deciding by itself (in the 7-day reading the barrier of R2 and R3 moved by 0.051 eV), and the unchanged parameters already separate the readings by a factor of 50 in χ² (Step 2). The simpler rule needs no refit, so it is applied to every structure.
 
 ### Order of work
 
-1. C2 in the code, with its test.
-2. Recovery on synthetic data, water unknown. Stop if it fails.
-3. The ladder M0 → M3-split in the four readings on the new sample set.
-4. Profiles, leave-one-out and sensitivities for M3-split.
-5. Traces and the verdict (C3).
-6. Predictions: tube B, the 13C of tube A after 10 days, the paper observations.
+1. C1–C3 in the code, with tests. Done.
+2. Recovery on synthetic data, water unknown (`recovery`). Stop if it fails.
+3. The ladder M0 → M3-split in the four readings on the new sample set (`baselines`, `extended`).
+4. Profiles, leave-one-out and sensitivities for M3-split (`night`).
+5. Trace scan and refits (`traces`).
+6. Predictions: tube B, the 13C of tube A after 10 days, the paper observations (`predictions`).
 
-Runtime: about that of the second fit, roughly a day on 12 workers.
+Steps 2 to 6 are the stages of `scripts/run_fit.py`, run with `--results notebooks/results/05_fit3`. Runtime: about that of the second fit, roughly a day on 12 workers.
 
 ## 4. How the result is judged (fixed before running)
 
@@ -182,7 +181,7 @@ Runtime: about that of the second fit, roughly a day on 12 workers.
 | Does M3-split fit with the tube included, free ages? | Worst miss at most 3 | Report the failure; the tube goes back to `check` |
 | Is the water determined? | Interval closed on both sides | Report as not determined; quote barriers with the water profiled |
 | Is `g transfer` determined? | Interval closed on both sides | The plan did not achieve its aim; say so |
-| Does the fit pass the trace rule? | Yes at both levels | Not accepted |
+| Does the fit pass the trace rule? | Its unchanged parameters fit at both levels | Not accepted. `trace_verdict.csv` and `trace_sensitivity.csv` keep χ² at every level, so the levels can be discussed without a new run |
 | Tube B (hold-out) | Worst miss at most 3 | Report; do not refit to repair it |
 | What rests on one tube? | Leave-one-out table | Mark every barrier that moves by more than its interval |
 
@@ -191,9 +190,10 @@ Runtime: about that of the second fit, roughly a day on 12 workers.
 **Of the evidence**
 
 - Steps 4 and 5 are screening: one local least-squares polish per start, `g transfer` held by hand, water scanned on a grid. No joint fit, no global search, no profile, no leave-one-out.
-- The 1 mM trace refits of the second fit were not finished for 7 days and free ages when this was written.
 
 **Of the plan**
+
+- The two aims may pull against each other. The transfer barrier that reproduces "TMSPa alone" in the screening (0.70 eV) passes the trace rule at 1 µM and fails it at 1 mM. Whether the joint fit finds a parameter set that does both is open. If none does, the choice is between a lower upper level for the rule (the screening set holds up to 0.1 mM) and reading the 0.5 % tube as a bound on the impurity of the TMSPA stock.
 
 - The ages stay unknown. Free ages are chosen because they survive the trace test. The data do not exclude equal ages.
 - A third reading exists and is not tested: Gogoi's thesis describes the 0.5 % tube as stopped ("the reaction stops at BMSPa, while most of TMSPa remains unreacted") and the water series as an equilibrium moved by water. The thesis gives no waiting times.
@@ -201,7 +201,8 @@ Runtime: about that of the second fit, roughly a day on 12 workers.
 - `g transfer` would rest on one tube: two spectra of 16 scans, standard errors of 0.03–0.05 per share.
 - Tube B gets slightly worse in the screening (χ² 3.8 → about 7 on 4 values).
 - The only independent kinetic check is used up. After C2 the checks left are tube B (noisy), the 13C of tube A after 10 days and the paper statements.
-- The trace rule depends on declared numbers (1 µM, 1 mM, 0.05 eV).
+- The trace rule depends on two declared levels (1 µM, 1 mM).
+- The water range of the tube (0 to 0.3 M) is declared.
 
 **Of the model, left as they are**
 

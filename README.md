@@ -121,6 +121,7 @@ The number of a notebook is the stage of the work, so two notebooks of the same 
 | [04_lab_nmr_data_overview](notebooks/04_lab_nmr_data_overview.ipynb) | The raw lab NMR spectra: samples, acquisition settings, what changes in time, what is unclear in the files | — |
 | [05_first_fit](notebooks/05_first_fit.ipynb) | First fit of the candidate structures to the lab observables under four scenarios of the unknown mixing times: misfit per observation, profile intervals, what the data cannot determine. Shows results computed by `scripts/run_fit.py`; stored without outputs | — |
 | [05_first_fit_DRAFT](notebooks/05_first_fit_DRAFT.ipynb) | **Draft.** The results of notebook 05 in step-by-step order, one model structure added at a time. Shows results computed by `scripts/run_fit.py`; nothing is fitted in the notebook | — |
+| [05_third_fit_DRAFT](notebooks/05_third_fit_DRAFT.ipynb) | **Draft.** The third fit against the measurements: measured and simulated NMR spectra, concentrations in time, the fitted values with their intervals and correlations, the unknown ages, the error of a share. Reads the fits computed by `scripts/run_fit.py` and runs them forward; nothing is fitted in the notebook | — |
 
 ## Repository layout
 
@@ -136,7 +137,7 @@ atom-to-reactor/
 │   ├── spectroscopy/         Blocks 8,11–13  shifts from shieldings, spectra, fingerprints
 │   └── fitting/              Block 14     barrier bounds, NMR readouts, experiment design, residuals, fits and profiles
 ├── demo/                     figures and display tables for the notebooks (no science)
-├── notebooks/                01 theory · 02 operando protocol · 03 experiment plan, feasible region · 04 lab data · 05 first fit
+├── notebooks/                01 theory · 02 operando protocol · 03 experiment plan, feasible region · 04 lab data · 05 first fit, third fit
 ├── data/                     reference data and the data inventory (see data/README.md)
 ├── docs/                     theory, the guide to notebook 02, references
 ├── tests/                    test scripts (run_all.py runs them)

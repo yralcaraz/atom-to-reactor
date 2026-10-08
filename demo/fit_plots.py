@@ -1,12 +1,14 @@
 """Figures for the fits of notebook 05: residual maps, parameters across scenarios, profiles, influence of
 each sample, recovery of known parameters, sample trajectories and the protocol band; and, for the step-by-step
-version of the notebook, compositions against measurements, the ladder of structures, barriers on a half-life
-ruler, energy shifts, the trace scan, the storage ranges, the check of a tube that was not fitted and the
-verdict of every test at every assumed age.
+version of the notebook, compositions against measurements, the ladder of structures, barriers with their
+ranges, energy shifts, the trace scan, the storage ranges, the check of a tube that was not fitted and the
+verdict of every test at every assumed age; and, for the notebook of the third fit, measured spectra against
+simulated ones, concentrations in time, intervals read off profiles, the correlation between parameters, the
+recovery as offsets from the truth and the error of a share.
 
 Colour does one job per figure: a diverging blue–grey–red scale for signed residuals and shifts (grey = none),
 one hue per age scenario in a fixed order, a single blue ramp for an ordered quantity (ΔS‡), red for a predicted
-share or a test that breaks the fit rule.
+share or a test that breaks the fit rule, one hue per NMR window (WINDOW_COLORS) wherever species are told apart.
 
 Source: Y. Alcaraz Galván
 """
@@ -17,8 +19,9 @@ import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap, ListedColormap, TwoSlopeNorm
 from matplotlib.lines import Line2D
 
+from demo.reactor_plots import plot_concentration_panels
 from demo.style import BLUE_RAMP, GRID, INK, INK_MUTED, INK_SOFT, RULE, SERIES, SURFACE
-from kinetics.constants import H_SI, KB_EV, KB_SI, ZERO_CELSIUS_K
+from kinetics.constants import ZERO_CELSIUS_K
 from kinetics.data.observables import PHOSPHATE_WINDOWS
 
 SCENARIO_ORDER = ('short', 'middle', 'long', 'free')
@@ -26,10 +29,10 @@ SCENARIO_LABELS = {'short': 'short (1 h)', 'middle': 'middle (1 d)', 'long': 'lo
 AGE_LABELS = {'short': '1 h', 'middle': '1 day', 'long': '7 days', 'free': 'free ages'}     # a scenario named by its age
 REACTION_LABELS = {'R1': 'R1 · first hydrolysis', 'R2': 'R2 · second hydrolysis', 'R3': 'R3 · third hydrolysis',
                    'R5': 'R5 · first transfer', 'R4': 'R4 · condensation', 'R8': 'R8 · solvent attack'}
-HALF_LIVES_S = {'1 s': 1.0, '1 min': 60.0, '1 h': 3600.0, '1 day': 86400.0, '1 month': 2.592e6, '10 years': 3.156e8}
 SCENARIO_COLORS = dict(zip(SCENARIO_ORDER, SERIES[:4]))
 _NEUTRAL = '#f0efec'
 DIVERGING = LinearSegmentedColormap.from_list('blue_grey_red', [SERIES[0], _NEUTRAL, SERIES[7]])
+OVERLAY_COLORS = [SERIES[1], SERIES[2], SERIES[4], SERIES[6]]    # fits drawn over one spectrum: not blue (the main fit), not yellow (measured)
 
 
 def _cell_text(ax, x, y, text, strong=False):
@@ -414,11 +417,6 @@ def plot_ladder(summary, *, order: list, limit: float = 3.0, title: str = None):
     return ax
 
 
-def calculate_half_life_barrier(t_half_s, T_K: float):
-    """Barrier [eV] whose Eyring rate gives the half-life t_half_s [s] with the reaction partner at 1 M."""
-    return KB_EV * T_K * np.log(KB_SI * T_K / H_SI * np.asarray(t_half_s, dtype=float) / np.log(2.0))
-
-
 def _draw_rows(ax, values, bands, scenarios, rows, labels):
     """Dot per scenario at values[(scenario, row)] with a bar over bands[(scenario, row)], one line of the axis per row."""
     for i, name in enumerate(rows):
@@ -436,33 +434,26 @@ def _draw_rows(ax, values, bands, scenarios, rows, labels):
     ax.tick_params(axis='y', which='both', length=0)
 
 
-def plot_barrier_ruler(barriers, bands=None, *, structure: str, scenarios=('middle', 'long', 'free'),
-                       reactions=('R1', 'R2', 'R3', 'R5', 'R4', 'R8'), T_C=(22.5, 80.0), x_range=(0.35, 1.75), title: str = None):
-    """ΔG‡ of each reaction for the best fit of one structure at each assumed age, on a ruler of half-lives.
+def plot_barrier_ranges(barriers, bands=None, *, structure: str, scenarios=('middle', 'long', 'free'),
+                        reactions=('R1', 'R2', 'R3', 'R5', 'R4', 'R8'), x_range=(0.35, 1.75), title: str = None):
+    """ΔG‡ of each reaction for the best fit of one structure at each assumed age, with its range.
 
-    barriers: 'structure', 'scenario', 'reaction', 'dG_barrier_eV'. bands: the same keys with 'dG‡ low' and 'dG‡ high',
-    drawn as the range over the accepted parameter sets. The upper scales give the Eyring half-life that a barrier
-    means at each temperature of T_C with the reaction partner at 1 M (ΔS‡ = 0).
+    barriers: 'structure', 'scenario', 'reaction', 'T_K', 'dG_barrier_eV'. bands: the same keys with 'dG‡ low' and
+    'dG‡ high', drawn as the range over the accepted parameter sets. Each barrier is given at the temperature where
+    its reaction was seen, named under the reaction.
     """
-    fits = barriers[barriers['structure'] == structure].set_index(['scenario', 'reaction'])['dG_barrier_eV']
+    chosen = barriers[barriers['structure'] == structure]
+    fits = chosen.set_index(['scenario', 'reaction'])['dG_barrier_eV']
     ranges = None
     if bands is not None:
-        chosen = bands[bands['structure'] == structure].set_index(['scenario', 'reaction'])
-        ranges = {key: (r['dG‡ low'], r['dG‡ high']) for key, r in chosen.iterrows()}
-    seen = barriers[barriers['structure'] == structure].groupby('reaction')['T_K'].first() - ZERO_CELSIUS_K
+        rows = bands[bands['structure'] == structure].set_index(['scenario', 'reaction'])
+        ranges = {key: (r['dG‡ low'], r['dG‡ high']) for key, r in rows.iterrows()}
+    seen = chosen.groupby('reaction')['T_K'].first() - ZERO_CELSIUS_K
     labels = {name: f'{REACTION_LABELS.get(name, name)}\nseen at {seen[name]:.0f} °C' for name in reactions}
-    fig, ax = plt.subplots(figsize=(9.2, 1.5 + 0.52 * len(reactions) + 0.42 * len(T_C)), layout='constrained')
+    fig, ax = plt.subplots(figsize=(9.2, 1.3 + 0.55 * len(reactions)), layout='constrained')
     _draw_rows(ax, fits, ranges, scenarios, reactions, labels)
     ax.set_xlim(*x_range)
     ax.set_xlabel('ΔG‡ (eV)')
-    for level, T in enumerate(T_C):
-        ticks = {label: calculate_half_life_barrier(t, T + ZERO_CELSIUS_K) for label, t in HALF_LIVES_S.items()}
-        ticks = {label: value for label, value in ticks.items() if x_range[0] < value < x_range[1]}
-        scale = ax.secondary_xaxis(1.0 + 0.19 * level)
-        scale.set_xticks(list(ticks.values()), list(ticks), fontsize=8)
-        scale.set_xlabel(f'half-life at {T:g} °C, partner at 1 M', fontsize=8.5, loc='left')
-        scale.tick_params(length=3, color=RULE)
-        scale.spines['top'].set_color(RULE)
     handles = [Line2D([], [], marker='o', linestyle='', color=SCENARIO_COLORS[s], label=f'best fit, {AGE_LABELS[s]}') for s in scenarios]
     if ranges is not None:
         handles.append(Line2D([], [], color=INK_MUTED, linewidth=3.5, alpha=0.6, label='range over the accepted sets'))
@@ -642,3 +633,470 @@ def plot_verdicts(worst, *, limit: float = 3.0, title: str = None):
     fig.legend(handles=handles, loc='outside lower center', ncols=2)
     fig.suptitle(title or 'Every test at every assumed age: worst miss', x=0.01, ha='left', fontsize=11)
     return ax
+
+
+# ------------------------------------------------------------------------------
+# A fit against what was measured: spectra and concentrations (kinetics.fitting.reporting)
+# ------------------------------------------------------------------------------
+WINDOW_COLORS = {'TMSPA': SERIES[0], 'BMSPA': SERIES[1], 'MMSPA': SERIES[2], 'H3PO4': SERIES[3],
+                 'TMSOH': SERIES[4], 'HMDSO': SERIES[5], 'TMSOEG': SERIES[6], 'P-silyl': INK_MUTED}
+WINDOW_LABELS = {'P-silyl': 'silyl on phosphate', 'TMSOEG': 'TMSOEG (opened EC)'}
+SMOOTH_FWHM_PPM = {'31P': 0.4, '13C': 0.06}     # display broadening: far below the distance between two lines
+NUCLEUS_LABELS = {'31P': '³¹P', '13C': '¹³C'}
+_GAUSS = 2.0 * np.sqrt(2.0 * np.log(2.0))       # FWHM of a Gaussian in units of its standard deviation
+
+
+def _smooth(x, y, fwhm: float):
+    """y on the uniform axis x, convolved with a unit-area Gaussian of the given FWHM (areas are kept)."""
+    sigma = fwhm / _GAUSS / abs(x[1] - x[0])
+    half = int(np.ceil(4.0 * sigma))
+    kernel = np.exp(-0.5 * (np.arange(-half, half + 1) / sigma) ** 2)
+    return np.convolve(y, kernel / kernel.sum(), mode='same')
+
+
+def _width_at_half_height(x, y, peak: int) -> float:
+    """Full width at half height of the line whose maximum is at index `peak` (linear between points)."""
+    half = 0.5 * y[peak]
+    edges = []
+    for step in (-1, 1):
+        i = peak
+        while 0 < i < len(y) - 1 and y[i] > half:
+            i += step
+        inner = i - step
+        fraction = (y[inner] - half) / (y[inner] - y[i]) if y[inner] != y[i] else 0.0
+        edges.append(x[inner] + fraction * (x[i] - x[inner]))
+    return abs(edges[1] - edges[0])
+
+
+def _line(x, centre: float, fwhm_gauss: float, fwhm_total: float):
+    """Unit-area Voigt line: a Lorentzian broadened by the display Gaussian, with the total width given."""
+    from scipy.special import voigt_profile
+    a, b = 0.5346, 0.2166                        # Voigt width: a·L + sqrt(b·L² + G²)
+    if fwhm_total <= fwhm_gauss:
+        lorentz = 0.0
+    else:
+        root = np.sqrt(4.0 * a ** 2 * fwhm_total ** 2 - 4.0 * (a ** 2 - b) * (fwhm_total ** 2 - fwhm_gauss ** 2))
+        lorentz = (2.0 * a * fwhm_total - root) / (2.0 * (a ** 2 - b))
+    return voigt_profile(x - centre, fwhm_gauss / _GAUSS, 0.5 * lorentz)
+
+
+def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, x_range=None, title: str = None,
+                            clear_height: float = 6.0, overlay: bool = False, fit_label: str = 'simulated from the fit'):
+    """Measured spectra with the spectrum a fit predicts drawn over them, one row per spectrum.
+
+    spectra: kinetics.fitting.reporting.load_measured_spectra. shares: tabulate_fit_shares of the fit, or
+    {label: table} to compare several fits: side by side, or with overlay as lines of different colour over the
+    same spectra. rows: [(sample, spectrum number, note)], top to bottom. fit_label: legend text of a single fit.
+    Both curves are broadened for display (SMOOTH_FWHM_PPM) and scaled so that a line holding the whole area has
+    height 1: the height of a line is close to its share. The model predicts areas only, so each simulated line
+    takes the position and the width of the measured line (the centre of the window and the display width where
+    the measured window shows no line higher than clear_height times the noise). The numbers over a window are
+    its share: measured / simulated (measured only with overlay). Tubes whose axis is offset are moved onto a
+    common axis.
+    """
+    width = SMOOTH_FWHM_PPM[nucleus]
+    unit = 1.0645 * width                        # 1 / height of a unit-area Gaussian of that width
+    cases = shares if isinstance(shares, dict) else {None: shares}
+    groups = [list(cases.items())] if overlay else [[case] for case in cases.items()]
+    colors = OVERLAY_COLORS if overlay else [SERIES[0]]
+    fig, axes = plt.subplots(len(rows), len(groups), figsize=(9.6 if len(groups) == 1 else 1.4 + 4.1 * len(groups), 0.9 + 1.05 * len(rows)),
+                             layout='constrained', sharex=True, squeeze=False)
+    lows, highs = [], []
+    for position, (column, group) in enumerate(zip(axes.T, groups)):
+        tables = [table[table['nucleus'] == nucleus].set_index(['sample', 'spectrum', 'window']) for _, table in group]
+        for ax, (sample, number, note) in zip(column, rows):
+            spectrum = spectra[(sample, nucleus, number)]
+            x = spectrum['ppm'] - spectrum['axis_offset_ppm']
+            measured = _smooth(x, spectrum['intensity'], width)
+            simulated = [np.zeros_like(x) for _ in tables]
+            edges = [(low - spectrum['axis_offset_ppm'], high - spectrum['axis_offset_ppm']) for low, high in spectrum['windows_ppm'].values()]
+            noise = np.std(measured[~np.any([(x >= low - 0.3) & (x <= high + 0.3) for low, high in edges], axis=0)])
+            for window, (low, high) in zip(spectrum['windows_ppm'], edges):
+                found = [table.loc[(sample, number, window)] for table in tables]
+                inside = np.flatnonzero((x >= low) & (x <= high))
+                centre, total = 0.5 * (low + high), width
+                peak = inside[np.argmax(measured[inside])]
+                if measured[peak] > clear_height * noise and inside[0] < peak < inside[-1]:
+                    centre, total = x[peak], _width_at_half_height(x, measured, peak)
+                for curve, row in zip(simulated, found):
+                    curve += row['predicted'] * _line(x, centre, width, total)
+                ax.axvspan(low, high, color=GRID, alpha=0.45, linewidth=0)
+                number_text = f"{found[0]['measured']:.2f}" if overlay else f"{found[0]['measured']:.2f} / {found[0]['predicted']:.2f}"
+                ax.text(0.5 * (low + high), 1.24, number_text, ha='center', va='center', fontsize=7.5, color=INK_SOFT)
+                if ax is column[0]:
+                    ax.text(0.5 * (low + high), 1.5, WINDOW_LABELS.get(window, window), ha='center', va='bottom', fontsize=8.5, color=INK)
+                lows.append(low)
+                highs.append(high)
+            ax.fill_between(x, 0.0, unit * measured, color=SERIES[3], alpha=0.6, linewidth=0)
+            for curve, color in zip(simulated, colors):
+                ax.plot(x, unit * curve, color=color, linewidth=1.3 if overlay else 1.5)
+            ax.set_ylim(-0.08, 1.42)
+            ax.set_yticks([])
+            ax.grid(False)
+            if position == 0:
+                ax.set_ylabel(f'{sample}\n{note}' if note else sample, rotation=0, ha='right', va='center', fontsize=8.5, color=INK)
+        if not overlay and group[0][0] is not None:
+            column[0].set_title(group[0][0], fontsize=9.5, loc='left', pad=20)
+        column[-1].set_xlabel(f'δ({NUCLEUS_LABELS[nucleus]}) (ppm)')
+    margin = 0.08 * (max(highs) - min(lows))
+    axes.flat[-1].set_xlim(*(x_range or (max(highs) + margin, min(lows) - margin)))
+    if overlay:
+        lines = [Line2D([], [], color=color, linewidth=1.3, label=label) for (label, _), color in zip(groups[0], colors)]
+        numbers = 'numbers: measured share of the area'
+    else:
+        lines = [Line2D([], [], color=SERIES[0], linewidth=1.5, label=fit_label)]
+        numbers = 'numbers: share of the area, measured / simulated'
+    handles = [plt.Rectangle((0, 0), 1, 1, color=SERIES[3], alpha=0.6, linewidth=0, label='measured spectrum'), *lines,
+               plt.Rectangle((0, 0), 1, 1, color=GRID, alpha=0.45, linewidth=0, label='window of one line: its area gives the share'),
+               Line2D([], [], linestyle='none', label=numbers)]
+    fig.legend(handles=handles, loc='outside lower center', ncols=3 if overlay else 2)
+    fig.suptitle(title or f'{NUCLEUS_LABELS[nucleus]} spectra: measured, and simulated from the fit', x=0.01, ha='left', fontsize=11)
+    return axes
+
+
+def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model: str, beyond: float = 1.15):
+    """Concentrations the model gives one tube since mixing, in the four panels of the reactor figures
+    (demo.reactor_plots.plot_concentration_panels). No measurement is drawn.
+
+    trajectories: kinetics.fitting.reporting.simulate_fit_trajectories. spectrum_times: hours since mixing of the
+    spectra of the tube, drawn as dotted verticals; the time axis ends at beyond × the last one. model: the name
+    written in the title. A heated tube gets its temperature above the panels.
+    """
+    curve = trajectories[(trajectories['sample'] == sample) & (trajectories['t_h'] <= beyond * max(spectrum_times))]
+    species = [c for c in curve.columns if c not in ('sample', 't_h', 'T_C')]
+    sim = {'model': f'{model} · tube {sample}', 't_h': curve['t_h'].to_numpy(), 'T_K': curve['T_C'].to_numpy() + ZERO_CELSIUS_K,
+           'C_mM': 1000.0 * curve[species].to_numpy().T, 'idx': {sp: i for i, sp in enumerate(species)},
+           'acquisitions': [{'t_h': t_h} for t_h in spectrum_times], 'time_label': 'Time since mixing (h)'}
+    return plot_concentration_panels(sim)
+
+
+def plot_concentrations(amounts: dict, shares, rows: dict, *, x_range=(0.1, 1500.0), title: str = None):
+    """Amounts in each tube since mixing: the model as lines, the measured spectra as points.
+
+    amounts: {nucleus: kinetics.fitting.reporting.tabulate_window_amounts of the simulated trajectories}.
+    shares: tabulate_fit_shares of the same fit; a measured amount is its share × the nuclei the windows count.
+    rows: {nucleus: [samples]}, one row of panels per nucleus. A point sits at the age the fit gives its tube plus
+    the time of its spectrum. A grey band marks the time a tube spent above room temperature. Where the
+    trajectories run on after the last spectrum of a tube, that part is dashed.
+    """
+    ncols = max(len(samples) for samples in rows.values())
+    fig, axes = plt.subplots(len(rows), ncols, figsize=(3.05 * ncols, 0.9 + 2.55 * len(rows)), layout='constrained',
+                             sharex=True, sharey='row', squeeze=False)
+    used = []
+    for row_axes, (nucleus, samples) in zip(axes, rows.items()):
+        for ax, sample in zip(row_axes, samples):
+            points = shares[(shares['sample'] == sample) & (shares['nucleus'] == nucleus)]
+            curve = amounts[nucleus][amounts[nucleus]['sample'] == sample]
+            heated = curve.loc[curve['T_C'] > 25.0, 't_h']
+            if len(heated):
+                start, stop = max(heated.min(), x_range[0]), heated.max()
+                ax.axvspan(start, stop, color=GRID, alpha=0.6, linewidth=0)
+                if stop > 3.0 * start:                               # wide enough on the log axis to carry its label
+                    ax.text(0.03, 0.5, f"at {curve['T_C'].max():.0f} °C", transform=ax.transAxes, fontsize=8, color=INK_SOFT, va='center')
+            last = points['t_h'].max()
+            for window in dict.fromkeys(points['window']):
+                color = WINDOW_COLORS[window]
+                used.append((nucleus, window))
+                before = curve['t_h'] <= last * (1.0 + 1e-9)
+                ax.plot(curve.loc[before, 't_h'], 1000.0 * curve.loc[before, window], color=color, linewidth=1.8)
+                ax.plot(curve.loc[~before, 't_h'], 1000.0 * curve.loc[~before, window], color=color, linewidth=1.3, linestyle=(0, (2, 2)))
+                seen = points[points['window'] == window]
+                ax.errorbar(seen['t_h'], 1000.0 * seen['measured'] * seen['total_M'], yerr=1000.0 * seen['sigma'] * seen['total_M'],
+                            fmt='o', color=color, markersize=5.5, markeredgecolor=SURFACE, markeredgewidth=1.0, elinewidth=1.0,
+                            capsize=2, zorder=4)
+            ax.set_xscale('log')
+            ax.set_xlim(*x_range)
+            ax.set_title(sample, fontsize=9.5, loc='left')
+        row_axes[0].set_ylabel({'31P': 'phosphate (mM)\nfrom ³¹P', '13C': 'silyl groups (mM)\nfrom ¹³C'}[nucleus])
+        for ax in row_axes[len(samples):]:
+            ax.set_visible(False)
+    for ax in axes[-1]:
+        ax.set_xlabel('time since mixing (h)')
+    by_nucleus = [[Line2D([], [], color=WINDOW_COLORS[w], linewidth=1.8, label=WINDOW_LABELS.get(w, w))
+                   for n, w in dict.fromkeys(used) if n == nucleus] for nucleus in rows]
+    kinds = [Line2D([], [], color=INK_SOFT, linewidth=1.8, label='line: model (dashed after the last spectrum)'),
+             Line2D([], [], color=INK_SOFT, linestyle='none', marker='o', markersize=5.5, label='point: measured ± 1 standard error')]
+    depth = max(len(group) for group in by_nucleus)
+    blank = Line2D([], [], linestyle='none', label=' ')
+    grid = [group + [blank] * (depth - len(group)) for group in by_nucleus][:2]
+    handles = [h for pair in zip(*grid) for h in pair] if len(grid) == 2 else grid[0]
+    fig.legend(handles=handles + kinds, loc='outside lower center', ncols=depth + 1)
+    fig.suptitle(title or 'Each tube since mixing: model and measurement', x=0.01, ha='left', fontsize=11)
+    return axes
+
+
+# ------------------------------------------------------------------------------
+# How well each fitted value is known
+# ------------------------------------------------------------------------------
+def plot_profile_cases(profile, cases: dict, *, delta: float = 3.84, y_max: float = 12.0, title: str = None):
+    """How an interval is read off a profile, one panel per parameter of `cases` {parameter: panel title}.
+
+    Line: the rise of χ² when the parameter is held at a value and every other one is fitted again. Rule: Δχ² = delta.
+    Shaded: the values below the rule, which is the interval; it runs to the edge of the panel where the data do
+    not close it.
+    """
+    fig, axes = plt.subplots(1, len(cases), figsize=(3.3 * len(cases), 3.0), layout='constrained', sharey=True, squeeze=False)
+    for ax, (name, label) in zip(axes.flat, cases.items()):
+        p = profile[profile['parameter'] == name].groupby('value', as_index=False)['chi2'].min().sort_values('value')
+        rise = p['chi2'] - p['chi2'].min()
+        accepted = p.loc[rise <= delta, 'value']
+        ax.axvspan(accepted.min(), accepted.max(), color=GRID, alpha=0.7, linewidth=0)
+        ax.plot(p['value'], rise, color=SERIES[0], linewidth=1.8, marker='o', markersize=4, markeredgecolor=SURFACE, markeredgewidth=0.6)
+        ax.axhline(delta, color=INK_SOFT, linewidth=1.0)
+        ax.set_ylim(-0.4, y_max)
+        ax.set_xlim(p['value'].min(), p['value'].max())
+        ax.set_title(label, fontsize=9.5, loc='left')
+        ax.set_xlabel('value the parameter is held at (eV)')
+    axes.flat[0].set_ylabel('rise of χ² above the best fit')
+    handles = [Line2D([], [], color=SERIES[0], linewidth=1.8, marker='o', markersize=4, label='χ² with the other parameters fitted again'),
+               Line2D([], [], color=INK_SOFT, linewidth=1.0, label=f'rise of {delta:g}: the end of a 95 % interval'),
+               plt.Rectangle((0, 0), 1, 1, color=GRID, alpha=0.7, linewidth=0, label='interval')]
+    fig.legend(handles=handles, loc='outside lower center', ncols=3)
+    fig.suptitle(title or 'From a profile to an interval', x=0.01, ha='left', fontsize=11)
+    return axes
+
+
+def plot_parameter_intervals(parameters, intervals, *, structure: str, names: dict, boxes: dict, scenarios=('middle', 'long', 'free'),
+                             xlabel: str = 'eV', title: str = None):
+    """Best fit and 95 % interval of each parameter of `names` {parameter: row label}, one dot and bar per assumed age.
+
+    intervals: 'structure', 'scenario', 'parameter', 'low', 'high'; a side the data do not close is NaN and is drawn
+    to the edge of the search box with an arrow. boxes: {parameter: (lower, upper)}, the range the search was allowed,
+    drawn as a pale track behind each row.
+    """
+    fits = parameters[parameters['structure'] == structure].set_index('scenario')
+    found = intervals[intervals['structure'] == structure].set_index(['scenario', 'parameter'])
+    fig, ax = plt.subplots(figsize=(8.6, 1.3 + 0.62 * len(names)), layout='constrained')
+    for i, name in enumerate(names):
+        low_box, high_box = boxes[name]
+        ax.plot([low_box, high_box], [i, i], color=GRID, linewidth=17, alpha=0.5, solid_capstyle='butt', zorder=1)
+        for k, scenario in enumerate(scenarios):
+            y, color = i + 0.2 * (k - (len(scenarios) - 1) / 2), SCENARIO_COLORS[scenario]
+            if (scenario, name) in found.index:
+                row = found.loc[(scenario, name)]
+                low, high = (row['low'] if np.isfinite(row['low']) else low_box), (row['high'] if np.isfinite(row['high']) else high_box)
+                ax.plot([low, high], [y, y], color=color, linewidth=3.5, alpha=0.45, solid_capstyle='butt', zorder=2)
+                for edge, is_open, marker in ((low, not np.isfinite(row['low']), '<'), (high, not np.isfinite(row['high']), '>')):
+                    if is_open:
+                        ax.plot(edge, y, marker=marker, color=color, markersize=6, zorder=3)
+            ax.plot(fits.loc[scenario, name], y, 'o', color=color, markersize=6.5, markeredgecolor=SURFACE, markeredgewidth=1.2, zorder=4)
+    ax.set_yticks(range(len(names)), list(names.values()), fontsize=9, color=INK_SOFT)
+    ax.set_ylim(len(names) - 0.45, -0.55)
+    ax.grid(axis='y', visible=False)
+    ax.tick_params(axis='y', length=0)
+    ax.set_xlabel(xlabel)
+    handles = [Line2D([], [], marker='o', linestyle='', color=SCENARIO_COLORS[s], label=f'best fit, {AGE_LABELS[s]}') for s in scenarios]
+    handles += [Line2D([], [], color=INK_MUTED, linewidth=3.5, alpha=0.6, label='95 % interval'),
+                Line2D([], [], marker='>', linestyle='', color=INK_MUTED, markersize=6, label='open side: the data set no limit'),
+                Line2D([], [], color=GRID, linewidth=8, alpha=0.6, label='range the search was allowed')]
+    fig.legend(handles=handles, loc='outside lower center', ncols=3)
+    fig.suptitle(title or f'{structure}: fitted values and their 95 % intervals', x=0.01, ha='left', fontsize=11)
+    return ax
+
+
+def plot_correlation(correlation, *, labels: dict = None, strong: float = 0.8, title: str = None):
+    """Correlation between the fitted parameters near the best fit, lower triangle.
+
+    Red: the two move together (raise one, and the other has to rise to keep the fit). Blue: one rises as the other
+    falls. Grey: independent. The number is the correlation; bold from `strong` on.
+    """
+    names = list(correlation.index)
+    values = correlation.to_numpy(dtype=float)
+    shown = np.ma.masked_where(np.triu(np.ones_like(values, dtype=bool)), values)
+    fig, ax = plt.subplots(figsize=(1.9 + 0.68 * len(names), 0.9 + 0.44 * len(names)), layout='constrained')
+    image = ax.imshow(shown, cmap=DIVERGING, norm=TwoSlopeNorm(0.0, -1.0, 1.0), aspect='auto')
+    for i in range(len(names)):
+        for j in range(i):
+            if np.isfinite(values[i, j]):
+                _cell_text(ax, j, i, f'{values[i, j]:+.2f}', strong=abs(values[i, j]) >= strong)
+    text = [(labels or {}).get(name, name) for name in names]
+    ax.set_xticks(range(len(names) - 1), text[:-1], fontsize=8.5, rotation=35, ha='right', rotation_mode='anchor')
+    ax.set_yticks(range(1, len(names)), text[1:], fontsize=8.5)
+    ax.set_xlim(-0.5, len(names) - 1.5)
+    ax.set_ylim(len(names) - 0.5, 0.5)
+    ax.tick_params(length=0)
+    ax.set_xticks(np.arange(-0.5, len(names)), minor=True)
+    ax.set_yticks(np.arange(-0.5, len(names)), minor=True)
+    ax.grid(False)
+    ax.grid(which='minor', color=SURFACE, linewidth=2)
+    ax.tick_params(which='minor', length=0)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    bar = fig.colorbar(image, ax=ax, shrink=0.6, pad=0.02)
+    bar.set_label('correlation', color=INK_SOFT, fontsize=8.5)
+    bar.outline.set_visible(False)
+    fig.suptitle(title or 'Do the fitted parameters depend on each other?', x=0.01, ha='left', fontsize=11)
+    return ax
+
+
+def plot_recovery_offsets(summary, *, names: dict, cases: dict = None, clip: float = 0.35, title: str = None):
+    """Synthetic recovery in one picture: fitted value minus the value that made the data, per parameter.
+
+    summary: recovery table ('case', 'parameter', 'truth', 'fit', 'low', 'high', 'truth inside'). names:
+    {parameter: row label}, all in the same unit. cases: {case letter: legend text}. One dot and bar (95 % interval)
+    per invented data set, coloured by case; the line at zero is the true value. A bar that does not reach zero
+    missed the truth and carries a cross. An arrow is a side the data left open; offsets beyond ±clip are drawn at
+    the edge.
+    """
+    data = summary[summary['parameter'].isin(names)]
+    letters = list(dict.fromkeys(data['case'].str.split(',').str[0]))
+    colors = dict(zip(letters, SERIES))
+    runs = list(dict.fromkeys(data['case']))
+    fig, ax = plt.subplots(figsize=(8.6, 1.2 + 0.78 * len(names)), layout='constrained')
+    ax.axvline(0.0, color=INK, linewidth=1.2, zorder=1)
+    for i, name in enumerate(names):
+        rows = data[data['parameter'] == name]
+        for _, r in rows.iterrows():
+            y = i + 0.11 * (runs.index(r['case']) - (len(runs) - 1) / 2)
+            color = colors[r['case'].split(',')[0]]
+            low = np.clip(r['low'] - r['truth'], -clip, clip) if np.isfinite(r['low']) else -clip
+            high = np.clip(r['high'] - r['truth'], -clip, clip) if np.isfinite(r['high']) else clip
+            ax.plot([low, high], [y, y], color=color, linewidth=2.6, alpha=0.45, solid_capstyle='butt', zorder=2)
+            for edge, is_open, marker in ((low, not np.isfinite(r['low']), '<'), (high, not np.isfinite(r['high']), '>')):
+                if is_open:
+                    ax.plot(edge, y, marker=marker, color=color, markersize=5, zorder=3)
+            ax.plot(np.clip(r['fit'] - r['truth'], -clip, clip), y, 'o', color=color, markersize=5.5, markeredgecolor=SURFACE,
+                    markeredgewidth=1.0, zorder=4)
+            if not r['truth inside']:
+                ax.plot(high + 0.012, y, marker='x', color=INK, markersize=6, markeredgewidth=1.6, zorder=5)
+    ax.set_yticks(range(len(names)), list(names.values()), fontsize=9, color=INK_SOFT)
+    ax.set_ylim(len(names) - 0.4, -0.6)
+    ax.set_yticks(np.arange(0.5, len(names) - 1), minor=True)
+    ax.grid(axis='y', visible=False)
+    ax.grid(axis='y', which='minor', color=GRID, linewidth=0.7)
+    ax.tick_params(axis='y', which='both', length=0)
+    ax.set_xlim(-clip - 0.03, clip + 0.03)
+    ax.set_xlabel('fitted value − true value (eV)')
+    handles = [Line2D([], [], marker='o', linestyle='', color=colors[c], label=(cases or {}).get(c, f'case {c}')) for c in letters]
+    handles += [Line2D([], [], color=INK_MUTED, linewidth=2.6, alpha=0.6, label='95 % interval of one invented data set (dot: its best fit)'),
+                Line2D([], [], marker='>', linestyle='', color=INK_MUTED, markersize=5, label='open side: no limit found'),
+                Line2D([], [], marker='x', linestyle='', color=INK, markersize=6, markeredgewidth=1.6, label='the interval misses the true value')]
+    fig.legend(handles=handles, loc='outside lower center', ncols=2)
+    fig.suptitle(title or 'Invented data with a known answer: does the fit give it back?', x=0.01, ha='left', fontsize=11)
+    return ax
+
+
+# ------------------------------------------------------------------------------
+# The error of a share: what is declared and what is checked
+# ------------------------------------------------------------------------------
+def plot_error_parts(shares, *, parts: dict, title: str = None):
+    """Size of each part of the error of a share, one dot per measured share, one panel per nucleus.
+
+    shares: one row per measured share with 'nucleus' and one column per part. parts: {column: label}. The tick is
+    the median of the column.
+    """
+    nuclei = [n for n in NUCLEUS_LABELS if n in set(shares['nucleus'])]
+    fig, axes = plt.subplots(1, len(nuclei), figsize=(4.3 * len(nuclei), 3.2), layout='constrained', sharey=True, squeeze=False)
+    rng = np.random.default_rng(0)
+    for ax, nucleus in zip(axes.flat, nuclei):
+        rows = shares[shares['nucleus'] == nucleus]
+        for k, column in enumerate(parts):
+            ax.plot(k + rng.uniform(-0.2, 0.2, len(rows)), rows[column], linestyle='none', marker='o', markersize=4.5, color=SERIES[0],
+                    alpha=0.5, markeredgewidth=0)
+            ax.plot([k - 0.3, k + 0.3], [rows[column].median()] * 2, color=INK, linewidth=1.6)
+        ax.set_xticks(range(len(parts)), list(parts.values()), fontsize=8.5)
+        ax.set_xlim(-0.6, len(parts) - 0.4)
+        ax.set_title(f'{NUCLEUS_LABELS[nucleus]}: {len(rows)} measured shares', fontsize=9.5, loc='left')
+        ax.grid(axis='x', visible=False)
+        ax.tick_params(axis='x', length=0)
+    axes.flat[0].set_ylabel('error of a share')
+    axes.flat[0].set_ylim(0.0, None)
+    handles = [Line2D([], [], marker='o', linestyle='', color=SERIES[0], alpha=0.5, markersize=4.5, label='one measured share'),
+               Line2D([], [], color=INK, linewidth=1.6, label='median')]
+    fig.legend(handles=handles, loc='outside lower center', ncols=2)
+    fig.suptitle(title or 'What the error of a share is made of', x=0.01, ha='left', fontsize=11)
+    return axes
+
+
+def plot_replicates(shares, *, sample: str, scatter: dict = None, title: str = None):
+    """Repeated spectra of one tube: each share minus the mean of its window, with its noise as the bar.
+
+    shares: kinetics.data.tabulate_observable_shares. One panel per nucleus, one group of dots per window, in the
+    order the spectra were recorded. scatter: {nucleus: scatter of the shares / their noise}, written in the title.
+    """
+    data = shares[(shares['sample'] == sample) & (shares['temperature_C'] < 25.0)]
+    nuclei = [n for n in NUCLEUS_LABELS if n in set(data['nucleus'])]
+    fig, axes = plt.subplots(1, len(nuclei), figsize=(4.6 * len(nuclei), 3.3), layout='constrained', sharey=True, squeeze=False)
+    for ax, nucleus in zip(axes.flat, nuclei):
+        rows = data[data['nucleus'] == nucleus]
+        windows = list(dict.fromkeys(rows['window']))
+        ax.axhline(0.0, color=INK_SOFT, linewidth=1.0)
+        for k, window in enumerate(windows):
+            group = rows[rows['window'] == window].sort_values('spectrum')
+            weight = 1.0 / group['sigma_noise'] ** 2
+            mean = (weight * group['share']).sum() / weight.sum()
+            x = k + np.linspace(-0.3, 0.3, len(group))
+            ax.errorbar(x, group['share'] - mean, yerr=group['sigma_noise'], fmt='o', color=WINDOW_COLORS[window], markersize=5,
+                        markeredgecolor=SURFACE, markeredgewidth=1.0, elinewidth=1.1, capsize=2)
+        ax.set_xticks(range(len(windows)), [WINDOW_LABELS.get(w, w).replace(' (', '\n(').replace(' on ', ' on\n') for w in windows], fontsize=8)
+        ax.set_xlim(-0.6, len(windows) - 0.4)
+        ax.grid(axis='x', visible=False)
+        ax.tick_params(axis='x', length=0)
+        note = f': scatter = {scatter[nucleus]:.1f} × noise' if scatter else ''
+        ax.set_title(f'{NUCLEUS_LABELS[nucleus]}{note}', fontsize=9.5, loc='left')
+    axes.flat[0].set_ylabel('share − mean of the repeats')
+    fig.suptitle(title or f'{sample}: the same tube measured again and again', x=0.01, ha='left', fontsize=11)
+    return axes
+
+
+def plot_miss_distribution(residuals, *, limit: float = 3.0, bin_width: float = 0.5, title: str = None):
+    """Histogram of the misses z of one fit against what errors of exactly the stated size would give.
+
+    residuals: the residual table of the fit ('z'). Curve: a standard normal for the same number of values.
+    """
+    z = residuals['z'].to_numpy(dtype=float)
+    edges = np.arange(-limit - 1.0, limit + 1.0 + bin_width, bin_width)
+    fig, ax = plt.subplots(figsize=(6.4, 3.3), layout='constrained')
+    ax.hist(z, bins=edges, color=BLUE_RAMP[0], edgecolor=SURFACE, linewidth=1.5)
+    grid = np.linspace(edges[0], edges[-1], 300)
+    ax.plot(grid, len(z) * bin_width * np.exp(-0.5 * grid ** 2) / np.sqrt(2.0 * np.pi), color=INK_SOFT, linewidth=1.6)
+    for edge in (-limit, limit):
+        ax.axvline(edge, color=INK, linewidth=1.0)
+    ax.text(limit - 0.08, ax.get_ylim()[1] * 0.96, 'fit rule', ha='right', va='top', fontsize=8.5, color=INK_SOFT)
+    ax.set_xlabel('miss = (predicted − measured) / error')
+    ax.set_ylabel('number of values')
+    ax.grid(axis='x', visible=False)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=BLUE_RAMP[0], label=f'misses of the fit ({len(z)} values)'),
+               Line2D([], [], color=INK_SOFT, linewidth=1.6, label='expected if the errors are exactly as stated')]
+    fig.legend(handles=handles, loc='outside lower center', ncols=2)
+    fig.suptitle(title or 'Are the misses as large as the errors say?', x=0.01, ha='left', fontsize=11)
+    return ax
+
+
+def plot_reading_trajectories(curves: dict, points: dict, *, samples: list, window: str = 'TMSPA', nucleus: str = '31P',
+                              traced: dict = None, trace_label: str = None, x_range=(0.1, 2000.0), title: str = None):
+    """Share of one window in a few tubes against the time since mixing, one panel per assumed age.
+
+    curves: {scenario: kinetics.fitting.reporting.tabulate_window_amounts of the trajectories of that fit}.
+    points: {scenario: tabulate_fit_shares of that fit}; a marker is a measured share at the age the scenario gives
+    its tube. traced: the same as curves for the same parameters with something added at mixing, drawn dashed.
+    """
+    scenarios = [s for s in SCENARIO_ORDER if s in curves]
+    colors = dict(zip(samples, SERIES))
+    fig, axes = plt.subplots(1, len(scenarios), figsize=(3.7 * len(scenarios), 3.5), layout='constrained', sharey=True, squeeze=False)
+    for ax, scenario in zip(axes.flat, scenarios):
+        for sample in samples:
+            for table, dashes, weight in ((curves, '-', 1.8), (traced, (0, (4, 2)), 1.5)):
+                if table is None:
+                    continue
+                curve = table[scenario][table[scenario]['sample'] == sample]
+                total = curve.drop(columns=['sample', 't_h', 'T_C']).sum(axis=1)
+                ax.plot(curve['t_h'], curve[window] / total, color=colors[sample], linewidth=weight, linestyle=dashes)
+            seen = points[scenario][(points[scenario]['sample'] == sample) & (points[scenario]['nucleus'] == nucleus)
+                                    & (points[scenario]['window'] == window)]
+            ax.plot(seen['t_h'], seen['measured'], linestyle='none', marker='o', markersize=6.5, markerfacecolor=colors[sample],
+                    markeredgecolor=SURFACE, markeredgewidth=1.2, zorder=5)
+        ax.set_xscale('log')
+        ax.set_xlim(*x_range)
+        ax.set_ylim(-0.05, 1.05)
+        ax.set_title(f'assumed age: {AGE_LABELS[scenario]}' if scenario != 'free' else 'free ages', fontsize=9.5, loc='left')
+        ax.set_xlabel('time since mixing (h)')
+    axes.flat[0].set_ylabel(f'{window} share of the {NUCLEUS_LABELS[nucleus]} area')
+    handles = [Line2D([], [], color=colors[sample], linewidth=1.8, label=sample) for sample in samples]
+    handles.append(Line2D([], [], color=INK_SOFT, linewidth=1.8, label='model, from the recipe alone'))
+    if traced is not None:
+        handles.append(Line2D([], [], color=INK_SOFT, linewidth=1.5, linestyle=(0, (4, 2)), label=trace_label or 'model, with a trace at mixing'))
+    handles.append(Line2D([], [], color=INK_SOFT, linestyle='none', marker='o', markersize=6.5, label='measured, placed at the assumed age'))
+    fig.legend(handles=handles, loc='outside lower center', ncols=3)
+    fig.suptitle(title or f'{window} since mixing under each assumed age', x=0.01, ha='left', fontsize=11)
+    return axes

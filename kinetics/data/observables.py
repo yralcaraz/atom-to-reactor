@@ -21,7 +21,9 @@ phosphate. Only the raw route fills them (the tables of notebook 03 do not hold 
     calculate_replicate_scatter  scatter of repeated spectra of one sample against their stated noise
 
 What the files do not record is kept explicit: the time from mixing to a sample's first spectrum ('age') is
-unknown for every sample, and the heating episodes carry a 'basis' saying where each number comes from.
+unknown for every sample, and the heating episodes carry a 'basis' saying where each number comes from. A
+species of a recipe whose amount is not known is listed under 'unknown_M' with the range a fit may give it
+(the water of the tube mixed without water).
 
 Source: Y. Alcaraz Galván; sample histories transcribed from the acquisition times of the experimental NMR
 spectra, as recorded in notebooks 03 and 04
@@ -53,6 +55,8 @@ DEFAULT_ERROR_FLOOR = {'31P': {'absolute': 0.01, 'relative': 0.05},
 
 # Samples, named as in notebook 03 (§2.1). 'recipe' is resolved by _recipe_molarities.
 # role: 'fit' enters the fit; 'hold_out' is predicted, never fitted; 'check' is compared after the fit.
+# 'unknown_M': species of the recipe whose concentration at mixing is not known, with the range [M] a fit may
+# give it (DECLARED). The fit takes one parameter per entry, on top of the recipe.
 LAB_SAMPLES = {
     '0.5 % H2O': {
         'label': '5 vol% TMSPa + 0.5 vol% H2O in EC/DEC', 'nucleus': '31P', 'role': 'fit',
@@ -86,10 +90,11 @@ LAB_SAMPLES = {
         'recipe': ('tmspa_tmsoh',), 'flags': ['16 scans: standard errors of 0.08 to 0.18 on the shares'],
     },
     'TMSPa alone': {
-        'label': '5 vol% TMSPa in EC/DEC, no water added', 'nucleus': '31P', 'role': 'check',
-        'recipe': ('tmspa',),
+        'label': '5 vol% TMSPa in EC/DEC, no water added', 'nucleus': '31P', 'role': 'fit',
+        'recipe': ('tmspa',), 'unknown_M': {'H2O': (0.0, 0.3)},
         'flags': ['TMSPA converts to BMSPA in 10 days without added water: the water content is unknown '
-                  '(notebook 03 §5.4)'],
+                  '(notebook 03 §5.4). Fitted since the third fit, with the water at mixing as a parameter '
+                  '(docs/plan-fit_improvement.md); a check in the first two fits'],
     },
     'TMSOH, probe': {
         'label': '5 vol% TMSOH in EC/DEC, heated in the NMR probe', 'nucleus': '13C', 'role': 'fit',
@@ -320,6 +325,8 @@ def build_lab_observables(shares_P: pd.DataFrame, shares_C: pd.DataFrame, *, bui
             'spectra': spectra,
             'flags': list(spec['flags']),
         }
+        if spec.get('unknown_M'):
+            out[name]['unknown_M'] = {sp: [float(low), float(high)] for sp, (low, high) in spec['unknown_M'].items()}
         if spec['nucleus'] == '13C':
             out[name]['flags'].append(C13_FLAG)
         for nucleus, more in spec.get('more_nuclei', {}).items():
@@ -404,7 +411,8 @@ def describe_lab_observables(observables: dict) -> pd.DataFrame:
             'role': s['role'], 'campaign': s['campaign'],
             'spectra': ' + '.join(f'{len(spectra)} {nucleus}' + (f' ({role})' if role != s['role'] else '')
                                   for nucleus, role, spectra in list_spectrum_sets(s)),
-            'solutes at t = 0': ', '.join(f'{sp} {1000 * c:.0f} mM' for sp, c in s['c0_M'].items() if sp != 'EC'),
+            'solutes at t = 0': ', '.join([f'{sp} {1000 * c:.0f} mM' for sp, c in s['c0_M'].items() if sp != 'EC']
+                                          + [f'{sp} unknown' for sp in s.get('unknown_M', {})]),
             'T of the spectra (°C)': ', '.join(str(v) for v in T),
             'time since first spectrum (h)': f'{min(t):.2f}' if len(t) == 1 else f'{min(t):.2f} to {max(t):.1f}',
             'before the first spectrum': pre or 'unknown (age)',

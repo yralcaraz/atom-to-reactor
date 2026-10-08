@@ -25,7 +25,7 @@ def _time_axis(sim: dict):
     """Time [h] and a mask: from TMSPA addition for protocol runs, the full grid for batch runs."""
     t = sim['t_h']
     mask = select_post_injection(sim)
-    label = 'Time from TMSPA addition (h)' if 'injection_idx' in sim else 'Time (h)'
+    label = sim.get('time_label') or ('Time from TMSPA addition (h)' if 'injection_idx' in sim else 'Time (h)')
     return t, mask, label
 
 

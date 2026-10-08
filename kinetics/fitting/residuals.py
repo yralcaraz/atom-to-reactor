@@ -10,6 +10,10 @@ recorded, so every result is computed under a scenario:
     'free'                      each unknown age lies between 1 h and 30 days and takes the value that favours
                                 the model (the reading notebook 03 uses when an observation picks its best time)
 
+A recipe can hold a species whose amount at mixing is not known (the water of the tube mixed without water):
+the sample lists it under 'unknown_M' with its range, a fit takes it as a parameter, and every function that
+simulates a sample takes the amounts as added_M = {sample: {species: mol/L}}, on top of the recipe.
+
 Error model of a share: noise ⊕ baseline spread ⊕ a declared floor. Repeated room-temperature spectra of one
 block (the 2 % water sample) are one composition and n − 1 measurements of "no drift": the baseline spread and
 the floor are common to them, the noise (times the Birge ratio of their scatter) is independent.
@@ -120,6 +124,7 @@ def _lab_sample(name: str, record: dict, observables: dict, error_floor: dict, f
         'heated': sorted((3600.0 * h['start_h'], h['T_C'] + ZERO_CELSIUS_K, 3600.0 * h['duration_h'])
                          for h in record['heated']),
         'blocks': blocks, 'age_mode': 'none', 'age_h': None,
+        'unknown_M': {sp: (float(low), float(high)) for sp, (low, high) in record.get('unknown_M', {}).items()},
     }
 
 
@@ -233,24 +238,29 @@ def _paper_value(sample: dict, C_end: np.ndarray, idx: dict) -> float:
     return float(OBSERVABLES[sample['observable']][1](np.maximum(C_end, 0.0), idx, c0))
 
 
-def _initial_composition(sample: dict, water_fraction: float) -> dict:
+def _initial_composition(sample: dict, water_fraction: float, added: dict = None) -> dict:
+    """Composition at mixing: the recipe, the available share of its water, and `added` {species: mol/L} on top
+    (the amounts of the species the recipe does not fix)."""
     c0 = dict(sample['c0_M'])
     if sample['wet'] and water_fraction != 1.0:
         c0['H2O'] = water_fraction * c0['H2O']
+    for species, amount in (added or {}).items():
+        c0[species] = c0.get(species, 0.0) + max(float(amount), 0.0)
     return c0
 
 
 def calculate_predicted_shares(sample: dict, model, *, age_h: float = None, water_fraction: float = 1.0,
-                               solver: dict = None):
+                               added_M: dict = None, solver: dict = None):
     """Shares the model predicts for one lab sample, one array (spectra × windows) per block, or the value of
     a paper observable. The blocks of a sample are read off one simulation.
 
+    added_M: {species: mol/L} present at mixing in this sample on top of its recipe.
     Returns None when the simulation fails or runs out of its call budget.
     """
     solver = solver or SEARCH_SOLVER
     segments, times = build_sample_history(sample, age_h)
-    sim = simulate_history(_initial_composition(sample, water_fraction), segments, np.concatenate(times), model=model,
-                           **solver)
+    sim = simulate_history(_initial_composition(sample, water_fraction, added_M), segments, np.concatenate(times),
+                           model=model, **solver)
     if not sim['success']:
         return None
     if sample['kind'] == 'paper':
@@ -286,7 +296,7 @@ def _count(sample: dict) -> int:
     return 1 if sample['kind'] == 'paper' else sum(block['measured'].size for block in sample['blocks'])
 
 
-def _profile_age(sample: dict, model, water_fraction: float, solver: dict):
+def _profile_age(sample: dict, model, water_fraction: float, solver: dict, added: dict = None):
     """Age in FREE_AGE_BOUNDS_H that minimises the χ² of one unheated sample: one simulation, every age.
 
     The model is run once to the oldest age; the spectrum times of every candidate age lie on that trajectory.
@@ -296,7 +306,7 @@ def _profile_age(sample: dict, model, water_fraction: float, solver: dict):
     ages_h = np.geomspace(*FREE_AGE_BOUNDS_H, N_AGE_GRID)
     t_spec = np.concatenate([block['t_spec_s'] for block in sample['blocks']])
     times = (3600.0 * ages_h[:, None] + t_spec[None, :]).ravel()
-    sim = simulate_history(_initial_composition(sample, water_fraction),
+    sim = simulate_history(_initial_composition(sample, water_fraction, added),
                            [(sample['T_rt_K'], float(times.max()))], times, model=model, **solver)
     if not sim['success']:
         return None, None
@@ -319,37 +329,41 @@ def _profile_age(sample: dict, model, water_fraction: float, solver: dict):
     return float(ages_h[j]), shares[j]
 
 
-def _evaluate_sample(sample: dict, model, ages: dict, water_fraction: float, solver: dict) -> tuple:
+def _evaluate_sample(sample: dict, model, ages: dict, water_fraction: float, solver: dict, added_M: dict = None) -> tuple:
     """(predicted, age used) of one sample; predicted is None on failure."""
+    added = (added_M or {}).get(sample['name'])
     if sample['age_mode'] == 'profile':
         age_h = (ages or {}).get(sample['name'])
         if age_h is None:
-            age_h, predicted = _profile_age(sample, model, water_fraction, solver)
+            age_h, predicted = _profile_age(sample, model, water_fraction, solver, added)
             return predicted, age_h
     elif sample['age_mode'] == 'parameter':
         age_h = ages[sample['name']]
     else:
         age_h = sample['age_h']
-    return calculate_predicted_shares(sample, model, age_h=age_h, water_fraction=water_fraction, solver=solver), age_h
+    return calculate_predicted_shares(sample, model, age_h=age_h, water_fraction=water_fraction, added_M=added,
+                                      solver=solver), age_h
 
 
 # ------------------------------------------------------------------------------
 # Residuals of a model over a sample set
 # ------------------------------------------------------------------------------
 def calculate_residuals(model, samples: list, *, ages: dict = None, water_fraction: float = 1.0,
-                        solver: dict = None, return_details: bool = False):
+                        added_M: dict = None, solver: dict = None, return_details: bool = False):
     """Whitened residuals of the model over the samples, in the order of the sample set; χ² is their sum of squares.
 
     ages: {sample name: age in hours} for the sample whose age is a fit parameter in the free scenario (and,
     optionally, fixed ages for the samples whose age would otherwise be found inside the evaluation).
     water_fraction: share of the added water that is available, applied to the samples mixed with water.
+    added_M: {sample name: {species: mol/L}} present at mixing on top of the recipe (the species a recipe does
+    not fix, see 'unknown_M' of a sample). A sample without an entry starts from its recipe alone.
     A sample whose simulation fails contributes PENALTY for each of its values.
     With return_details: also {sample: {'predicted', 'age_h', 'ok'}}, 'predicted' holding one array per block.
     """
     solver = solver or SEARCH_SOLVER
     blocks, details = [], {}
     for sample in samples:
-        predicted, age_h = _evaluate_sample(sample, model, ages, water_fraction, solver)
+        predicted, age_h = _evaluate_sample(sample, model, ages, water_fraction, solver, added_M)
         if predicted is None:
             blocks.append(np.full(_count(sample), PENALTY))
         elif sample['kind'] == 'paper':
@@ -361,7 +375,8 @@ def calculate_residuals(model, samples: list, *, ages: dict = None, water_fracti
     return (residuals, details) if return_details else residuals
 
 
-def find_free_age(model, samples: list, *, water_fraction: float = 1.0, solver: dict = None, n_grid: int = 9) -> dict:
+def find_free_age(model, samples: list, *, water_fraction: float = 1.0, added_M: dict = None, solver: dict = None,
+                  n_grid: int = 9) -> dict:
     """{sample: age in hours} for the sample whose age is a fit parameter, chosen to minimise its χ² for this model.
 
     Each sample's residuals depend on its own age only, so that sample is treated alone: a coarse grid in
@@ -375,7 +390,7 @@ def find_free_age(model, samples: list, *, water_fraction: float = 1.0, solver: 
 
         def chi2(log_age):
             r = calculate_residuals(model, [sample], ages={sample['name']: float(np.exp(log_age))},
-                                    water_fraction=water_fraction, solver=solver)
+                                    water_fraction=water_fraction, added_M=added_M, solver=solver)
             return float(np.sum(r ** 2))
 
         grid = np.log(np.geomspace(*FREE_AGE_BOUNDS_H, n_grid))
@@ -432,7 +447,7 @@ def _rows_of_block(name: str, block: dict, predicted: np.ndarray, t_h: np.ndarra
 
 
 def tabulate_residuals(model, samples: list, *, ages: dict = None, water_fraction: float = 1.0,
-                       solver: dict = None) -> pd.DataFrame:
+                       added_M: dict = None, solver: dict = None) -> pd.DataFrame:
     """Standardised residuals z = (predicted − measured) / σ, one row per measured quantity.
 
     kind 'share': one window of one spectrum. For a block of repeated spectra: 'mean' (its composition,
@@ -442,8 +457,8 @@ def tabulate_residuals(model, samples: list, *, ages: dict = None, water_fractio
     The fit rule reads this table: a structure fits when no |z| exceeds 3.
     """
     solver = solver or REPORT_SOLVER
-    _, details = calculate_residuals(model, samples, ages=ages, water_fraction=water_fraction, solver=solver,
-                                     return_details=True)
+    _, details = calculate_residuals(model, samples, ages=ages, water_fraction=water_fraction, added_M=added_M,
+                                     solver=solver, return_details=True)
     rows = []
     for sample in samples:
         d = details[sample['name']]

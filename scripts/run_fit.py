@@ -17,8 +17,14 @@ needs a new directory: in one that holds results the old fits are returned as th
 
 Rules fixed before any fit: scenarios 'short' (1 h), 'middle' (1 d), 'long' (7 d)
 and 'free' (each unknown age between 1 h and 30 d; 7 d in the first fit); a structure fits a scenario if no
-standardised residual exceeds 3; the first consistent parameter set is that of the smallest structure that fits, a common-age scenario
-taking precedence over free ages.
+standardised residual exceeds 3.
+
+Rules of the third fit (docs/plan-fit_improvement.md), which replace the selection rule of the first two:
+- the tube mixed without water is fitted, with its water at mixing as a parameter ('c0 H2O TMSPa alone');
+- trace rule: a fit is accepted only if its own parameter set, unchanged, still fits with 1 µM and with 1 mM
+  TMSOH at mixing in every tube whose recipe holds TMSPA and no TMSOH;
+- the consistent parameter set is that of the smallest structure that fits and passes the trace rule, free
+  ages taking precedence over a common age (the first two fits took the common age first).
 
 Source: Y. Alcaraz Galván
 """
@@ -50,6 +56,7 @@ from kinetics.fitting import (
     calculate_prediction_band, refine_profile_edges, simulate_synthetic_shares, summarize_residuals,
     tabulate_reaction_barriers, tabulate_residuals, write_fit_result,
 )
+from kinetics.fitting.estimation import RECIPE_FACTORS
 from kinetics.microkinetics.models import MODELS, get_model
 from kinetics.reactor import (
     build_protocol_schedule, calculate_recipe_molarities, calculate_remaining_fraction, find_crossing_time,
@@ -100,7 +107,8 @@ def stage_registered(args) -> None:
     rows, tables = [], []
     for name in MODELS:
         for scenario in SCENARIOS:
-            samples, model = sample_set(scenario), get_model(name)
+            # A registered model has no value for an amount a recipe does not fix: those samples are left out
+            samples, model = [s for s in sample_set(scenario) if not s.get('unknown_M')], get_model(name)
             ages = find_free_age(model, samples, solver=REPORT_SOLVER)
             residuals = calculate_residuals(model, samples, ages=ages, solver=REPORT_SOLVER)
             table = tabulate_residuals(model, samples, ages=ages)
@@ -137,15 +145,24 @@ def stage_throughput(args) -> None:
 # ------------------------------------------------------------------------------
 # recovery: can this pipeline find known parameters in data like ours?
 # ------------------------------------------------------------------------------
+WATER_ALONE = 'c0 H2O TMSPa alone'       # the water at mixing of the tube mixed without water, a parameter [M]
 RECOVERY_TRUTHS = {
     'A': ('M1-split', 'middle', {'g hydrolysis_R1': 1.28, 'g hydrolysis_R23': 1.05, 'g transfer': 1.05,
-                                 'g condensation': 1.25, 'g solvent_attack': 1.315}, (1, 2, 3),
+                                 'g condensation': 1.25, 'g solvent_attack': 1.315, WATER_ALONE: 0.06}, (1, 2, 3),
           ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack'], (512, 12, 40)),
     'B': ('M3-split', 'middle', {'g hydrolysis_R1': 1.30, 'g hydrolysis_R23': 1.00, 'g transfer': 0.90,
                                  'g condensation': 1.25, 'g solvent_attack': 1.315,
-                                 'dG R1': 0.0, 'dG R2': 0.12, 'dG R3': 0.17, 'dG R4': 0.0}, (1, 2),
+                                 'dG R1': 0.0, 'dG R2': 0.12, 'dG R3': 0.17, 'dG R4': 0.0, WATER_ALONE: 0.06}, (1, 2),
           ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack', 'dG R2', 'dG R3'],
           (1024, 8, 40)),
+    # Third fit: free ages, a transfer barrier the water-free tube can see, and its water unknown. The truth is
+    # close to the screening result of docs/plan-fit_improvement.md
+    'C': ('M3-split', 'free', {'g hydrolysis_R1': 1.15, 'g hydrolysis_R23': 0.96, 'g transfer': 0.75,
+                               'g condensation': 1.33, 'g solvent_attack': 1.31,
+                               'dG R1': 0.43, 'dG R2': 0.20, 'dG R3': 0.26, 'dG R4': -0.27, WATER_ALONE: 0.06,
+                               'log10 age 2 % H2O': 2.5}, (1, 2),
+          ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack', 'dG R2', 'dG R3',
+           WATER_ALONE], (1024, 8, 40)),
 }
 
 
@@ -213,7 +230,8 @@ def fit_path(structure: str, scenario: str, tag: str = '') -> Path:
 
 
 def complete_start(problem: FitProblem, theta: dict):
-    """A start for this problem from a parameter set that may lack its age or water fraction; None if it lacks more."""
+    """A start for this problem from a parameter set that may lack its age, water fraction or an amount at mixing;
+    None if it lacks more."""
     out = dict(theta)
     for p in problem.parameters:
         if p.name not in out:
@@ -221,6 +239,8 @@ def complete_start(problem: FitProblem, theta: dict):
                 out[p.name] = p.upper
             elif p.kind == 'water':
                 out[p.name] = 1.0
+            elif p.kind == 'recipe':
+                out[p.name] = float(np.clip(0.05, p.lower, p.upper))
             else:
                 return None
     return out
@@ -297,16 +317,72 @@ def load_main_fits() -> dict:
     return out
 
 
-def select_consistent(fits: dict):
-    """(structure, scenario, kind) by the rule fixed before fitting, or None: the smallest structure that fits a
-    common-age scenario; failing that, the smallest that fits with free ages."""
-    for kind, scenarios in (('common age', ('short', 'middle', 'long')), ('free ages', ('free',))):
+def select_consistent(fits: dict, verdicts: dict = None):
+    """(structure, scenario, kind) by the rule of the third fit, or None: the smallest structure that fits with
+    free ages; failing that, the smallest that fits a common-age scenario. A fit that the trace rule rejects
+    (verdicts: {(structure, scenario): passes}) is not eligible; one without a verdict is."""
+    rejected = {key for key, passes in (verdicts or {}).items() if not passes}
+    for kind, scenarios in (('free ages', ('free',)), ('common age', ('short', 'middle', 'long'))):
         for structure in SIZE_ORDER:
-            fitting = [sc for sc in scenarios if (structure, sc) in fits and fits[(structure, sc)]['fits']]
+            fitting = [sc for sc in scenarios if (structure, sc) in fits and fits[(structure, sc)]['fits']
+                       and (structure, sc) not in rejected]
             if fitting:
                 best = min(fitting, key=lambda sc: fits[(structure, sc)]['chi2'])
                 return structure, best, kind
     return None
+
+
+# Trace rule (third fit). A TMSPA stock holds some hydrolysis product, so a parameter set must not depend on a
+# start that is pure: unchanged, it has to fit with each of these amounts of TMSOH at mixing. DECLARED levels
+TRACE_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa alone')       # the fitted tubes whose recipe holds TMSPA and no TMSOH
+TRACE_RULE_M = (1e-6, 1e-3)
+TRACE_RULE_MAX_Z = 3.0
+
+
+def trace_options(level_M: float) -> dict:
+    return {'overrides': {name: {'added_M': {'TMSOH': level_M}} for name in TRACE_SAMPLES}}
+
+
+def tabulate_trace_verdicts(fits: dict) -> pd.DataFrame:
+    """One row per fit that fits: χ² and largest |z| of its parameter set, unchanged, with each trace of TMSOH at
+    mixing, and 'passes' (it still fits with every one). Written to trace_verdict.csv; a row whose fit has not
+    changed is read back from that file."""
+    path = RESULTS / 'trace_verdict.csv'
+    columns = ['structure', 'scenario', 'chi2', 'max |z|'] + [f'{what} with {level:.0e} M' for level in TRACE_RULE_M
+                                                              for what in ('chi2', 'max |z|')] + ['passes']
+    known = pd.read_csv(path) if path.exists() else pd.DataFrame(columns=columns)
+    rows = []
+    for (structure, scenario), fit in fits.items():
+        if not fit['fits']:
+            continue
+        old = known[(known['structure'] == structure) & (known['scenario'] == scenario)]
+        if len(old) and abs(float(old['chi2'].iloc[0]) - fit['chi2']) < 1e-6:
+            rows.append(old.iloc[0].to_dict())
+            continue
+        row = {'structure': structure, 'scenario': scenario, 'chi2': fit['chi2'], 'max |z|': fit['max_abs_z']}
+        for level in TRACE_RULE_M:
+            problem = FitProblem(structure, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
+            x = problem.vector(fit['theta'])
+            row[f'chi2 with {level:.0e} M'] = problem.chi2(x)
+            row[f'max |z| with {level:.0e} M'] = float(problem.table(x)['z'].abs().max())
+        row['passes'] = bool(all(row[f'max |z| with {level:.0e} M'] <= TRACE_RULE_MAX_Z for level in TRACE_RULE_M))
+        rows.append(row)
+        log(f"trace rule {structure} {scenario}: " + ', '.join(
+            f"chi2 {row[f'chi2 with {level:.0e} M']:.1f} and max |z| {row[f'max |z| with {level:.0e} M']:.2f} with {level:.0e} M"
+            for level in TRACE_RULE_M) + f" (chi2 {fit['chi2']:.1f} without): {'PASSES' if row['passes'] else 'REJECTED'}")
+    table = pd.DataFrame(rows, columns=columns)
+    table.to_csv(path, index=False)
+    return table
+
+
+def load_trace_verdicts(fits: dict = None) -> dict:
+    """{(structure, scenario): passes} from trace_verdict.csv, computed first for `fits` when given."""
+    if fits is not None:
+        table = tabulate_trace_verdicts(fits)
+    else:
+        path = RESULTS / 'trace_verdict.csv'
+        table = pd.read_csv(path) if path.exists() else pd.DataFrame()
+    return {(r['structure'], r['scenario']): str(r['passes']) == 'True' for _, r in table.iterrows()}
 
 
 def summarize_fits() -> pd.DataFrame:
@@ -322,8 +398,8 @@ def summarize_fits() -> pd.DataFrame:
               ignore_index=True).to_csv(RESULTS / 'fits_residuals.csv', index=False)
     pd.DataFrame([{'structure': st, 'scenario': sc, 'reaction': r, **b} for (st, sc), fit in fits.items()
                   for r, b in fit['barriers'].items()]).to_csv(RESULTS / 'fits_barriers.csv', index=False)
-    selected = select_consistent(fits)
-    log('selection rule: ' + ('no structure fits any scenario' if selected is None else
+    selected = select_consistent(fits, load_trace_verdicts(fits))
+    log('selection rule: ' + ('no structure fits any scenario and passes the trace rule' if selected is None else
                               f'{selected[0]} in the {selected[1]} scenario ({selected[2]})'))
     return table
 
@@ -416,7 +492,8 @@ NIGHT_ENERGY_OFFSETS_SE = (-2.0, -1.0, -0.5, -0.25, 0.25, 0.5, 1.0, 2.0)
 
 def night_grids(problem: FitProblem, theta: dict, names: list) -> dict:
     """Profile grids of the night run: 10 offsets for a barrier, 8 for a freed energy (the library default has
-    14 and 12), the whole box in 13 steps for an age or the water fraction. Interval edges are refined afterwards."""
+    14 and 12), multiples of the best value for an amount at mixing, the whole box in 13 steps for an age or the
+    water fraction. Interval edges are refined afterwards."""
     sigma = {row['quantity']: row['sigma'] for row in problem.build(problem.vector(theta))['prior_rows']}
     grids = {}
     for p in problem.all_parameters:
@@ -426,6 +503,8 @@ def night_grids(problem: FitProblem, theta: dict, names: list) -> dict:
             grid = theta[p.name] + np.array(NIGHT_BARRIER_OFFSETS_EV)
         elif p.kind == 'energy':
             grid = theta[p.name] + next(v for k, v in sigma.items() if p.target in k) * np.array(NIGHT_ENERGY_OFFSETS_SE)
+        elif p.kind == 'recipe' and theta[p.name] > 1e-6:
+            grid = theta[p.name] * np.array(RECIPE_FACTORS)
         else:
             grid = np.linspace(p.lower, p.upper, 13)
         grid = grid[(grid >= p.lower - 1e-12) & (grid <= p.upper + 1e-12)]
@@ -529,7 +608,7 @@ def adopt_profile_minimum(structure: str, scenario: str, args, *, refine: bool) 
     return True
 
 
-FITTED_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe', 'TMSOH, glovebox', 'E1')
+FITTED_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox', 'E1')
 
 
 def run_leave_one_out(structure: str, scenario: str, args) -> dict:
@@ -650,7 +729,7 @@ def stage_night(args) -> None:
     if not stage_recovery(args):
         raise SystemExit('the synthetic recovery failed: the night run stops here')
     fits = load_main_fits()
-    selected = select_consistent(fits)
+    selected = select_consistent(fits, load_trace_verdicts(fits))
     profiled = [MAIN_STRUCTURE, 'M1'] + ([selected[0]] if selected and selected[0] not in (MAIN_STRUCTURE, 'M1') else [])
     log(f'night: profiles of {profiled}; leave-one-out, sensitivities and indistinguishability on {MAIN_STRUCTURE}')
     # 1. Profiles of the main structure, then of the baseline structure
@@ -728,20 +807,18 @@ def summarize_night() -> None:
 # ------------------------------------------------------------------------------
 # traces: does a fit survive a trace of TMSOH at mixing?
 # ------------------------------------------------------------------------------
-WATER_SAMPLES = ('0.5 % H2O', '2 % H2O')                      # the fitted samples whose recipe holds no TMSOH
+WATER_SAMPLES = ('0.5 % H2O', '2 % H2O')                      # the samples mixed with water (trajectory table)
 TRACE_SCAN_M = (0.0, 1e-9, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3)
 TRACE_REFIT_M = {'1uM': 1e-6, '1mM': 1e-3}
 
 
-def trace_options(level_M: float) -> dict:
-    return {'overrides': {name: {'added_M': {'TMSOH': level_M}} for name in WATER_SAMPLES}}
-
-
 def stage_traces(args) -> None:
-    """Every fit starts the two water samples from the recipe alone, with no TMSOH at mixing. A TMSPA stock holds
-    some hydrolysis product, so each fit of the main structure is (a) evaluated unchanged with a trace of TMSOH
+    """Every fit starts the TMSPA tubes from the recipe alone, with no TMSOH at mixing. A TMSPA stock holds some
+    hydrolysis product, so each fit of the main structure is (a) evaluated unchanged with a trace of TMSOH
     added at mixing and (b) fitted again with 1 µM and with 1 mM of it. A fit that (a) destroys rests on an
-    induction time seeded by the reaction itself; (b) says whether the scenario can still be fitted."""
+    induction time seeded by the reaction itself: the trace rule rejects it (tabulate_trace_verdicts, which reads
+    the 1 µM and 1 mM points of (a) for every fit). (b) says whether the scenario can still be fitted with other
+    parameters; it does not enter the rule."""
     rows = []
 
     def record(scenario, level, how, problem, theta, **extra):
@@ -822,7 +899,8 @@ def accepted_thetas(structure: str, scenario: str) -> list:
 def check_hold_out(structure: str, scenario: str, theta: dict) -> pd.DataFrame:
     built = get_structure(structure).build(theta)
     samples = sample_set(scenario, roles=('hold_out',), paper=())
-    return tabulate_residuals(built['model'], samples, ages=built['ages'], water_fraction=built['water_fraction'])
+    return tabulate_residuals(built['model'], samples, ages=built['ages'], water_fraction=built['water_fraction'],
+                              added_M=built['added_M'])
 
 
 def check_later_spectra(structure: str, scenario: str, fit: dict) -> pd.DataFrame:
@@ -833,7 +911,7 @@ def check_later_spectra(structure: str, scenario: str, fit: dict) -> pd.DataFram
     if not samples:
         return pd.DataFrame()
     return tabulate_residuals(built['model'], samples, ages={**fit['ages'], **built['ages']},
-                              water_fraction=built['water_fraction'])
+                              water_fraction=built['water_fraction'], added_M=built['added_M'])
 
 
 CO_PRODUCTS = ('none', 'TMSOH', 'HMDSO')
@@ -841,6 +919,8 @@ CO_PRODUCTS = ('none', 'TMSOH', 'HMDSO')
 
 def check_tmspa_alone(structure: str, theta: dict, co_products: str = 'none') -> dict:
     """TMSPa without added water: the water content with which the model turns the first spectrum into the second.
+    Since the third fit this tube is fitted from its recipe, with its water as a parameter; this is the earlier
+    check, kept as a second reading that starts from the measured first spectrum instead of an age.
 
     The first spectrum already shows hydrolysed phosphate, so silyl groups had left it by then. co_products says
     where they are at that time: 'none' (not in the solution), 'TMSOH' or 'HMDSO'. The files do not tell.
@@ -941,7 +1021,9 @@ def tabulate_sample_trajectories(structure: str, scenario: str, fit: dict, trace
 
 def stage_predictions(args) -> None:
     fits = load_main_fits()
-    selected = select_consistent(fits)
+    selected = select_consistent(fits, load_trace_verdicts(fits))
+    log('selection rule: ' + ('no structure fits any scenario and passes the trace rule' if selected is None else
+                              f'{selected[0]} in the {selected[1]} scenario ({selected[2]})'))
     structures = [MAIN_STRUCTURE, 'M1'] + ([selected[0]] if selected and selected[0] not in (MAIN_STRUCTURE, 'M1') else [])
     hold_out, alone, paper, storage, protocol, traces, trajectories, later = [], [], [], [], [], [], [], []
     stages, _ = build_protocol_schedule()
