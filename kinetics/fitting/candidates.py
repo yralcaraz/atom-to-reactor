@@ -12,6 +12,10 @@ It turns a parameter vector into a self-contained ModelSpec (own network, own sp
     M3-split    M1-split with the same freed energies
     '+W'        any of them with a common available fraction of the added water (M4 of notebook 03)
 
+Two kinds of parameter come from the sample set and not from the structure: the age of the sample heated after
+its first spectrum (free scenario), and the amount at mixing of a species a recipe does not fix ('c0 H2O TMSPa
+alone': the water of the tube mixed without water, third fit).
+
 build_fitted_model turns a fit result into a ModelSpec that reactors take like a registered model.
 
 Freed energies are parameters d_j = ΔG_rxn,j − computed value for R1–R4. They are applied as species shifts,
@@ -42,6 +46,7 @@ BARRIER_BOX_EV = {
 }
 ENERGY_BOX_EV = (-0.75, 0.75)            # about three standard errors of the computed ΔG_rxn
 WATER_BOX = (0.05, 1.0)
+RECIPE_PREFIX = 'c0 '                    # 'c0 <species> <sample>': amount at mixing of a species the recipe does not fix
 FREED_REACTIONS = ('R1', 'R2', 'R3', 'R4')
 SPLIT_HYDROLYSIS = {'hydrolysis_R1': ('R1',), 'hydrolysis_R23': ('R2', 'R3')}
 FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'transfer', 'condensation', 'solvent_attack')
@@ -50,7 +55,7 @@ FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'transfer', 'co
 @dataclass(frozen=True)
 class FitParameter:
     name: str
-    kind: str               # 'barrier' | 'energy' | 'water' | 'age'
+    kind: str               # 'barrier' | 'energy' | 'water' | 'recipe' | 'age'
     target: str             # family (or 'all reactions'), reaction id, 'H2O' or sample name
     lower: float
     upper: float
@@ -80,12 +85,16 @@ class FitStructure:
         return sorted(families, key=FAMILY_ORDER.index)
 
     def parameters(self, samples: list = ()) -> list:
-        """The free parameters, in the order of the parameter vector. A sample whose age is a fit parameter
-        (free scenario) adds log10(age in hours)."""
+        """The free parameters, in the order of the parameter vector. A sample with a species its recipe does
+        not fix adds that amount at mixing [M]; a sample whose age is a fit parameter (free scenario) adds
+        log10(age in hours)."""
         out = [FitParameter(f'g {c}', 'barrier', c, *BARRIER_BOX_EV[c], 'eV') for c in self.barrier_classes()]
         out += [FitParameter(f'dG {r}', 'energy', r, *ENERGY_BOX_EV, 'eV') for r in self.freed]
         if self.water:
             out.append(FitParameter('water fraction', 'water', 'H2O', *WATER_BOX, '1'))
+        for sample in samples:
+            for species, (low, high) in sample.get('unknown_M', {}).items():
+                out.append(FitParameter(f"{RECIPE_PREFIX}{species} {sample['name']}", 'recipe', sample['name'], low, high, 'M'))
         for sample in samples:
             if sample['age_mode'] == 'parameter':
                 out.append(FitParameter(f"log10 age {sample['name']}", 'age', sample['name'],
@@ -111,8 +120,8 @@ class FitStructure:
         """Everything an evaluation needs from a parameter set {name: value}.
 
         Returns 'model' (a ModelSpec that carries its network and species shifts), 'ages' {sample: hours},
-        'water_fraction', and for the freed energies 'prior' (whitened residuals) and 'prior_rows' (one row per
-        reaction: shift, standard error, z).
+        'water_fraction', 'added_M' {sample: {species: mol/L at mixing on top of the recipe}}, and for the freed
+        energies 'prior' (whitened residuals) and 'prior_rows' (one row per reaction: shift, standard error, z).
         """
         spec = get_model(self.base_model)
         params = {fam: dict(p) for fam, p in spec.family_params.items()}
@@ -144,8 +153,13 @@ class FitStructure:
                         network=self.network() if self.split else None, species_shifts_eV=shifts)
         ages = {name[len('log10 age '):]: float(10.0 ** value) for name, value in theta.items()
                 if name.startswith('log10 age ')}
+        added = {}
+        for name, value in theta.items():
+            if name.startswith(RECIPE_PREFIX):
+                species, sample = name[len(RECIPE_PREFIX):].split(' ', 1)
+                added.setdefault(sample, {})[species] = float(value)
         return {'model': model, 'ages': ages, 'water_fraction': float(theta.get('water fraction', 1.0)),
-                'prior': prior, 'prior_rows': prior_rows}
+                'added_M': added, 'prior': prior, 'prior_rows': prior_rows}
 
     def with_water(self) -> 'FitStructure':
         """The same structure with a free available fraction of the added water."""
@@ -254,8 +268,8 @@ def embed_parent_theta(structure, parent_theta: dict) -> dict:
     """Parameter set of `structure` that reproduces a fit of the structure it extends.
 
     A split class takes the barrier of its family, every family takes a shared barrier, freed energies start
-    at their computed values (shift 0) and all the water is available. Parameters the structure does not have
-    in common with its parent and that cannot be derived (ages) are left out.
+    at their computed values (shift 0) and all the water is available. Ages and amounts at mixing belong to the
+    sample set: they are passed on as they are.
     """
     structure = get_structure(structure)
     out = {}
@@ -272,7 +286,7 @@ def embed_parent_theta(structure, parent_theta: dict) -> dict:
             out[p.name] = 0.0
         elif p.kind == 'water':
             out[p.name] = 1.0
-    out.update({k: v for k, v in parent_theta.items() if k.startswith('log10 age ')})
+    out.update({k: v for k, v in parent_theta.items() if k.startswith(('log10 age ', RECIPE_PREFIX))})
     return out
 
 

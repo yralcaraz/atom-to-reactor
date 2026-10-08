@@ -2,7 +2,8 @@
 
 The objective is the χ² of kinetics.fitting.residuals (measured shares, one-sided paper limits) plus, for
 freed reaction energies, their distance from the computed values in the metric of the computed covariance.
-Unknown ages are a scenario of the sample set, not a prior.
+Unknown ages are a scenario of the sample set, not a prior. An amount at mixing that a recipe does not fix is a
+parameter with a declared range (kinetics.fitting.candidates).
 
     FitProblem                     a structure and a sample set: parameters, box, residual vector
     fit_structure                  Sobol screen of the box, then bounded least squares from the best points
@@ -48,6 +49,7 @@ DELTA_CHI2_95 = 3.84
 DIFF_STEP = 1.0e-3
 BARRIER_OFFSETS_EV = (-0.30, -0.20, -0.15, -0.10, -0.075, -0.05, -0.025, 0.025, 0.05, 0.075, 0.10, 0.15, 0.20, 0.30)
 ENERGY_OFFSETS_SE = (-2.0, -1.5, -1.0, -0.75, -0.5, -0.25, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0)
+RECIPE_FACTORS = (0.25, 0.5, 0.67, 0.8, 0.9, 1.1, 1.25, 1.5, 2.0, 4.0)      # multiples of the best amount at mixing
 
 
 class FitProblem:
@@ -94,7 +96,8 @@ class FitProblem:
     def residuals(self, x) -> np.ndarray:
         built = self.build(x)
         data = calculate_residuals(built['model'], self.samples, ages=built['ages'],
-                                   water_fraction=built['water_fraction'], solver=self.solver)
+                                   water_fraction=built['water_fraction'], added_M=built.get('added_M'),
+                                   solver=self.solver)
         return np.concatenate([data, built['prior']])
 
     def chi2(self, x) -> float:
@@ -105,7 +108,8 @@ class FitProblem:
         """Standardised residuals of every measured quantity and of the freed energies, at this problem's solver."""
         built = self.build(x)
         table = tabulate_residuals(built['model'], self.samples, ages=built['ages'],
-                                   water_fraction=built['water_fraction'], solver=self.solver)
+                                   water_fraction=built['water_fraction'], added_M=built.get('added_M'),
+                                   solver=self.solver)
         if built['prior_rows']:
             table = pd.concat([table, pd.DataFrame(built['prior_rows'])], ignore_index=True)
         return table
@@ -235,7 +239,8 @@ def fit_structure(problem: FitProblem, *, n_screen: int = 512, n_starts: int = 1
 # ------------------------------------------------------------------------------
 def build_profile_grid(problem: FitProblem, theta: dict, name: str) -> np.ndarray:
     """Grid of one parameter around its best value: fixed offsets for a barrier (±0.30 eV), multiples of the
-    standard error for a freed energy (±2 SE), the whole box for the water fraction and an age."""
+    standard error for a freed energy (±2 SE), multiples of the best value for an amount at mixing, the whole
+    box for the water fraction and an age."""
     parameter = next(p for p in problem.all_parameters if p.name == name)
     best = theta[name]
     if parameter.kind == 'barrier':
@@ -244,6 +249,8 @@ def build_profile_grid(problem: FitProblem, theta: dict, name: str) -> np.ndarra
         sigma = next(row['sigma'] for row in problem.build(problem.vector(theta))['prior_rows']
                      if parameter.target in row['quantity'])
         grid = best + sigma * np.array(ENERGY_OFFSETS_SE)
+    elif parameter.kind == 'recipe' and best > 1e-6:
+        grid = best * np.array(RECIPE_FACTORS)
     else:
         grid = np.linspace(parameter.lower, parameter.upper, 13)
     grid = grid[(grid >= parameter.lower - 1e-12) & (grid <= parameter.upper + 1e-12)]
@@ -478,7 +485,7 @@ def simulate_synthetic_shares(structure, theta: dict, samples: list, *, seed: in
     """
     built = get_structure(structure).build(theta)
     _, details = calculate_residuals(built['model'], samples, ages=built['ages'], water_fraction=built['water_fraction'],
-                                     solver=solver or REPORT_SOLVER, return_details=True)
+                                     added_M=built.get('added_M'), solver=solver or REPORT_SOLVER, return_details=True)
     rng = np.random.default_rng(seed) if seed is not None else None
     out = copy_sample_set(samples)
     for sample in out:

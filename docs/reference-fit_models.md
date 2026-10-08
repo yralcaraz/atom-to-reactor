@@ -71,20 +71,30 @@ Optional parameters, on top of any model:
 | Parameter | When | Meaning |
 |---|---|---|
 | `water fraction` | structure name ends in `+W` | Fraction of the added water that is available |
+| `c0 H2O TMSPa alone` | the tube "TMSPa alone" is in the sample set (third fit) | Water at mixing of the tube mixed without water |
 | `log10 age 2 % H2O` | `free` scenario | Age of the 2 % H2O sample at its first spectrum |
+
+The last two come from the sample set, not from the structure: every model takes them.
+
+Rules of the third fit ([plan](plan-fit_improvement.md)):
+
+- A model fits when no miss exceeds 3 standard errors.
+- Trace rule: its parameters, unchanged, must still fit with 1 µM and with 1 mM TMSOH at mixing in the tubes that hold TMSPA and no TMSOH.
+- The selected model is the smallest one that fits and passes the trace rule, with free ages before equal ages.
 
 ## 3. Variables and parameters
 
 | Kind | Symbol | Unit | Where it comes from |
 |---|---|---|---|
 | State | C_i(t): TMSPA, BMSPA, MMSPA, H3PO4, H2O, TMSOH, HMDSO, EC, TMSOEG, TMSOdiEG, CO2 | M | Solved by the reactor |
-| Input | Composition at mixing, temperature history, spectrum times | M, K, s | Lab records (`lab_observables.json`) |
+| Input | Composition at mixing, temperature history, spectrum times | M, K, s | Lab records (`lab_observables.json`). The water of "TMSPa alone" is not recorded: fitted |
 | Input | Sample age (mixing → first spectrum) | h | Not recorded: 1 h, 1 day or 7 days by scenario, or free |
 | Input | ΔG_rxn of R1–R9 | eV | Computed (DFT + solvation) |
 | Fixed | ΔS‡ = 0, α = 0.5 | | Assumed, not fitted |
 | Fitted | `g <family>` | eV | Search box 0.60–1.70 (narrower for some families) |
 | Fitted | `dG R1…R4` | eV | Search box ±0.75 around the computed value |
 | Fitted | `water fraction` | – | Search box 0.05–1 |
+| Fitted | `c0 H2O TMSPa alone` | M | Search box 0–0.3 |
 | Fitted | `log10 age` | log10 h | 1 h to 30 days |
 | Observed | ³¹P shares: TMSPA, BMSPA, MMSPA, H3PO4 | – | Lab NMR |
 | Observed | ¹³C shares: TMSOH, HMDSO, TMSOEG (+ TMSOdiEG), P-silyl | – | Lab NMR |

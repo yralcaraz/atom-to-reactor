@@ -512,8 +512,10 @@ flowchart TB
         residuals["residuals.py<br/>data against model"]
         candidates["candidates.py<br/>what is free"]
         estimation["estimation.py<br/>minimiser, intervals"]
+        reporting["reporting.py<br/>a stored fit against<br/>spectra and time"]
         residuals --> estimation
         candidates --> estimation
+        estimation --> reporting
     end
 
     PAPER["paper windows<br/>(Block 1)"] --> feasibility
@@ -528,6 +530,7 @@ flowchart TB
     Q1 --> O1["barrier intervals"]
     Q2 --> O2["σ per parameter<br/>and experiment"]
     estimation --> O3["θ, χ², intervals,<br/>fitted model"]
+    reporting --> O4["shares per spectrum,<br/>trajectories, spectra,<br/>correlations"]
 ```
 
 How a fit runs from the first stage to the last, the scenarios, the fit rule and the result files are described in [reference-fitting_system.md](docs/reference-fitting_system.md). This section lists the functions.
@@ -667,6 +670,19 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 | `calculate_prediction_band` | A function of θ, a list of θ | The range of that prediction over the parameter sets |
 | `write_fit_result`, `load_fit_result` | A result dict and a path; a path | The JSON file; the result with its tables restored |
 
+### 7.9 reporting.py · a stored fit against the measurements
+
+**Route:** [kinetics/fitting/reporting.py](kinetics/fitting/reporting.py) · **Input:** a fit result and the lab observables · **Output:** what the stored parameter set predicts, in the units of the experiment. Nothing is fitted: the parameter set is run forward. Used by notebook `05_third_fit_DRAFT`.
+
+| Function | Input | Output |
+|---|---|---|
+| `evaluate_fit` | A fit result, the observables. Options: `overrides` (e.g. TMSOH at mixing), `ages` | The samples of the fit, the age of each and the shares predicted for every spectrum. With free ages, the age of an unheated tube is found again on the exact trajectory |
+| `tabulate_fit_shares` | An evaluation | One row per (sample, nucleus, spectrum, window): measured share, its error, predicted share, time since mixing |
+| `simulate_fit_trajectories` | An evaluation. Options: `until_h` | Concentrations of every species in each tube from mixing, along its temperature history |
+| `tabulate_window_amounts` | Trajectories, a nucleus | The trajectories as the nuclei each NMR window counts (HMDSO carries two silyl groups) |
+| `load_measured_spectra` | The observables. Needs the raw spectra (`LAB_NMR_DIR`) | Per spectrum: axis and intensity with the baseline removed and the area of the windows set to 1 |
+| `calculate_parameter_correlation` | A fit result, the observables | Correlation between the fitted parameters near the best fit, and their local standard errors |
+
 ---
 
 ## 8. Runners
@@ -726,4 +742,4 @@ flowchart LR
 | [lab_nmr_plots.py](demo/lab_nmr_plots.py) | Acquisition timeline, measured spectra, processing check | Block 1, notebook 04 |
 | [design_plots.py](demo/design_plots.py) | Feasibility scan, entropy constraints, half-life maps, design precision | Block 14, notebook `03_experiment_plan` |
 | [fitting_plots.py](demo/fitting_plots.py) | Allowed intervals, boundary maps, time scenarios, structure tests | Block 14, notebook `03_feasible_region` |
-| [fit_plots.py](demo/fit_plots.py) | Residual maps, parameters across scenarios, profiles, recovery, predictions | Block 14, notebook 05 |
+| [fit_plots.py](demo/fit_plots.py) | Residual maps, parameters across scenarios, profiles, recovery, predictions; measured against simulated spectra, concentrations in time, intervals, correlations, the error of a share | Block 14, notebooks 05 |

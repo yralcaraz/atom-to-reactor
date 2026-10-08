@@ -6,7 +6,8 @@ Covers:
 3. Residuals: scenarios, the replicate block, the one-sided paper term, ages found inside an evaluation.
 4. Solver tolerance: search and report settings agree far inside the measurement error.
 5. Structures, the optimiser and profiles: known parameters are recovered from synthetic shares, a parameter the
-   samples cannot see is reported as not determined, nesting never raises χ².
+   samples cannot see is reported as not determined, the water a recipe does not fix is recovered, nesting never
+   raises χ².
 6. With the lab file present: the windows of notebook 03 give its barrier intervals through the new forward path.
 
 Source: Y. Alcaraz Galván; expected intervals read from notebooks/results/03 (computed from the Tank
@@ -150,7 +151,9 @@ def test_species_shifts():
 def test_sample_set_and_histories():
     observables = build_synthetic_observables()
     middle = {s['name']: s for s in build_sample_set(observables, 'middle')}
-    assert list(middle) == ['0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe', 'TMSOH, glovebox', 'E1']
+    assert list(middle) == ['0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox', 'E1']
+    assert middle['TMSPa alone']['unknown_M'] == {'H2O': (0.0, 0.3)} and not middle['2 % H2O']['unknown_M']
+    assert 'H2O' not in middle['TMSPa alone']['c0_M'] and not middle['TMSPa alone']['wet']
     assert all(s['age_h'] == 24.0 for s in middle.values() if s['age_mode'] == 'fixed')
     assert all(len(s['blocks']) == 1 for s in middle.values() if s['kind'] == 'lab'), 'one nucleus per tube in this set'
     assert middle['TMSOH, glovebox']['age_mode'] == 'none' and middle['2 % H2O']['blocks'][0]['replicate']
@@ -162,8 +165,8 @@ def test_sample_set_and_histories():
     segments, times = build_sample_history(middle['TMSOH, glovebox'])
     assert segments[0] == (353.15, 8 * 3600.0) and abs(times[0][0] / 3600.0 - 8.1) < 1e-9
     free = {s['name']: s for s in build_sample_set(observables, 'free')}
-    assert [free[n]['age_mode'] for n in ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe')] == \
-        ['profile', 'parameter', 'profile', 'fixed']
+    assert [free[n]['age_mode'] for n in ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe')] == \
+        ['profile', 'parameter', 'profile', 'profile', 'fixed']
     held = build_sample_set(observables, 'short', roles=('hold_out',), paper=())
     assert [s['name'] for s in held] == ['TMSPa + TMSOH (B)']
     assert 'E1' not in [s['name'] for s in build_sample_set(observables, 'short', exclude=('E1', '2 % H2O'))]
@@ -188,8 +191,8 @@ def test_sample_set_and_histories():
 
 def test_replicate_block_and_limits():
     observables = build_synthetic_observables()
-    samples = build_sample_set(observables, 'middle', exclude=('0.5 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe',
-                                                               'TMSOH, glovebox', 'E1'))
+    samples = build_sample_set(observables, 'middle', exclude=('0.5 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone',
+                                                               'TMSOH, probe', 'TMSOH, glovebox', 'E1'))
     tube = samples[0]
     block = tube['blocks'][0]
     assert block['replicate'] and block['birge'] == 1.0
@@ -230,7 +233,7 @@ def test_free_ages_and_tables():
     observables = build_synthetic_observables()
     free = build_sample_set(observables, 'free')
     residuals, details = calculate_residuals(MID, free, ages={'2 % H2O': 100.0}, return_details=True)
-    assert residuals.size == 45 and all(d['ok'] for d in details.values())
+    assert residuals.size == 53 and all(d['ok'] for d in details.values())
     # The age found inside the evaluation is the best of a brute-force scan
     tube = next(s for s in free if s['name'] == 'TMSPa + TMSOH (A)')
     from kinetics.fitting.residuals import _whiten_sample
@@ -242,18 +245,29 @@ def test_free_ages_and_tables():
     assert chi2_found <= min(scan) + 0.02, (chi2_found, min(scan), found)
     # A fixed scenario is the free one evaluated at those ages
     middle = build_sample_set(observables, 'middle')
-    same = calculate_residuals(MID, free, ages={'2 % H2O': 24.0, '0.5 % H2O': 24.0, 'TMSPa + TMSOH (A)': 24.0})
+    same = calculate_residuals(MID, free, ages={'2 % H2O': 24.0, '0.5 % H2O': 24.0, 'TMSPa + TMSOH (A)': 24.0,
+                                                'TMSPa alone': 24.0})
     fixed = calculate_residuals(MID, middle)
-    probe = slice(32, 41)                                    # the probe sample sits at the lower bound in 'free'
+    probe = slice(40, 49)                                    # the probe sample sits at the lower bound in 'free'
     assert np.allclose(np.delete(same, probe), np.delete(fixed, probe), atol=1e-9)
     table = tabulate_residuals(MID, middle)
     summary = summarize_residuals(calculate_residuals(MID, middle, solver=REPORT_SOLVER), table)
-    assert set(table['kind']) == {'share', 'mean', 'drift', 'limit'} and len(table) == 49
-    assert summary['n_residuals'] == 45 and summary['max_abs_z'] == table['z'].abs().max()
+    assert set(table['kind']) == {'share', 'mean', 'drift', 'limit'} and len(table) == 57
+    assert summary['n_residuals'] == 53 and summary['max_abs_z'] == table['z'].abs().max()
     # Available water scales the water of the samples mixed with water only
     dry = calculate_residuals(MID, middle, water_fraction=0.5)
     assert not np.allclose(dry[:28], fixed[:28]) and np.allclose(dry[32:], fixed[32:])
-    print('  ✓ free ages: the age found in one simulation matches a 200-point scan; tables and water fraction')
+    # An amount at mixing the recipe does not fix: it changes the residuals of its own sample only
+    alone = slice(32, 40)                                    # the tube mixed without water
+    wet = calculate_residuals(MID, middle, added_M={'TMSPa alone': {'H2O': 0.06}})
+    assert not np.allclose(wet[alone], fixed[alone]) and np.allclose(np.delete(wet, alone), np.delete(fixed, alone))
+    tube = next(s for s in middle if s['name'] == 'TMSPa alone')
+    direct = calculate_predicted_shares(tube, MID, added_M={'H2O': 0.06})[0]
+    by_table = tabulate_residuals(MID, middle, added_M={'TMSPa alone': {'H2O': 0.06}}, solver=SEARCH_SOLVER)
+    assert np.allclose(by_table[by_table['sample'] == 'TMSPa alone']['predicted'].to_numpy(), direct.ravel(), atol=1e-12)
+    assert direct[1, 0] < direct[0, 0] < 1.0, 'with water the tube loses TMSPA, more so 10 days later'
+    print('  ✓ free ages: the age found in one simulation matches a 200-point scan; tables, water fraction and '
+          'an amount at mixing the recipe does not fix')
 
 
 # ------------------------------------------------------------------------------
@@ -285,9 +299,13 @@ def test_structures_build_models():
     free = build_sample_set(observables, 'free')
     names = {name: [p.name for p in get_structure(name).parameters(free)] for name in
              ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split', 'M3-split+W')}
-    assert names['M0-BEP'] == ['g all reactions', 'log10 age 2 % H2O']
+    assert names['M0-BEP'] == ['g all reactions', 'c0 H2O TMSPa alone', 'log10 age 2 % H2O']
     assert names['M1-split'][:5] == ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack']
-    assert names['M3-split+W'][5:] == ['dG R1', 'dG R2', 'dG R3', 'dG R4', 'water fraction', 'log10 age 2 % H2O']
+    assert names['M3-split+W'][5:] == ['dG R1', 'dG R2', 'dG R3', 'dG R4', 'water fraction', 'c0 H2O TMSPa alone',
+                                       'log10 age 2 % H2O']
+    recipe = next(p for p in get_structure('M1').parameters(free) if p.kind == 'recipe')
+    assert (recipe.lower, recipe.upper, recipe.unit, recipe.target) == (0.0, 0.3, 'M', 'TMSPa alone')
+    assert [p.name for p in get_structure('M1').parameters()] == ['g hydrolysis', 'g transfer', 'g condensation', 'g solvent_attack']
     # M0 reproduces the registered models at their own barrier; M1 reproduces level1
     for structure, registered, g in (('M0-BEP', 'reference_bep', 1.15), ('M0-Marcus', 'level1', 1.15)):
         built = get_structure(structure).build({'g all reactions': g})
@@ -296,14 +314,15 @@ def test_structures_build_models():
     level1_theta = {'g hydrolysis': 0.80, 'g transfer': 0.80, 'g condensation': 1.30, 'g solvent_attack': 1.32}
     built = get_structure('M1').build(level1_theta)
     assert np.array_equal(built['model'].calculate_rates(300.0)['k_f'].values, get_model('level1').calculate_rates(300.0)['k_f'].values)
-    assert built['prior'].size == 0 and built['ages'] == {} and built['water_fraction'] == 1.0
+    assert built['prior'].size == 0 and built['ages'] == {} and built['water_fraction'] == 1.0 and built['added_M'] == {}
     # The split gives R2 and R3 one barrier; freed energies move the ladder and leave R8, R9 alone
     theta = embed_parent_theta('M3-split', level1_theta)
     assert theta['g hydrolysis_R1'] == theta['g hydrolysis_R23'] == 0.80 and theta['dG R2'] == 0.0
     same = get_structure('M3-split').build(theta)
     assert np.allclose(same['model'].calculate_rates(300.0)['k_f'].values, built['model'].calculate_rates(300.0)['k_f'].values,
                        rtol=1e-12), 'a child at its parent\'s values is the parent'
-    theta.update({'g hydrolysis_R23': 1.0, 'dG R2': 0.12, 'dG R3': 0.17, 'log10 age 2 % H2O': 2.0, 'water fraction': 0.5})
+    theta.update({'g hydrolysis_R23': 1.0, 'dG R2': 0.12, 'dG R3': 0.17, 'log10 age 2 % H2O': 2.0, 'water fraction': 0.5,
+                  'c0 H2O TMSPa alone': 0.06})
     moved = get_structure('M3-split+W').build(theta)
     rates, base = moved['model'].calculate_rates(300.0), built['model'].calculate_rates(300.0)
     assert rates.loc['R2', 'g_eV'] == rates.loc['R3', 'g_eV'] == 1.0 and rates.loc['R1', 'g_eV'] == 0.80
@@ -311,6 +330,9 @@ def test_structures_build_models():
     assert abs(rates.loc['R6', 'dG_rxn_eV'] - base.loc['R6', 'dG_rxn_eV'] - 0.12) < 1e-9, 'R6 = R2 + R4 follows'
     assert abs(rates.loc['R8', 'dG_rxn_eV'] - base.loc['R8', 'dG_rxn_eV']) < 1e-9
     assert moved['ages'] == {'2 % H2O': 100.0} and moved['water_fraction'] == 0.5
+    assert moved['added_M'] == {'TMSPa alone': {'H2O': 0.06}}
+    carried = embed_parent_theta('M3-split', {**level1_theta, 'c0 H2O TMSPa alone': 0.04, 'log10 age 2 % H2O': 2.0})
+    assert carried['c0 H2O TMSPa alone'] == 0.04 and carried['log10 age 2 % H2O'] == 2.0, 'what belongs to the sample set is passed on'
     cov = calculate_solvation_covariance(['R1', 'R2', 'R3', 'R4']).to_numpy()
     d = np.array([0.0, 0.12, 0.17, 0.0])
     assert abs(moved['prior'] @ moved['prior'] - d @ np.linalg.solve(cov, d)) < 1e-9, 'the constraint is the Mahalanobis distance'
@@ -372,7 +394,7 @@ def test_fit_recovers_and_reports_blind_spots(workers=4):
     come back inside their intervals (an open side counts as inside); the hydrolysis barrier, which they cannot
     see, is 'not determined'."""
     observables = build_synthetic_observables()
-    tmsoh = build_sample_set(observables, 'middle', exclude=('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)'))
+    tmsoh = build_sample_set(observables, 'middle', exclude=('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone'))
     truth = {'g hydrolysis': 1.25, 'g transfer': 1.00, 'g condensation': 1.22, 'g solvent_attack': 1.315}
     exact = simulate_synthetic_shares('M1', truth, tmsoh)
     assert np.max(np.abs(FitProblem('M1', exact).residuals([truth[k] for k in truth]))) < 1e-4, 'no noise: no residual'
@@ -406,6 +428,33 @@ def test_fit_recovers_and_reports_blind_spots(workers=4):
     assert loo['TMSOH, glovebox']['n_residuals'] == 10
     print(f"  ✓ recovery: χ² {fit['chi2']:.1f} ≤ {at_truth:.1f} at the truth; truth inside the intervals; "
           "the unseen barrier is 'not determined'")
+
+
+def test_unknown_water_is_recovered(workers=4):
+    """The tube mixed without water, synthetic shares from a known water content: with the barriers known, the fit
+    returns that water inside a closed interval; with no water the model cannot explain the tube."""
+    observables = build_synthetic_observables()
+    tube = build_sample_set(observables, 'middle', exclude=tuple(n for n in observables['samples'] if n != 'TMSPa alone'),
+                            paper=())
+    assert [s['name'] for s in tube] == ['TMSPa alone']
+    barriers = {'g hydrolysis': 1.25, 'g transfer': 0.75, 'g condensation': 1.30, 'g solvent_attack': 1.315}
+    truth = {**barriers, 'c0 H2O TMSPa alone': 0.06}
+    exact = simulate_synthetic_shares('M1', truth, tube)
+    spectra = exact[0]['blocks'][0]['measured']
+    assert spectra[1, 0] < spectra[0, 0] - 0.1, 'the truth converts TMSPA between the two spectra'
+    problem = FitProblem('M1', exact, fixed=barriers)
+    assert problem.names == ['c0 H2O TMSPa alone'] and problem.chi2([0.06]) < 1e-6
+    assert problem.chi2([0.0]) > 100.0, 'without water nothing happens in this tube'
+    data = simulate_synthetic_shares('M1', truth, tube, seed=3)
+    problem = FitProblem('M1', data, fixed=barriers)
+    fit = fit_structure(problem, n_screen=32, n_starts=3, max_nfev=20, workers=workers)
+    assert fit['chi2'] <= problem.replace(solver=REPORT_SOLVER).chi2([0.06]) + 1e-6
+    profile = calculate_profile(problem, fit, ['c0 H2O TMSPa alone'], max_nfev=10, workers=workers)
+    ci = find_confidence_interval(profile, 'c0 H2O TMSPa alone')
+    assert ci['status'] == 'interval' and ci['low'] - 1e-3 <= 0.06 <= ci['high'] + 1e-3, ci
+    assert ci['high'] - ci['low'] < 0.06, ci
+    print(f"  ✓ unknown water: {1000 * fit['theta']['c0 H2O TMSPa alone']:.0f} mM found for 60 mM, "
+          f"interval {1000 * ci['low']:.0f} to {1000 * ci['high']:.0f} mM")
 
 
 def test_nesting_never_raises_chi2(workers=4):
@@ -557,6 +606,7 @@ if __name__ == "__main__":
     test_structures_build_models()
     test_interval_finder()
     test_fit_recovers_and_reports_blind_spots()
+    test_unknown_water_is_recovered()
     test_nesting_never_raises_chi2()
     test_windows_reproduce_notebook_03_if_available()
     print("All estimation tests passed.")
