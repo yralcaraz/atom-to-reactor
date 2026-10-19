@@ -3,6 +3,7 @@ experimental reference data.
 
     snapshot.py      read-only access to the Tank snapshot (DFT, MD solvation, NMR, geometries; read from the data folder)
     species.py       species database built from the snapshot (energies converted to eV)
+    medium.py        the solvation medium the species database takes (neat solvent or EC/DEC mixture)
     network.py       the 9-reaction network, its species and stoichiometry helpers
     experimental.py  Gogoi et al. 2024: measured shifts, barrier windows, control experiments, water series
     lab_nmr.py       measured NMR spectra (JEOL .jdf, read from LAB_NMR_DIR): inventory and processing
@@ -12,9 +13,11 @@ Source: Y. Alcaraz Galván
 """
 
 from kinetics.data.snapshot import (
-    calculate_molar_mass, count_elements, get_dataset_records, get_solvation_records, load_snapshot,
+    calculate_molar_mass, count_elements, get_dataset_records, get_solvation_records, get_solvent,
+    list_solvation_sets, load_snapshot,
 )
-from kinetics.data.species import load_species_database
+from kinetics.data.medium import DEFAULT_MEDIUM, SolvationMedium, get_active_medium, set_active_medium
+from kinetics.data.species import load_medium_species_database, load_species_database
 from kinetics.data.network import (
     NETWORK, NETWORK_SPECIES, build_stoichiometric_matrix, find_reaction_cycles, format_equation, list_species,
 )
@@ -32,8 +35,9 @@ from kinetics.data.observables import (
 )
 
 __all__ = [
-    "load_snapshot", "get_dataset_records", "get_solvation_records", "count_elements", "calculate_molar_mass",
-    "load_species_database",
+    "load_snapshot", "get_dataset_records", "get_solvation_records", "get_solvent", "list_solvation_sets", "count_elements", "calculate_molar_mass",
+    "DEFAULT_MEDIUM", "SolvationMedium", "get_active_medium", "set_active_medium",
+    "load_medium_species_database", "load_species_database",
     "NETWORK", "NETWORK_SPECIES", "build_stoichiometric_matrix", "find_reaction_cycles", "format_equation",
     "list_species",
     "load_experimental_data", "get_measured_shifts", "get_barrier_windows", "get_water_series",

@@ -37,7 +37,7 @@ def main() -> int:
     for name, status in results.items():
         print(f'{name:<{width}}  {status}')
     if not have_snapshot:
-        print(f'\n{DATA_DIR_VAR} is not set or has no data/tank_api_snapshot.json: see .env.example')
+        print(f'\n{DATA_DIR_VAR} is not set or has no data/tank_api_snapshot_2026-09-24.json: see .env.example')
     return int(any(status.startswith('FAILED') for status in results.values()))
 
 

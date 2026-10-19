@@ -16,6 +16,10 @@ build_shifted_species_database), never per reaction, so the Wegscheider cycles s
 The values are standard errors already, so every σ returned here is the ±1 standard error of
 the solvation contribution and is used as stored (no further division by √n).
 
+Without explicit records, the components are those of the active solvation medium (kinetics/data/medium.py). In a
+linear mixture each term is weighted by the mole fraction of its solvent: σ_solute² = Σ_s (x_s σ_solute,s)², and
+the pure-solvent reference terms combine into one term shared by every species, σ_ref² = Σ_s (x_s σ_ref,s)².
+
 Source: Y. Alcaraz Galván
 """
 
@@ -29,6 +33,7 @@ import pandas as pd
 
 from kinetics.constants import KJ_MOL_TO_EV
 from kinetics.data.network import NETWORK, list_species
+from kinetics.data.medium import SolvationMedium, get_active_medium
 from kinetics.data.snapshot import get_solvation_records
 from kinetics.data.species import resolve_species_database
 
@@ -39,12 +44,25 @@ def calculate_solvation_sigma_components(solvation_records: dict = None) -> dict
     sigma_solute combines the gas-phase and solution-box standard errors (independent per species);
     sigma_solvent is the standard error of the shared pure-EC reference term.
     """
-    records = solvation_records if solvation_records is not None else get_solvation_records()
+    if solvation_records is None:
+        return dict(_medium_components(get_active_medium()))
     components = {}
-    for name, record in records.items():
+    for name, record in solvation_records.items():
         raw = record['raw_metadata']
         components[name] = (math.hypot(raw['E_gas_std_eV'], raw['E_solution_std_eV']), raw['E_solvent_std_eV'])
     return components
+
+
+@lru_cache(maxsize=4)
+def _medium_components(medium: SolvationMedium) -> dict:
+    """Components of a solvation medium: those of its solvent, or of a linear mixture (weights x_s)."""
+    parts = {s: calculate_solvation_sigma_components(get_solvation_records(medium.path, s)) for s in medium.solvents}
+    if medium.neat:
+        return parts[medium.solvents[0]]
+    x = medium.mole_fractions()
+    shared = set.intersection(*(set(p) for p in parts.values()))
+    return {name: (math.sqrt(sum((x[s] * parts[s][name][0]) ** 2 for s in parts)),
+                   math.sqrt(sum((x[s] * parts[s][name][1]) ** 2 for s in parts))) for name in sorted(shared)}
 
 
 def calculate_solvation_sigma(reactants, products, solvation_records: dict = None) -> float:
@@ -91,11 +109,16 @@ def calculate_solvation_covariance(rxn_ids, network: dict = None, solvation_reco
 
 
 def calculate_solvation_sigma_naive(reactants, products, solvation_records: dict = None) -> float:
-    """σ from adding each species' snapshot `uncertainty_kjmol` in quadrature (overestimate)."""
-    records = solvation_records if solvation_records is not None else get_solvation_records()
+    """σ from adding each species' snapshot `uncertainty_kjmol` in quadrature (overestimate). Without records:
+    the per-species standard errors of the active medium's database."""
+    if solvation_records is not None:
+        totals = {name: r['uncertainty_kjmol'] * KJ_MOL_TO_EV for name, r in solvation_records.items()}
+    else:
+        totals = {name: r['dE_solv_sigma_eV'] for name, r in resolve_species_database(None).items()
+                  if r['dE_solv_sigma_eV'] is not None}
     var = 0.0
     for name, nu in _net_stoichiometry(reactants, products).items():
-        var += (nu * records[name]['uncertainty_kjmol'] * KJ_MOL_TO_EV) ** 2
+        var += (nu * totals[name]) ** 2
     return math.sqrt(var)
 
 
@@ -152,7 +175,7 @@ def calculate_species_shifts(dG_shifts_eV: dict, *, network: dict = None, specie
 
 
 @lru_cache(maxsize=256)
-def _cached_shifted_database(shifts: tuple) -> dict:
+def _cached_shifted_database(medium: SolvationMedium, shifts: tuple) -> dict:
     db = deepcopy(resolve_species_database(None))
     for sp, shift in shifts:
         db[sp]['dE_solv_eV'] += shift
@@ -165,7 +188,8 @@ def build_shifted_species_database(species_shifts_eV: dict, species_db: dict = N
     Without species_db the shifted copy of the default database is cached and shared: do not modify it.
     """
     if species_db is None:
-        return _cached_shifted_database(tuple(sorted((sp, float(v)) for sp, v in species_shifts_eV.items())))
+        return _cached_shifted_database(get_active_medium(),
+                                        tuple(sorted((sp, float(v)) for sp, v in species_shifts_eV.items())))
     db = deepcopy(species_db)
     for sp, shift in species_shifts_eV.items():
         db[sp]['dE_solv_eV'] += float(shift)

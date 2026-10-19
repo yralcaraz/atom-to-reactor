@@ -1,7 +1,7 @@
 """Block 14A — Feasibility fit: which family barriers the windowed observations allow.
 
-The control experiments of Gogoi et al. 2024 give windows ("< 2 % ring-opened after one week"), not time
-series, so they bound parameters instead of fitting them. For each family the intrinsic barrier g is scanned
+The control experiments of Gogoi et al. 2024 give windows ("< 2 % ring-opened at room temperature"; the times are
+partly assumed, see `time_basis` in data/experimental_gogoi2024.json), not time series, so they bound parameters instead of fitting them. For each family the intrinsic barrier g is scanned
 with the other families fixed at the model's values. Each window edge that the predicted observable crosses
 becomes a bound on g, refined by bisection; the feasible interval of a family is the intersection over all
 experiments.

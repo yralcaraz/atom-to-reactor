@@ -5,7 +5,7 @@ read from folders that each user sets with two environment variables, in the she
 at the repository root (copy `.env.example`):
 
     ATOM_DATA_DIR   data folder, laid out as in the repository:
-                      data/       tank_api_snapshot.json, lab_observables.json, lab_sample_folders.json
+                      data/       tank_api_snapshot_<date>.json, lab_observables.json, lab_sample_folders.json
                       results/    tables written by notebooks 01 and 03
                       tests/      regression baseline
     LAB_NMR_DIR     folder with the NMR spectra (JEOL .jdf files)

@@ -42,7 +42,7 @@ def main():
         observables = build_lab_observables(
             shares_P, shares_C,
             built_from='results/03/lab_shares_31P.csv and lab_shares_13C.csv of the data folder (area shares exported by '
-                       '03_feasible_region.ipynb); heating episodes transcribed from notebooks 03 and 04. '
+                       '03_feasible_region_rev01.ipynb); heating episodes transcribed from notebooks 03 and 04. '
                        'NOT rebuilt from the raw spectra')
     path = write_lab_observables(observables, args.out)
     print(f'written: {path}')

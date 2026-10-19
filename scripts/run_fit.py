@@ -26,6 +26,17 @@ Rules of the third fit (docs/plan-fit_improvement.md), which replace the selecti
 - the consistent parameter set is that of the smallest structure that fits and passes the trace rule, free
   ages taking precedence over a common age (the first two fits took the common age first).
 
+Setup of a run (kinetics/fitting/config.py): `fit_config.json` in the results directory, read at the start of
+every stage, fixes the solvation medium, the readings fitted and the paper observations added to the lab samples.
+Without it a run is set up as the first three fits. Each fit records its medium and paper observations, so a
+notebook runs it forward as it was fitted.
+
+Fourth fit (notebooks/results/05_fit4/fit_config.json): the reaction energies in EC/DEC 1:1 by volume, linear
+mixing of the MD solvation in EC and in DEC of the 2026-10-08 snapshot; readings 1 day, 7 days and free ages
+(the 1 h reading failed in every earlier fit); no paper observation (E1 rests on a time the article does not state).
+New sensitivities: the covariance of the computed energies x4, and the protocol of the article for the 2 % water
+tube (8 h at room temperature before the first spectrum, with or without an 8 h step at 30 °C, and 8 h holds).
+
 Source: Y. Alcaraz Galván
 """
 
@@ -48,8 +59,10 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 from kinetics.data import load_experimental_data, load_lab_observables
+from kinetics.data.medium import get_active_medium
 from kinetics.fitting import (
-    DELTA_CHI2_95, REPORT_SOLVER, SCENARIOS, FitProblem, FitStructure, add_profile_points, build_sample_set,
+    DELTA_CHI2_95, REPORT_SOLVER, SCENARIOS, FitProblem, FitStructure, add_profile_points, apply_fit_config,
+    build_sample_set,
     calculate_parameter_directions, extend_profile,
     calculate_profile, calculate_residuals, compare_structures, embed_parent_theta, find_confidence_interval,
     find_free_age, fit_leave_one_out, fit_structure, get_profile_theta, get_structure, load_fit_result,
@@ -57,6 +70,8 @@ from kinetics.fitting import (
     tabulate_reaction_barriers, tabulate_residuals, write_fit_result,
 )
 from kinetics.fitting.estimation import RECIPE_FACTORS
+from kinetics.fitting.residuals import PAPER_OBSERVATIONS
+from kinetics.thermo.reaction import calculate_network_thermo
 from kinetics.microkinetics.models import MODELS, get_model
 from kinetics.reactor import (
     build_protocol_schedule, calculate_recipe_molarities, calculate_remaining_fraction, find_crossing_time,
@@ -64,6 +79,7 @@ from kinetics.reactor import (
 )
 
 RESULTS = REPO / 'notebooks' / 'results' / '05'
+PAPER = PAPER_OBSERVATIONS               # paper observations added to every sample set; set from the run's setup
 
 # Search effort per structure: (Sobol screen points, starts polished, least-squares iterations per start).
 # M0, M1 and M1-split did not fit in the first run (chi2 above 280) and get a light search; the first run missed
@@ -93,7 +109,7 @@ def cached(path: Path, compute):
 
 
 def sample_set(scenario: str, **options) -> list:
-    return build_sample_set(load_lab_observables(), scenario, **options)
+    return build_sample_set(load_lab_observables(), scenario, **{'paper': PAPER, **options})
 
 
 def short(theta: dict) -> str:
@@ -104,6 +120,11 @@ def short(theta: dict) -> str:
 # registered: the models of the registry as they are
 # ------------------------------------------------------------------------------
 def stage_registered(args) -> None:
+    # The computed reaction energies of the run's medium: the centre of the freed energies of M3 and M3-split
+    thermo = calculate_network_thermo(298.15)
+    thermo.to_csv(RESULTS / 'computed_energies.csv')
+    log('computed ΔG_rxn at 298 K (eV, ± standard error of the MD solvation): ' + ', '.join(
+        f"{rxn} {row['dG_rxn_eV']:+.3f} ± {row['sigma_solv_eV']:.3f}" for rxn, row in thermo.iterrows()))
     rows, tables = [], []
     for name in MODELS:
         for scenario in SCENARIOS:
@@ -164,12 +185,26 @@ RECOVERY_TRUTHS = {
           ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack', 'dG R2', 'dG R3',
            WATER_ALONE], (1024, 8, 40)),
 }
+RECOVERY = {}                            # the run's changes to the cases (fit_config.json 'recovery'); set in main
+
+
+def recovery_cases() -> dict:
+    """RECOVERY_TRUTHS with the run's changes: 'truths' {case: {name: value}} replaces the truth of a case, and
+    'effort': 'fits' gives every case at least the search of the fits of its structure (EFFORT), so the check
+    tests the search the fits actually ran with."""
+    cases = {}
+    for label, (structure, scenario, truth, seeds, profiled, effort) in RECOVERY_TRUTHS.items():
+        truth = {**truth, **RECOVERY.get('truths', {}).get(label, {})}
+        if RECOVERY.get('effort') == 'fits':
+            effort = tuple(max(a, b) for a, b in zip(effort, EFFORT[structure]))
+        cases[label] = (structure, scenario, truth, seeds, profiled, effort)
+    return cases
 
 
 def stage_recovery(args) -> None:
     """The design, error model and scenario are those of the lab set; only the shares are synthetic."""
     rows = []
-    for label, (structure, scenario, truth, seeds, profiled, effort) in RECOVERY_TRUTHS.items():
+    for label, (structure, scenario, truth, seeds, profiled, effort) in recovery_cases().items():
         for seed in seeds:
             def compute():
                 samples = sample_set(scenario)
@@ -180,10 +215,15 @@ def stage_recovery(args) -> None:
                 fit = fit_structure(problem, n_screen=effort[0], n_starts=effort[1], max_nfev=effort[2], seed=seed,
                                     workers=args.workers)
                 profile = calculate_profile(problem, fit, profiled, max_nfev=12, workers=args.workers)
-                return {'truth': truth, 'chi2_truth': chi2_truth, 'fit': fit, 'profile': profile,
+                return {'truth': truth, 'chi2_truth': chi2_truth, 'fit': fit, 'profile': profile, 'effort': list(effort),
                         'evaluations': fit['n_evaluations'] + int(profile['nfev'].sum())}
             t0 = time.perf_counter()
             result = cached(RESULTS / 'recovery' / f'{label}_seed{seed}.json', compute)
+            stale = [k for k, v in truth.items() if k not in result['truth'] or abs(result['truth'][k] - v) > 1e-12]
+            stored_effort = result.get('effort', RECOVERY_TRUTHS[label][5])      # files from before the record: the case's own
+            if stale or list(stored_effort) != list(effort):
+                raise SystemExit(f"recovery/{label}_seed{seed}.json was computed with another truth or search "
+                                 f"({stale or stored_effort}): move it away (e.g. to recovery_first_run/)")
             fit = result['fit']
             intervals = pd.DataFrame([find_confidence_interval(result['profile'], name) for name in profiled])
             intervals['truth'] = [truth[name] for name in profiled]
@@ -281,7 +321,8 @@ def run_one(structure, scenario: str, args, *, tag: str = '', starts=(), sample_
                             seed=args.seed, workers=args.workers, start_points=usable, seed_values=block)
         fit['tmsoh_block'] = block
         fit.update(scenario=scenario, tag=tag, label=structure.label,
-                   barriers=tabulate_reaction_barriers(structure, fit['theta']))
+                   barriers=tabulate_reaction_barriers(structure, fit['theta']),
+                   medium=get_active_medium().to_dict(), paper=[s['name'] for s in data if s['kind'] == 'paper'])
         return fit
 
     path = fit_path(structure.name, scenario, tag)
@@ -608,7 +649,8 @@ def adopt_profile_minimum(structure: str, scenario: str, args, *, refine: bool) 
     return True
 
 
-FITTED_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox', 'E1')
+LAB_FITTED_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox')
+FITTED_SAMPLES = LAB_FITTED_SAMPLES + PAPER       # left out one at a time; set from the run's setup
 
 
 def run_leave_one_out(structure: str, scenario: str, args) -> dict:
@@ -641,7 +683,16 @@ SENSITIVITIES = {
     'floor x2': ({'floor_scale': 2.0}, 1.0),
     'covariance x0.5': ({}, 0.5),
     'covariance x2': ({}, 2.0),
+    # Fourth fit: σ of the computed energies doubled, about the size of the gap between the linear and the
+    # preferential mixing rule (0.18 eV in R1) and of the σ of the 2026-09-24 snapshot
+    'covariance x4': ({}, 4.0),
     'ramp held 8 h': ({'overrides': {'2 % H2O': {'heated_duration_h': 8.0}}}, 1.0),
+    # Fourth fit: the protocol of Gogoi 2024 for the 2 % water tube, read as 8 h at room temperature before the
+    # first spectrum (the room-temperature step), with or without an 8 h step at 30 °C before it (the first
+    # block is named "after 30 °C"), and every heating step held 8 h where the clock allows. A reading, not a record
+    'article 8 h RT': ({'overrides': {'2 % H2O': {'pre_history': [(None, 8.0)], 'heated_duration_h': 8.0}}}, 1.0),
+    'article 8 h RT + 30 C': ({'overrides': {'2 % H2O': {'pre_history': [(None, 8.0), (30.0, 8.0)],
+                                                         'heated_duration_h': 8.0}}}, 1.0),
     'glovebox 4 h': ({'overrides': {'TMSOH, glovebox': {'hold_h': 4.0}}}, 1.0),
     'glovebox 16 h': ({'overrides': {'TMSOH, glovebox': {'hold_h': 16.0}}}, 1.0),
 }
@@ -1103,9 +1154,15 @@ def main():
     parser.add_argument('--results', default=None, help='results directory (default notebooks/results/05)')
     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
     args = parser.parse_args()
-    global RESULTS, CHECK_EFFORT
+    global RESULTS, CHECK_EFFORT, SCENARIOS, SCENARIO_ORDER, PAPER, FITTED_SAMPLES, RECOVERY
     if args.results:
         RESULTS = Path(args.results).resolve()
+    config = apply_fit_config(RESULTS)
+    SCENARIOS = tuple(sc for sc in SCENARIOS if sc in config['scenarios'])
+    SCENARIO_ORDER = tuple(sc for sc in SCENARIO_ORDER if sc in config['scenarios'])
+    PAPER = tuple(config['paper_observations'])
+    RECOVERY = config['recovery']
+    FITTED_SAMPLES = LAB_FITTED_SAMPLES + PAPER
     if args.quick:
         args.scale, args.profile_nfev = 0.05, 3
         for name in EFFORT:
@@ -1114,6 +1171,8 @@ def main():
     warnings.filterwarnings('ignore', category=RuntimeWarning)
     RESULTS.mkdir(parents=True, exist_ok=True)
     log(f'--- stage {args.stage} (workers {args.workers}) ---')
+    log(f"setup ({config['source']}): {config['medium'].label()}; readings {', '.join(SCENARIOS)}; "
+        f"paper observations {', '.join(PAPER) or 'none'}")
     t0 = time.perf_counter()
     STAGES[args.stage](args)
     log(f'--- stage {args.stage} done in {(time.perf_counter() - t0) / 60:.1f} min ---')

@@ -3,7 +3,8 @@
 | File | Kind | Content | Location | Loaded by |
 |---|---|---|---|---|
 | `experimental_gogoi2024.json` | Measured, from the literature | NMR shifts, barrier windows, control experiments, water series (Gogoi et al. 2024) | this folder | `kinetics/data/experimental.py` |
-| `tank_api_snapshot.json` | Computed | Gas-phase DFT, MD solvation in EC, NMR shieldings, geometries (Tank dataset) | data folder | `kinetics/data/snapshot.py`, `species.py` |
+| `tank_api_snapshot_2026-09-24.json` | Computed | Gas-phase DFT, MD solvation in EC, NMR shieldings, geometries (Tank dataset). The default; read by fits 1–3 | data folder | `kinetics/data/snapshot.py`, `species.py` |
+| `tank_api_snapshot_2026-10-08.json` | Computed | Same dataset, later capture: MD solvation in EC at 338 K and in DEC, openCOSMO-RS table, 27 species | data folder | `kinetics/data/snapshot.py` (path `SNAPSHOT_2026_10_08_PATH`) |
 | `lab_observables.json` | Measured | Area shares and sample histories from the experimental NMR spectra | data folder | `kinetics/data/observables.py` |
 | NMR spectra (`.jdf`) | Measured | NMR data from experiments (JEOL Delta) | `LAB_NMR_DIR` | `kinetics/data/lab_nmr.py` |
 
@@ -13,16 +14,28 @@ The data files are read from folders set with two environment variables (see `.e
 
 | Variable | Folder |
 |---|---|
-| `ATOM_DATA_DIR` | `data/` (the snapshot, `lab_observables.json`, `lab_sample_folders.json`), `results/` (tables written by notebooks 01 and 03) and `tests/` (the regression baseline) |
+| `ATOM_DATA_DIR` | `data/` (the snapshots, `lab_observables.json`, `lab_sample_folders.json`), `results/` (tables written by notebooks 01 and 03) and `tests/` (the regression baseline) |
 | `LAB_NMR_DIR` | the NMR spectra |
 
 The species database, the network thermochemistry and every test are built from the snapshot, so the numerical
 pipeline needs `ATOM_DATA_DIR`. The DFT and MD data are from P. Broqvist's Tank dataset.
 
-## Snapshot: `tank_api_snapshot.json`
+## Snapshots: `tank_api_snapshot_<capture date>.json`
 
-An offline snapshot of the Tank dataset API, captured on 2026-09-24. It is the only source of thermochemistry,
-solvation, NMR and geometry data in this repo. **All of it is computed.**
+Offline snapshots of the Tank dataset API, named by their capture date. They are the only source of thermochemistry,
+solvation, NMR and geometry data in this repo. **All of it is computed.** Two are in the data folder:
+
+| File | Captured | MD solvation | Other | Used by |
+|---|---|---|---|---|
+| `tank_api_snapshot_2026-09-24.json` | 2026-09-24 | EC at 298.15 K, 12 species | 24 species | the default (`DEFAULT_SNAPSHOT_PATH`): notebooks 01–03, fits 1–3 |
+| `tank_api_snapshot_2026-10-08.json` | 2026-10-08 | EC at 338 K and DEC at 298.15 K, 13 species each | 27 species; `cosmors`: openCOSMO-RS ΔG_solv at 298.15 K in 7 solvents | passed explicitly |
+
+Solvation records are always read for one solvent (`get_solvation_records(path, solvent)`, default `EC`): a snapshot
+can hold several, and a species with two records in one solvent is an error. The solvent mixture of the lab tubes
+(EC/DEC 1:1 by volume) is built from the neat values by `kinetics/data/medium.py` (linear mixing, mole fractions);
+the fourth fit uses it with the 2026-10-08 file (`notebooks/results/05_fit4/fit_config.json`). The gas-phase records are the same in
+both files for the species they share. The section below describes the 2026-09-24 file; what changes in the later one
+is in the table above.
 
 | Endpoint | Content |
 |---|---|

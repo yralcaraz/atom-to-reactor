@@ -4,14 +4,14 @@
 |---|---|
 | **Status** | Stable |
 | **Source** | Y. Alcaraz Galván; protocol from P. Broqvist |
-| **Scope** | Guide to Notebook 02 (`notebooks/02_operando_experimental_protocol.ipynb`): how to read each figure of the protocol simulation. |
-| **Builds on** | NB01 `01_multiscale_microkinetics_theory.ipynb`, [theory-multiscale_microkinetics.md](theory-multiscale_microkinetics.md), [MODULES.md](../MODULES.md) |
+| **Scope** | Guide to Notebook 02 (`notebooks/02_experimental_protocol_rev01.ipynb`): how to read each figure of the protocol simulation. |
+| **Builds on** | NB01 `01_theory_rev01.ipynb`, [theory-multiscale_microkinetics.md](theory-multiscale_microkinetics.md), [MODULES.md](../MODULES.md) |
 
 ---
 
 ## Executive Summary
 
-Notebook `02_operando_experimental_protocol.ipynb` bridges quantum chemical microkinetics with real laboratory operando spectroscopy. It simulates the benchtop protocol developed by Peter Broqvist for scavenging water in wet ethylene carbonate ($\text{EC}$) using tris(trimethylsilyl) phosphite/phosphate ($\text{TMSPA}$).
+Notebook `02_experimental_protocol_rev01.ipynb` bridges quantum chemical microkinetics with real laboratory operando spectroscopy. It simulates the benchtop protocol developed by Peter Broqvist for scavenging water in wet ethylene carbonate ($\text{EC}$) using tris(trimethylsilyl) phosphite/phosphate ($\text{TMSPA}$).
 
 The notebook addresses four central experimental and chemometric challenges:
 1. **Protocol Design & Thermal Calibration:** How the stepped temperature program ($20\text{--}80^\circ\text{C}$) samples the kinetic landscape and how the effective activation barrier $E_0$ controls reactant depletion.

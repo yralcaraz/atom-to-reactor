@@ -114,6 +114,21 @@ In this order, each with a declared search box:
 - **Interval.** The range of a parameter over which its profile stays within Δχ² = 3.84 of the minimum. A side the data do not close stays open.
 - **Two tolerances.** The search uses a loose solver tolerance (rtol 10⁻⁶); every reported χ², table and final polish uses rtol 10⁻⁸.
 
+### 2.7 The measured spectrum in the plots
+
+The spectra drawn against a fit (`plot_spectra_comparison`) are the raw lab spectra, processed only so that they can be compared with a model. They are not used by the fit, which sees only the shares.
+
+| Step | What is done | Where |
+|---|---|---|
+| Load | The `.jdf` file is read. A raw signal (FID) is Fourier-transformed and phased automatically; a spectrum already processed on the spectrometer keeps its phase. The zero-order phase is then refined for the region drawn | `load_spectrum` |
+| Cut and baseline | The spectrum is cut to the region of the windows. A cubic polynomial fitted to the points outside every window (± 0.3 ppm) is subtracted | `load_measured_spectra` |
+| Normalise | The intensity is divided by the summed area of the windows: the total area is 1, so the area of each window is close to its share | `load_measured_spectra` |
+| Smooth for display | Convolution with a unit-area Gaussian of 0.4 ppm FWHM (³¹P) or 0.06 ppm (¹³C), which keeps the areas, and scaling so that a line holding the whole area has height 1. The height of a line is then close to its share | `plot_spectra_comparison` |
+
+The numbers printed over a window are the shares of the fit: the median over three baselines (§2.3). The curve uses only the cubic one, so a small difference between curve and number is possible where the baseline matters.
+
+The model predicts areas, not line shapes. Each simulated line takes the position and the width at half height of the measured line in its window. If the window holds no line higher than 6 times the noise, it takes the centre of the window and the display width.
+
 ## 3. The fit core, in call order
 
 ```mermaid
@@ -226,20 +241,20 @@ flowchart LR
     read --> des["design.py<br/>Fisher information"]
     feas -- "current g" --> des
 
-    feas --> NB3A["notebook<br/>03_experiment_plan"]
+    feas --> NB3A["notebook<br/>03_experiment_plan_rev01"]
     des --> NB3A
-    cons --> NB3B["notebook<br/>03_feasible_region"]
+    cons --> NB3B["notebook<br/>03_feasible_region_rev01"]
     stru --> NB3B
     NB3B -- "m0_intervals.csv<br/>(check)" --> RF["run_fit.py baselines"]
 ```
 
 | File | Question it answers | Output | Notebook |
 |---|---|---|---|
-| [feasibility.py](../kinetics/fitting/feasibility.py) | Which family barriers do the control experiments allow? | Bounds `g ≥` or `g ≤` per family, also in the (ΔS‡, g) plane | `03_experiment_plan` |
-| [readouts.py](../kinetics/fitting/readouts.py) | Which NMR peaks can a fit integrate? | Species and nuclei per measured peak | `03_experiment_plan` |
-| [design.py](../kinetics/fitting/design.py) | What would a candidate experiment determine? | σ per parameter and experiment, from the Fisher information | `03_experiment_plan` |
-| [constraints.py](../kinetics/fitting/constraints.py) | Which barrier values does each observation allow, when its time is only known as an interval? | Allowed interval per observation, and their intersection | `03_feasible_region` |
-| [structure.py](../kinetics/fitting/structure.py) | What does a measurement imply whatever the barriers are? | Equilibrium locus, room-temperature equivalent of a heating, water needed | `03_feasible_region` |
+| [feasibility.py](../kinetics/fitting/feasibility.py) | Which family barriers do the control experiments allow? | Bounds `g ≥` or `g ≤` per family, also in the (ΔS‡, g) plane | `03_experiment_plan_rev01` |
+| [readouts.py](../kinetics/fitting/readouts.py) | Which NMR peaks can a fit integrate? | Species and nuclei per measured peak | `03_experiment_plan_rev01` |
+| [design.py](../kinetics/fitting/design.py) | What would a candidate experiment determine? | σ per parameter and experiment, from the Fisher information | `03_experiment_plan_rev01` |
+| [constraints.py](../kinetics/fitting/constraints.py) | Which barrier values does each observation allow, when its time is only known as an interval? | Allowed interval per observation, and their intersection | `03_feasible_region_rev01` |
+| [structure.py](../kinetics/fitting/structure.py) | What does a measurement imply whatever the barriers are? | Equilibrium locus, room-temperature equivalent of a heating, water needed | `03_feasible_region_rev01` |
 
 Both notebooks write their tables to `notebooks/results/03/`.
 

@@ -8,6 +8,8 @@
     residuals.py    lab observables against a model under a scenario of the unknown ages: residuals and tables
     candidates.py   candidate structures of the first fit: which barriers and energies are free
     estimation.py   best fit, profile intervals, leave-one-out and what the data cannot determine
+    reporting.py    a stored fit against the measurements, spectrum by spectrum and in time
+    config.py       the setup of one fit run (solvation medium, readings, paper observations), stored with its results
 
 Source: Y. Alcaraz Galván
 """
@@ -45,6 +47,9 @@ from kinetics.fitting.candidates import (
     FIT_STRUCTURES, FitParameter, FitStructure, build_fitted_model, embed_parent_theta, get_structure,
     tabulate_reaction_barriers,
 )
+from kinetics.fitting.config import (
+    DEFAULT_FIT_CONFIG, FIT_CONFIG_FILE, apply_fit_config, check_fit_medium, load_fit_config,
+)
 from kinetics.fitting.estimation import (
     DELTA_CHI2_95, FIT_RULE_MAX_Z, FitProblem, add_profile_points, build_profile_grid, calculate_parameter_directions,
     calculate_prediction_band, calculate_profile, compare_structures, extend_profile, find_confidence_interval,
@@ -54,6 +59,7 @@ from kinetics.fitting.estimation import (
 )
 
 __all__ = [
+    "DEFAULT_FIT_CONFIG", "FIT_CONFIG_FILE", "apply_fit_config", "check_fit_medium", "load_fit_config",
     "FIT_STRUCTURES", "FitParameter", "FitStructure", "build_fitted_model", "embed_parent_theta", "get_structure",
     "tabulate_reaction_barriers",
     "DELTA_CHI2_95", "FIT_RULE_MAX_Z", "FitProblem", "add_profile_points", "build_profile_grid",

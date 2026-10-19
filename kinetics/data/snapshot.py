@@ -1,8 +1,12 @@
-"""Read-only access to the Tank dataset API snapshot (`tank_api_snapshot.json`).
+"""Read-only access to a Tank dataset API snapshot (`tank_api_snapshot_<capture date>.json`).
 
 The snapshot is the single data source of the pipeline (see `data/README.md`): the Tank dataset of P. Broqvist
 (DFT, MD solvation, computed NMR shieldings, geometries). It is read from the data folder (`ATOM_DATA_DIR`,
 see `kinetics/paths.py`). It is parsed once and cached; the returned structures are shared, so callers must not mutate them.
+
+Snapshots in use (see `data/README.md`): 2026-09-24 (MD solvation in EC at 298 K, the default; fits 1–3) and 2026-10-08
+(MD solvation in EC at 338 K and in DEC at 298 K, openCOSMO-RS table). Since a snapshot may hold the MD solvation in
+more than one solvent, solvation records are always read for one solvent.
 
 Source: Y. Alcaraz Galván; DFT and MD data by P. Broqvist
 """
@@ -14,7 +18,13 @@ from functools import lru_cache
 
 from kinetics.paths import DATA_DIR_VAR, data_path
 
-DEFAULT_SNAPSHOT_PATH = data_path("data", "tank_api_snapshot.json")
+DEFAULT_SNAPSHOT_FILE = "tank_api_snapshot_2026-09-24.json"
+DEFAULT_SNAPSHOT_PATH = data_path("data", DEFAULT_SNAPSHOT_FILE)
+SNAPSHOT_2026_10_08_PATH = data_path("data", "tank_api_snapshot_2026-10-08.json")
+DEFAULT_SOLVENT = "EC"
+
+# Solvent of an MD solvation record, for records that do not name it in `raw_metadata['solvent']` (2026-09-24 snapshot)
+SOLVENT_IDS = {"1,3-dioxolan-2-one": "EC", "diethyl carbonate": "DEC"}
 
 # Standard atomic weights [g/mol] for the elements present in the snapshot
 ATOMIC_MASS_G_MOL = {
@@ -39,10 +49,40 @@ def get_dataset_records(path: str = DEFAULT_SNAPSHOT_PATH) -> dict:
     return {d["pipeline_id"]: d for d in load_snapshot(path)["datasets"]}
 
 
-@lru_cache(maxsize=4)
-def get_solvation_records(path: str = DEFAULT_SNAPSHOT_PATH) -> dict:
-    """{species name: MACE MD solvation record}."""
-    return {s["raw_metadata"]["name"]: s for s in load_snapshot(path)["solvation"]}
+def get_solvent(record: dict) -> str:
+    """Solvent pipeline id ('EC', 'DEC') of one MD solvation record."""
+    return record["raw_metadata"].get("solvent") or SOLVENT_IDS[record["solvent_name"]]
+
+
+def list_solvation_sets(path: str = DEFAULT_SNAPSHOT_PATH) -> dict:
+    """{solvent: {'T_K': MD temperatures, 'n_species': record count}} of the MD solvation in a snapshot."""
+    sets = {}
+    for record in load_snapshot(path)["solvation"]:
+        entry = sets.setdefault(get_solvent(record), {"T_K": set(), "n_species": 0})
+        entry["T_K"].add(record["temperature_k"])
+        entry["n_species"] += 1
+    return {solvent: {"T_K": sorted(e["T_K"]), "n_species": e["n_species"]} for solvent, e in sets.items()}
+
+
+@lru_cache(maxsize=8)
+def get_solvation_records(path: str = DEFAULT_SNAPSHOT_PATH, solvent: str = DEFAULT_SOLVENT) -> dict:
+    """{species name: MACE MD solvation record} in one solvent.
+
+    Raises if the snapshot has no record in that solvent, or two records of one species in it (e.g. two MD
+    temperatures): a species must never take its energy from whichever record comes last.
+    """
+    records = {}
+    for record in load_snapshot(path)["solvation"]:
+        if get_solvent(record) != solvent:
+            continue
+        name = record["raw_metadata"]["name"]
+        if name in records:
+            raise ValueError(f"Two MD solvation records of '{name}' in {solvent} in {os.path.basename(path)}")
+        records[name] = record
+    if not records:
+        raise KeyError(f"No MD solvation in '{solvent}' in {os.path.basename(path)}: "
+                       f"it has {sorted(list_solvation_sets(path))}")
+    return records
 
 
 def get_structure(pipeline_id: str, path: str = DEFAULT_SNAPSHOT_PATH) -> tuple[list, list]:

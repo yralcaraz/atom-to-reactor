@@ -33,6 +33,7 @@ from dataclasses import dataclass, field, replace
 import numpy as np
 from scipy.linalg import cholesky, solve_triangular
 
+from kinetics.data.medium import get_active_medium
 from kinetics.data.network import NETWORK
 from kinetics.fitting.residuals import FREE_AGE_BOUNDS_H
 from kinetics.microkinetics.models import get_model
@@ -176,8 +177,8 @@ _ENERGY_TOOLS = {}
 
 def _energy_tools(freed: tuple, prior_scale: float = 1.0):
     """(species-shift matrix, species, Cholesky factor of the covariance, standard errors, computed ΔG) for the
-    freed reactions; the covariance is multiplied by prior_scale."""
-    key = (freed, prior_scale)
+    freed reactions in the active solvation medium; the covariance is multiplied by prior_scale."""
+    key = (get_active_medium(), freed, prior_scale)
     if key not in _ENERGY_TOOLS:
         unit = [calculate_species_shifts({r: (1.0 if r == rxn else 0.0) for r in freed}) for rxn in freed]
         species = sorted({sp for shifts in unit for sp in shifts})

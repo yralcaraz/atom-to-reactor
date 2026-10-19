@@ -110,18 +110,19 @@ sim = simulate_protocol(model='level1')             # full multi-stage temperatu
 
 The notebooks are demonstrations. The science lives in `kinetics/`, and the figures and display tables in `demo/`.
 
-The number of a notebook is the stage of the work, so two notebooks of the same stage share it. When two notebooks cover the same subject, the consolidated one has the plain name and the draft carries `DRAFT` in its file name. Inside a notebook, sections are numbered 1, 2, 3; "Block" numbers refer to the engine only (see [MODULES.md](MODULES.md)).
+Notebooks are named `0X_topic_rev0Y`: the number is the stage of the work (two notebooks of the same stage share it), the topic is a short name, and `rev0Y` counts the revisions of that notebook, kept side by side. In `05_fitting`, revision Y presents fit Y and its name ends, in brackets, with what that fit adds (`(31P)`, `(31P_13C)`, `(TMSPa_alone)`, `(EC_DEC)`). Inside a notebook, sections are numbered 1, 2, 3; "Block" numbers refer to the engine only (see [MODULES.md](MODULES.md)).
 
 | Notebook | Content | Guide |
 |---|---|---|
-| [01_multiscale_microkinetics_theory](notebooks/01_multiscale_microkinetics_theory.ipynb) | Sections 1–11: input data, free energies in EC, reaction thermodynamics and Wegscheider cycles, barrier models, model selection against experiment, k(T), batch reactor, sensitivity, virtual ²⁹Si NMR | [theory](docs/theory-multiscale_microkinetics.md) |
-| [02_operando_experimental_protocol](notebooks/02_operando_experimental_protocol.ipynb) | Bench protocol simulation, model comparison, predicted multinuclear NMR, water from ¹H, which reactions the spectra can tell apart | [guide](docs/guide-operando_experimental_protocol.md) |
-| [03_experiment_plan](notebooks/03_experiment_plan.ipynb) | What the data constrain today (barrier bounds), where the model fails (water series), NMR readouts and timing, which experiment determines which parameter, tentative plan. Written before the lab spectra existed | — |
-| [03_feasible_region](notebooks/03_feasible_region.ipynb) | Every observation (lab spectra and Gogoi 2024) as a constraint: barrier intervals for a ladder of model structures, tests no barrier can pass. Stored without outputs | — |
-| [04_lab_nmr_data_overview](notebooks/04_lab_nmr_data_overview.ipynb) | The raw lab NMR spectra: samples, acquisition settings, what changes in time, what is unclear in the files | — |
-| [05_first_fit](notebooks/05_first_fit.ipynb) | First fit of the candidate structures to the lab observables under four scenarios of the unknown mixing times: misfit per observation, profile intervals, what the data cannot determine. Shows results computed by `scripts/run_fit.py`; stored without outputs | — |
-| [05_first_fit_DRAFT](notebooks/05_first_fit_DRAFT.ipynb) | **Draft.** The results of notebook 05 in step-by-step order, one model structure added at a time. Shows results computed by `scripts/run_fit.py`; nothing is fitted in the notebook | — |
-| [05_third_fit_DRAFT](notebooks/05_third_fit_DRAFT.ipynb) | **Draft.** The third fit against the measurements: measured and simulated NMR spectra, concentrations in time, the fitted values with their intervals and correlations, the unknown ages, the error of a share. Reads the fits computed by `scripts/run_fit.py` and runs them forward; nothing is fitted in the notebook | — |
+| [01_theory_rev01](notebooks/01_theory_rev01.ipynb) | Sections 1–11: input data, free energies in EC, reaction thermodynamics and Wegscheider cycles, barrier models, model selection against experiment, k(T), batch reactor, sensitivity, virtual ²⁹Si NMR | [theory](docs/theory-multiscale_microkinetics.md) |
+| [02_experimental_protocol_rev01](notebooks/02_experimental_protocol_rev01.ipynb) | Bench protocol simulation, model comparison, predicted multinuclear NMR, water from ¹H, which reactions the spectra can tell apart | [guide](docs/guide-operando_experimental_protocol.md) |
+| [03_experiment_plan_rev01](notebooks/03_experiment_plan_rev01.ipynb) | What the data constrain today (barrier bounds), where the model fails (water series), NMR readouts and timing, which experiment determines which parameter, tentative plan. Written before the lab spectra existed | — |
+| [03_feasible_region_rev01](notebooks/03_feasible_region_rev01.ipynb) | Every observation (lab spectra and Gogoi 2024) as a constraint: barrier intervals for a ladder of model structures, tests no barrier can pass. Stored without outputs | — |
+| [04_NMR_data_rev01](notebooks/04_NMR_data_rev01.ipynb) | The raw lab NMR spectra: samples, acquisition settings, what changes in time, what is unclear in the files | — |
+| [05_fitting_rev01_(31P)](notebooks/05_fitting_rev01_%2831P%29.ipynb) | First fit of the candidate structures to the lab observables under four scenarios of the unknown mixing times: misfit per observation, profile intervals, what the data cannot determine. Shows results computed by `scripts/run_fit.py`; stored without outputs | — |
+| [05_fitting_rev02_(31P_13C)](notebooks/05_fitting_rev02_%2831P_13C%29.ipynb) | **Draft.** The second fit in step-by-step order, one model structure added at a time. Shows results computed by `scripts/run_fit.py`; nothing is fitted in the notebook | — |
+| [05_fitting_rev03_(TMSPa_alone)](notebooks/05_fitting_rev03_%28TMSPa_alone%29.ipynb) | **Draft.** The third fit against the measurements: measured and simulated NMR spectra, concentrations in time, the fitted values with their intervals and correlations, the unknown ages, the error of a share. Reads the fits computed by `scripts/run_fit.py` and runs them forward; nothing is fitted in the notebook | — |
+| [05_fitting_rev04_(EC_DEC)](notebooks/05_fitting_rev04_%28EC_DEC%29.ipynb) | **Draft, in revision.** Copy of rev03, to be trimmed and pointed at the fourth fit (8 Oct snapshot, EC and DEC solvation) | — |
 
 ## Repository layout
 
@@ -154,7 +155,8 @@ The most used functions are re-exported from `kinetics` (see [kinetics/\_\_init\
 | File | Content | Origin |
 |---|---|---|
 | `data/experimental_gogoi2024.json` | Measured ³¹P/²⁹Si/¹³C/¹H shifts, barrier windows, control experiments, water series | Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654 |
-| `tank_api_snapshot.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) for 24 species, MACE-OMol MD solvation energies in EC for 12, computed NMR shieldings and geometries | Computed; offline snapshot of P. Broqvist's Tank dataset API (2026-09-24) |
+| `tank_api_snapshot_2026-09-24.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) for 24 species, MACE-OMol MD solvation energies in EC for 12, computed NMR shieldings and geometries. The default | Computed; offline snapshot of P. Broqvist's Tank dataset API (2026-09-24) |
+| `tank_api_snapshot_2026-10-08.json` | The same for 27 species, with MD solvation in EC at 338 K and in DEC, and an openCOSMO-RS table | Computed; later capture of the same API (2026-10-08) |
 | `lab_observables.json` | Area shares, uncertainties and sample histories of the NMR spectra | NMR data from experiments; built by `scripts/build_observables.py` |
 | NMR spectra | JEOL Delta `.jdf` files | NMR data from experiments |
 

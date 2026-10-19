@@ -29,8 +29,12 @@ def _time_axis(sim: dict):
     return t, mask, label
 
 
-def plot_concentration_panels(sim: dict, log_time: bool = False, panels=CONCENTRATION_PANELS):
-    """2 × 2 concentration panels; protocol runs get the temperature program above each column."""
+def plot_concentration_panels(sim: dict, log_time: bool = False, panels=CONCENTRATION_PANELS, from_zero: bool = False):
+    """2 × 2 concentration panels; protocol runs get the temperature program above each column.
+
+    from_zero: every concentration axis starts at 0 and has no offset, so a change of a few µM on top of a
+    constant level is drawn as the flat line it is, not stretched over the whole panel.
+    """
     t, mask, xlabel = _time_axis(sim)
     varying_T = np.ptp(sim['T_K'][mask]) > 0
     fig = plt.figure(figsize=(12, 8.4 if varying_T else 7.4), layout='constrained')
@@ -50,6 +54,10 @@ def plot_concentration_panels(sim: dict, log_time: bool = False, panels=CONCENTR
             ends[sp] = y[-1]
         if log_time:
             ax.set_xscale('log')
+        if from_zero:
+            top = max(float(np.max(sim['C_mM'][[sim['idx'][sp] for sp in species]][:, mask])), 0.0)
+            ax.set_ylim(0.0, 1.08 * top if top > 0 else 1.0)
+            ax.ticklabel_format(axis='y', useOffset=False)
         mark_acquisitions(ax, sim)
         ax.set_title(title, loc='left')
         ax.set_ylabel('Concentration (mM)')

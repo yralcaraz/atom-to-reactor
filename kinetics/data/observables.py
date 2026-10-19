@@ -62,8 +62,9 @@ LAB_SAMPLES = {
         'label': '5 vol% TMSPa + 0.5 vol% H2O in EC/DEC', 'nucleus': '31P', 'role': 'fit',
         'recipe': ('water_series', 0.5),
         'flags': ['lock solvent D2O; every other sample is locked on DMSO-d6 (notebook 04 §5)',
-                  '31P lines near -140.1, -144.5 and -148.9 ppm, 4.4 ppm apart, the pattern of PF6- '
-                  '(notebook 04, Appendix A): if the sample holds LiPF6 it is outside the network. AUDIT OPEN'],
+                  '31P lines at -140.1 and -148.9 ppm, signal-to-noise 10 and 23 against 540 for TMSPA, in this '
+                  'tube only (checked 2026-10-19 on every 31P spectrum): no line at -144.5 ppm, where the septet of '
+                  'PF6- has its strongest one, so not PF6-. Unassigned; outside the integration windows'],
         'more_nuclei': {'13C': {'role': 'fit', 'axis_offset_ppm': 0.44,
                                 'flags': ['axis 0.44 ppm above that of the 2 % sample (DEC methyl line at 13.79 ppm '
                                           'against 13.35): the windows are moved by that amount']}},
@@ -145,7 +146,6 @@ C13_FLAG = ('13C recorded with NOE on and a 2 s relaxation delay: shares assume 
             'NOE and relaxation for the Si-CH3 carbons of every species')
 
 OPEN_AUDIT = [
-    'Raw spectra: check the 31P region near -144 ppm (PF6-) in every TMSPa sample, not only the 0.5 % one.',
     'Raw spectra: inspect the 19F spectrum of the glovebox TMSOH sample (PF6- near -72 ppm, fluorosilanes).',
     'Raw spectra: replace the ASSUMED clock times and the minimum durations of the heating steps by '
     'find_heated_windows on the inventory.',

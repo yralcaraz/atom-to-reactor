@@ -19,12 +19,13 @@ import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap, ListedColormap, TwoSlopeNorm
 from matplotlib.lines import Line2D
 
-from demo.reactor_plots import plot_concentration_panels
+from demo.reactor_plots import CONCENTRATION_PANELS, plot_concentration_panels
 from demo.style import BLUE_RAMP, GRID, INK, INK_MUTED, INK_SOFT, RULE, SERIES, SURFACE
 from kinetics.constants import ZERO_CELSIUS_K
 from kinetics.data.observables import PHOSPHATE_WINDOWS
 
 SCENARIO_ORDER = ('short', 'middle', 'long', 'free')
+TRACE_MM = 1e-3                          # below 1 µM a simulated concentration is drawn as 0 (integrator noise)
 SCENARIO_LABELS = {'short': 'short (1 h)', 'middle': 'middle (1 d)', 'long': 'long (7 d)', 'free': 'free ages'}
 AGE_LABELS = {'short': '1 h', 'middle': '1 day', 'long': '7 days', 'free': 'free ages'}     # a scenario named by its age
 REACTION_LABELS = {'R1': 'R1 · first hydrolysis', 'R2': 'R2 · second hydrolysis', 'R3': 'R3 · third hydrolysis',
@@ -681,7 +682,7 @@ def _line(x, centre: float, fwhm_gauss: float, fwhm_total: float):
 
 
 def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, x_range=None, title: str = None,
-                            clear_height: float = 6.0, overlay: bool = False, fit_label: str = 'simulated from the fit'):
+                            clear_height: float = 6.0, overlay: bool = False, fit_label: str = 'Simulated from the fit'):
     """Measured spectra with the spectrum a fit predicts drawn over them, one row per spectrum.
 
     spectra: kinetics.fitting.reporting.load_measured_spectra. shares: tabulate_fit_shares of the fit, or
@@ -691,7 +692,7 @@ def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, 
     height 1: the height of a line is close to its share. The model predicts areas only, so each simulated line
     takes the position and the width of the measured line (the centre of the window and the display width where
     the measured window shows no line higher than clear_height times the noise). The numbers over a window are
-    its share: measured / simulated (measured only with overlay). Tubes whose axis is offset are moved onto a
+    its share: measured / simulated, the simulated one in the colour of the fit (measured only with overlay). Tubes whose axis is offset are moved onto a
     common axis.
     """
     width = SMOOTH_FWHM_PPM[nucleus]
@@ -721,8 +722,11 @@ def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, 
                 for curve, row in zip(simulated, found):
                     curve += row['predicted'] * _line(x, centre, width, total)
                 ax.axvspan(low, high, color=GRID, alpha=0.45, linewidth=0)
-                number_text = f"{found[0]['measured']:.2f}" if overlay else f"{found[0]['measured']:.2f} / {found[0]['predicted']:.2f}"
-                ax.text(0.5 * (low + high), 1.24, number_text, ha='center', va='center', fontsize=7.5, color=INK_SOFT)
+                if overlay:
+                    ax.text(0.5 * (low + high), 1.24, f"{found[0]['measured']:.2f}", ha='center', va='center', fontsize=7.5, color=INK_SOFT)
+                else:                            # measured / simulated, centred on the slash, simulated in the colour of the fit
+                    ax.text(0.5 * (low + high), 1.24, f"{found[0]['measured']:.2f} /", ha='right', va='center', fontsize=7.5, color=INK_SOFT)
+                    ax.text(0.5 * (low + high), 1.24, f" {found[0]['predicted']:.2f}", ha='left', va='center', fontsize=7.5, color=SERIES[0])
                 if ax is column[0]:
                     ax.text(0.5 * (low + high), 1.5, WINDOW_LABELS.get(window, window), ha='center', va='bottom', fontsize=8.5, color=INK)
                 lows.append(low)
@@ -742,32 +746,71 @@ def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, 
     axes.flat[-1].set_xlim(*(x_range or (max(highs) + margin, min(lows) - margin)))
     if overlay:
         lines = [Line2D([], [], color=color, linewidth=1.3, label=label) for (label, _), color in zip(groups[0], colors)]
-        numbers = 'numbers: measured share of the area'
+        numbers = 'Numbers: measured share of the area'
     else:
         lines = [Line2D([], [], color=SERIES[0], linewidth=1.5, label=fit_label)]
-        numbers = 'numbers: share of the area, measured / simulated'
-    handles = [plt.Rectangle((0, 0), 1, 1, color=SERIES[3], alpha=0.6, linewidth=0, label='measured spectrum'), *lines,
-               plt.Rectangle((0, 0), 1, 1, color=GRID, alpha=0.45, linewidth=0, label='window of one line: its area gives the share'),
+        numbers = 'Numbers: share of the area, measured / simulated (in the colour of the fit)'
+    # Three sections, filled column by column: measured | the fits, two per column | window and numbers.
+    blank = Line2D([], [], linestyle='none', label=' ')
+    fits = [lines[i:i + 2] + [blank] * (2 - len(lines[i:i + 2])) for i in range(0, len(lines), 2)]
+    handles = [plt.Rectangle((0, 0), 1, 1, color=SERIES[3], alpha=0.6, linewidth=0, label='Measured spectrum'), blank,
+               *sum(fits, []),
+               plt.Rectangle((0, 0), 1, 1, color=GRID, alpha=0.45, linewidth=0, label='Window of each species'),
                Line2D([], [], linestyle='none', label=numbers)]
-    fig.legend(handles=handles, loc='outside lower center', ncols=3 if overlay else 2)
+    fig.legend(handles=handles, loc='outside lower center', ncols=len(fits) + 2)
     fig.suptitle(title or f'{NUCLEUS_LABELS[nucleus]} spectra: measured, and simulated from the fit', x=0.01, ha='left', fontsize=11)
     return axes
 
 
-def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model: str, beyond: float = 1.15):
-    """Concentrations the model gives one tube since mixing, in the four panels of the reactor figures
+def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model: str, beyond: float = 1.15,
+                             before: str = None, margin_h: float = 24.0):
+    """Concentrations the model gives one tube, in the four panels of the reactor figures
     (demo.reactor_plots.plot_concentration_panels). No measurement is drawn.
 
     trajectories: kinetics.fitting.reporting.simulate_fit_trajectories. spectrum_times: hours since mixing of the
-    spectra of the tube, drawn as dotted verticals; the time axis ends at beyond × the last one. model: the name
-    written in the title. A heated tube gets its temperature above the panels.
+    spectra of the tube, drawn as dotted verticals. model: the name written in the title. A heated tube gets its
+    temperature above the panels.
+    before: None draws the time since mixing, up to beyond × the last spectrum. A text (what is known of the tube
+    before its first spectrum) draws the time since the first spectrum instead, the only clock that was measured:
+    the whole stretch from mixing to the first spectrum, and margin_h (or 15 % of the measured span if longer) after
+    the last one, are greyed out, and the text is written under the panels.
+    Concentrations below 1 µM are drawn as 0 (what is left there is the integrator's noise, with either sign), every
+    axis starts at 0, and a panel with nothing above 1 µM says so.
     """
-    curve = trajectories[(trajectories['sample'] == sample) & (trajectories['t_h'] <= beyond * max(spectrum_times))]
+    rows = trajectories[trajectories['sample'] == sample]
+    if before is None:
+        curve, t0 = rows[rows['t_h'] <= beyond * max(spectrum_times)], 0.0
+    else:
+        t0, t1 = min(spectrum_times), max(spectrum_times)
+        curve = rows[rows['t_h'] <= t1 + max(margin_h, 0.15 * (t1 - t0))]
     species = [c for c in curve.columns if c not in ('sample', 't_h', 'T_C')]
-    sim = {'model': f'{model} · tube {sample}', 't_h': curve['t_h'].to_numpy(), 'T_K': curve['T_C'].to_numpy() + ZERO_CELSIUS_K,
-           'C_mM': 1000.0 * curve[species].to_numpy().T, 'idx': {sp: i for i, sp in enumerate(species)},
-           'acquisitions': [{'t_h': t_h} for t_h in spectrum_times], 'time_label': 'Time since mixing (h)'}
-    return plot_concentration_panels(sim)
+    C_mM = 1000.0 * curve[species].to_numpy().T
+    C_mM[np.abs(C_mM).max(axis=1) < TRACE_MM] = 0.0
+    sim = {'model': f'{model} · tube {sample}', 't_h': curve['t_h'].to_numpy() - t0, 'T_K': curve['T_C'].to_numpy() + ZERO_CELSIUS_K,
+           'C_mM': np.clip(C_mM, 0.0, None), 'idx': {sp: i for i, sp in enumerate(species)},
+           'acquisitions': [{'t_h': t_h - t0} for t_h in spectrum_times],
+           'time_label': 'Time since mixing (h)' if before is None else 'Time since the first spectrum (h)'}
+    fig = plot_concentration_panels(sim, from_zero=True)
+    for ax, (_, members) in zip(fig.axes, CONCENTRATION_PANELS):       # the four panels come first in fig.axes
+        if not sim['C_mM'][[sim['idx'][sp] for sp in members]].any():
+            for artist in [*ax.lines, *ax.texts, ax.get_legend()]:          # flat lines, their legend and end labels
+                if artist is not None:
+                    artist.remove()
+            ax.set_yticks([])
+            ax.text(0.5, 0.5, 'none in this tube (all below 1 µM)', transform=ax.transAxes, ha='center', va='center',
+                    fontsize=9, color=INK_MUTED)
+    if before is None:
+        return fig
+    start, end, last = sim['t_h'][0], sim['t_h'][-1], t1 - t0
+    for ax in fig.axes:
+        for lo, hi in ((start, 0.0), (last, end)):
+            ax.axvspan(lo, hi, color=GRID, alpha=0.5, linewidth=0, zorder=0)
+            ax.axvspan(lo, hi, color=SURFACE, alpha=0.65, linewidth=0, zorder=2.5)     # mutes the curves there
+        ax.set_xlim(start, end)
+    fig.text(0.01, -0.005, f'Grey, left: before the first spectrum. {before}\n'
+             'Grey, right: after the last spectrum. No measurement; the model runs on.',
+             ha='left', va='top', fontsize=9, color=INK_SOFT)
+    return fig
 
 
 def plot_concentrations(amounts: dict, shares, rows: dict, *, x_range=(0.1, 1500.0), title: str = None):

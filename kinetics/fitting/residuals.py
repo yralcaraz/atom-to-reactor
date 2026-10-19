@@ -145,9 +145,11 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
     that have one of these roles. exclude: sample names left out (leave-one-out).
     paper: one-sided observations of Gogoi 2024 added to the set (ids of data/experimental_gogoi2024.json).
     floor_scale multiplies the declared error floor (0 removes it).
-    overrides: {sample: {'hold_h': hours of its known pre-history, 'heated_duration_h': hours of every heating
-    episode (at most until the next one starts), 'added_M': {species: mol/L present at mixing on top of the recipe}}}, for the sensitivity to the
-    times the files do not fix and to what the recipe does not list.
+    overrides: {sample: {'hold_h': hours of its known pre-history, 'pre_history': [(T_C or None for room
+    temperature, hours), ...] from mixing to the first spectrum (the age is then known), 'heated_duration_h':
+    hours of every heating episode (at most until the next one starts), 'added_M': {species: mol/L present at
+    mixing on top of the recipe}}}, for the sensitivity to the times the files do not fix and to what the recipe
+    does not list.
     """
     if scenario not in SCENARIOS:
         raise ValueError(f"scenario must be one of {SCENARIOS}")
@@ -160,6 +162,9 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
         if sample is None:
             continue
         change = (overrides or {}).get(name, {})
+        if 'pre_history' in change:
+            sample['pre_segments'] = [(sample['T_rt_K'] if T_C is None else T_C + ZERO_CELSIUS_K, 3600.0 * hours)
+                                      for T_C, hours in change['pre_history']]
         if 'hold_h' in change:
             sample['pre_segments'] = [(T, 3600.0 * change['hold_h']) for T, _ in sample['pre_segments']]
         if 'heated_duration_h' in change:

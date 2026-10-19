@@ -103,7 +103,7 @@ Two shared files sit beside the blocks: [kinetics/constants.py](kinetics/constan
 
 ```mermaid
 flowchart LR
-    SNAP[("tank_api_snapshot.json<br/>data folder")] --> snapshot["snapshot.py"]
+    SNAP[("tank_api_snapshot_&lt;date&gt;.json<br/>data folder")] --> snapshot["snapshot.py"]
     snapshot -- "DFT, solvation records" --> species["species.py"]
     species -- "species database<br/>(energies in eV)" --> T["thermo/"]
     network["network.py"] -- "NETWORK, S matrix,<br/>cycles" --> T
@@ -120,13 +120,15 @@ flowchart LR
 
 ### 2.1 snapshot.py · read-only access to the Tank snapshot
 
-**Route:** [kinetics/data/snapshot.py](kinetics/data/snapshot.py) · **Input:** `tank_api_snapshot.json` (data folder) · **Output:** records per species. The snapshot is parsed once and shared: do not modify what these functions return.
+**Route:** [kinetics/data/snapshot.py](kinetics/data/snapshot.py) · **Input:** `tank_api_snapshot_<date>.json` (data folder; default the 2026-09-24 one) · **Output:** records per species. The snapshot is parsed once and shared: do not modify what these functions return.
 
 | Function | Input | Output |
 |---|---|---|
 | `load_snapshot` | Optional path | The parsed JSON |
 | `get_dataset_records` | Optional path | {species: gas-phase DFT record} |
-| `get_solvation_records` | Optional path | {species: MD solvation record} |
+| `get_solvation_records` | Optional path and solvent (default `EC`) | {species: MD solvation record} in that solvent; raises if there is none, or two for one species |
+| `list_solvation_sets` | Optional path | {solvent: MD temperatures and record count} |
+| `get_solvent` | One solvation record | Its solvent (`EC`, `DEC`) |
 | `get_structure` | Species | (elements, coordinates in Å) |
 | `get_nmr_shieldings` | Species | Per-atom shielding records, or `[]` |
 | `count_elements` | Species | Atom count per element |
@@ -138,8 +140,18 @@ flowchart LR
 
 | Function | Input | Output |
 |---|---|---|
-| `load_species_database` | Optional snapshot path | The database as an independent copy (safe to modify) |
-| `resolve_species_database` | A database or `None` | The given database, else the shared read-only default |
+| `load_species_database` | Optional snapshot path and solvent (default `EC`) | The database as an independent copy (safe to modify); each species records the solvent and MD temperature of its solvation energy |
+| `load_medium_species_database` | A `SolvationMedium` | The database of that medium (neat solvent or mixture) as an independent copy |
+| `resolve_species_database` | A database or `None` | The given database, else the shared read-only database of the active medium (2.2a) |
+
+### 2.2a medium.py · the solvation medium
+
+**Route:** [kinetics/data/medium.py](kinetics/data/medium.py) · **Input:** a snapshot file, volume fractions, a mixing rule · **Output:** the medium the species database and the solvation standard errors of `thermo/` follow. The snapshots hold MD solvation in neat solvents only; a mixture is the linear average with mole fractions (EC/DEC 1:1 by volume: x_EC = 0.645). One medium is active per process; the default is neat EC from the 2026-09-24 snapshot (notebooks 01–03, fits 1–3).
+
+| Function | Input | Output |
+|---|---|---|
+| `SolvationMedium` | `snapshot`, `volume_fractions`, `rule` (`linear`) | A hashable medium; `mole_fractions()`, `label()`, `to_dict()` / `from_dict()` |
+| `get_active_medium`, `set_active_medium` | —; a medium or `None` (default) | The medium in use; caches are keyed by it |
 
 ### 2.3 network.py · the reaction network
 
@@ -537,7 +549,7 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 
 ### 7.1 feasibility.py · bounds on the family barriers
 
-**Route:** [kinetics/fitting/feasibility.py](kinetics/fitting/feasibility.py) · **Input:** a model and the control experiments of Gogoi 2024 · **Output:** the interval of `g` each family may take. Used by notebook `03_experiment_plan`.
+**Route:** [kinetics/fitting/feasibility.py](kinetics/fitting/feasibility.py) · **Input:** a model and the control experiments of Gogoi 2024 · **Output:** the interval of `g` each family may take. Used by notebook `03_experiment_plan_rev01`.
 
 | Function | Input | Output |
 |---|---|---|
@@ -549,7 +561,7 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 
 ### 7.2 constraints.py · what each observation allows
 
-**Route:** [kinetics/fitting/constraints.py](kinetics/fitting/constraints.py) · **Input:** observations (a mixture, a temperature, a time interval, windows on observables) and a model · **Output:** the barrier interval each observation allows, and what is left when all must hold. Used by notebook `03_feasible_region`.
+**Route:** [kinetics/fitting/constraints.py](kinetics/fitting/constraints.py) · **Input:** observations (a mixture, a temperature, a time interval, windows on observables) and a model · **Output:** the barrier interval each observation allows, and what is left when all must hold. Used by notebook `03_feasible_region_rev01`.
 
 | Function | Input | Output |
 |---|---|---|
@@ -568,7 +580,7 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 
 ### 7.3 structure.py · tests of the model structure
 
-**Route:** [kinetics/fitting/structure.py](kinetics/fitting/structure.py) · **Input:** measured shares, recipes, heating histories · **Output:** statements that hold whatever the barriers are (stoichiometry and thermodynamics only). Used by notebook `03_feasible_region`.
+**Route:** [kinetics/fitting/structure.py](kinetics/fitting/structure.py) · **Input:** measured shares, recipes, heating histories · **Output:** statements that hold whatever the barriers are (stoichiometry and thermodynamics only). Used by notebook `03_feasible_region_rev01`.
 
 | Function | Input | Output |
 |---|---|---|
@@ -594,7 +606,7 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 
 ### 7.5 design.py · what a candidate experiment would determine
 
-**Route:** [kinetics/fitting/design.py](kinetics/fitting/design.py) · **Input:** a composition, a temperature program, acquisition times; a model; the parameters to determine · **Output:** the smallest standard error a fit of that experiment could reach (Fisher information). Used by notebook `03_experiment_plan`.
+**Route:** [kinetics/fitting/design.py](kinetics/fitting/design.py) · **Input:** a composition, a temperature program, acquisition times; a model; the parameters to determine · **Output:** the smallest standard error a fit of that experiment could reach (Fisher information). Used by notebook `03_experiment_plan_rev01`.
 
 | Name | Input | Output |
 |---|---|---|
@@ -672,7 +684,7 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 
 ### 7.9 reporting.py · a stored fit against the measurements
 
-**Route:** [kinetics/fitting/reporting.py](kinetics/fitting/reporting.py) · **Input:** a fit result and the lab observables · **Output:** what the stored parameter set predicts, in the units of the experiment. Nothing is fitted: the parameter set is run forward. Used by notebook `05_third_fit_DRAFT`.
+**Route:** [kinetics/fitting/reporting.py](kinetics/fitting/reporting.py) · **Input:** a fit result and the lab observables · **Output:** what the stored parameter set predicts, in the units of the experiment. Nothing is fitted: the parameter set is run forward, with the paper observations it was fitted with, and only in the medium it was fitted in (`apply_fit_config` first, 7.10). Used by notebooks `05_fitting_rev03_(TMSPa_alone)` and `05_fitting_rev04_(EC_DEC)`.
 
 | Function | Input | Output |
 |---|---|---|
@@ -682,6 +694,16 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 | `tabulate_window_amounts` | Trajectories, a nucleus | The trajectories as the nuclei each NMR window counts (HMDSO carries two silyl groups) |
 | `load_measured_spectra` | The observables. Needs the raw spectra (`LAB_NMR_DIR`) | Per spectrum: axis and intensity with the baseline removed and the area of the windows set to 1 |
 | `calculate_parameter_correlation` | A fit result, the observables | Correlation between the fitted parameters near the best fit, and their local standard errors |
+
+### 7.10 config.py · the setup of one fit run
+
+**Route:** [kinetics/fitting/config.py](kinetics/fitting/config.py) · **Input:** `fit_config.json` in a results directory · **Output:** the solvation medium, the readings fitted and the paper observations of that run. Read by every stage of `run_fit.py` and by the notebooks; a directory without the file has the setup of fits 1–3.
+
+| Function | Input | Output |
+|---|---|---|
+| `load_fit_config` | A results directory | The setup, with the medium as a `SolvationMedium` |
+| `apply_fit_config` | A results directory | The same, after making its medium the active one |
+| `check_fit_medium` | A fit result | Raises if the fit was computed in another medium than the active one |
 
 ---
 
@@ -710,7 +732,7 @@ flowchart LR
 
 ### 8.2 run_fit.py · the staged fit
 
-**Route:** [scripts/run_fit.py](scripts/run_fit.py) · `python scripts/run_fit.py STAGE [--workers N] [--results DIR] [--quick]`. Every job writes one file and is skipped when that file exists, so a stage can be stopped and started again. The stages, their inputs and their files are in [reference-fitting_system.md](docs/reference-fitting_system.md), section 4.
+**Route:** [scripts/run_fit.py](scripts/run_fit.py) · `python scripts/run_fit.py STAGE [--workers N] [--results DIR] [--quick]`. Every job writes one file and is skipped when that file exists, so a stage can be stopped and started again. Each stage starts by reading the run's setup, `fit_config.json` in the results directory (7.10), and every fit records its medium and paper observations. The stages, their inputs and their files are in [reference-fitting_system.md](docs/reference-fitting_system.md), section 4.
 
 | Stage | Does |
 |---|---|
@@ -740,6 +762,6 @@ flowchart LR
 | [nmr_plots.py](demo/nmr_plots.py) | Stacked spectra, peak tracking, water balance, shift parity | Blocks 8, 11–12, notebooks 01, 02 |
 | [fingerprint_plots.py](demo/fingerprint_plots.py) | Nucleus selectivity, recovery of reaction extents | Block 13, notebook 02 |
 | [lab_nmr_plots.py](demo/lab_nmr_plots.py) | Acquisition timeline, measured spectra, processing check | Block 1, notebook 04 |
-| [design_plots.py](demo/design_plots.py) | Feasibility scan, entropy constraints, half-life maps, design precision | Block 14, notebook `03_experiment_plan` |
-| [fitting_plots.py](demo/fitting_plots.py) | Allowed intervals, boundary maps, time scenarios, structure tests | Block 14, notebook `03_feasible_region` |
+| [design_plots.py](demo/design_plots.py) | Feasibility scan, entropy constraints, half-life maps, design precision | Block 14, notebook `03_experiment_plan_rev01` |
+| [fitting_plots.py](demo/fitting_plots.py) | Allowed intervals, boundary maps, time scenarios, structure tests | Block 14, notebook `03_feasible_region_rev01` |
 | [fit_plots.py](demo/fit_plots.py) | Residual maps, parameters across scenarios, profiles, recovery, predictions; measured against simulated spectra, concentrations in time, intervals, correlations, the error of a share | Block 14, notebooks 05 |

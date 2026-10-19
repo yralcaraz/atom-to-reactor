@@ -12,7 +12,8 @@ if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
 from kinetics.constants import EV_TO_KJ_MOL
-from kinetics.data.snapshot import get_solvation_records
+from kinetics.data.snapshot import SNAPSHOT_2026_10_08_PATH, get_solvation_records, list_solvation_sets
+from kinetics.data.species import load_species_database
 from kinetics.data.network import NETWORK
 from kinetics.thermo import (
     calculate_solvation_covariance, calculate_solvation_sigma, calculate_solvation_sigma_naive,
@@ -59,7 +60,37 @@ def test_covariance_matches_sigmas_and_shared_species():
     assert math.isclose(cov.loc['R2', 'R3'], expected, rel_tol=1e-12)
 
 
+def test_solvation_is_read_for_one_solvent():
+    """The 2026-10-08 snapshot holds EC and DEC records of the same species: each solvent gets its own."""
+    if not os.path.exists(SNAPSHOT_2026_10_08_PATH):
+        print("skipped: no 2026-10-08 snapshot")
+        return
+    sets = list_solvation_sets(SNAPSHOT_2026_10_08_PATH)
+    assert sets == {'EC': {'T_K': [338.0], 'n_species': 13}, 'DEC': {'T_K': [298.15], 'n_species': 13}}
+    for solvent, T_K in (('EC', 338.0), ('DEC', 298.15)):
+        records = get_solvation_records(SNAPSHOT_2026_10_08_PATH, solvent)
+        assert {r['temperature_k'] for r in records.values()} == {T_K}
+        db = load_species_database(SNAPSHOT_2026_10_08_PATH, solvent)
+        assert db['TMSPA']['solvent'] == solvent and db['TMSPA']['solvation_T_K'] == T_K
+        assert math.isclose(db['TMSPA']['dE_solv_eV'] * EV_TO_KJ_MOL, records['TMSPA']['delta_e_solv_kjmol'], rel_tol=1e-12)
+    ec = get_solvation_records(SNAPSHOT_2026_10_08_PATH, 'EC')['TMSPA']['delta_e_solv_kjmol']
+    dec = get_solvation_records(SNAPSHOT_2026_10_08_PATH, 'DEC')['TMSPA']['delta_e_solv_kjmol']
+    assert ec != dec
+
+
+def test_default_is_the_ec_set_of_2026_09_24():
+    assert {r['temperature_k'] for r in SOLVATION.values()} == {298.15} and len(SOLVATION) == 12
+    try:
+        get_solvation_records(solvent='DEC')
+    except KeyError:
+        pass
+    else:
+        raise AssertionError('the 2026-09-24 snapshot has no DEC records')
+
+
 if __name__ == "__main__":
+    test_solvation_is_read_for_one_solvent()
+    test_default_is_the_ec_set_of_2026_09_24()
     test_snapshot_uncertainty_is_quadrature_of_md_stds()
     test_shared_solvent_term_cancels_in_two_to_two_reactions()
     test_list_and_dict_stoichiometry_agree()

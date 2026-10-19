@@ -3,7 +3,8 @@
 A fit result holds a parameter set and its table of standardised residuals, in which the repeated spectra of a
 tube are folded into a mean and its drifts. A reader wants the same comparison in the units of the experiment:
 the share of each peak in each spectrum, the concentrations of a tube since it was mixed, and the spectrum
-itself. Nothing here is fitted: a stored parameter set is run forward.
+itself. Nothing here is fitted: a stored parameter set is run forward, in the solvation medium it was fitted in
+(apply_fit_config on the run's results directory first) and with the paper observations it was fitted with.
 
     evaluate_fit                     the samples of a fit with the age and the shares its parameter set gives each
     tabulate_fit_shares              measured and predicted share of every window of every spectrum
@@ -21,9 +22,10 @@ import pandas as pd
 from kinetics.constants import ZERO_CELSIUS_K
 from kinetics.data.observables import C_REGION_PPM, C_WINDOWS_PPM, P_WINDOWS_PPM, list_spectrum_sets
 from kinetics.fitting.candidates import get_structure
+from kinetics.fitting.config import check_fit_medium
 from kinetics.fitting.estimation import FitProblem, calculate_parameter_directions
 from kinetics.fitting.residuals import (
-    FREE_AGE_BOUNDS_H, N_AGE_GRID, REPORT_SOLVER, SHARE_SPECIES, _block_shares, _initial_composition, _whiten_sample,
+    FREE_AGE_BOUNDS_H, N_AGE_GRID, PAPER_OBSERVATIONS, REPORT_SOLVER, SHARE_SPECIES, _block_shares, _initial_composition, _whiten_sample,
     build_sample_history, build_sample_set, calculate_residuals,
 )
 from kinetics.reactor.protocol import simulate_history
@@ -31,6 +33,11 @@ from kinetics.reactor.protocol import simulate_history
 P_REGION_PPM = (-32.0, 6.0)              # region of the ³¹P shares (build_lab_inventory_for_observables)
 PARAMETER_KINDS = ('barrier', 'energy', 'recipe', 'age')
 N_EXACT_AGES = 240                       # ages tried between the two trial ages of the fit that enclose a stored age
+
+
+def _fit_paper(fit: dict) -> tuple:
+    """The paper observations a stored fit was fitted with (fits from before the record: PAPER_OBSERVATIONS)."""
+    return tuple(fit['paper']) if 'paper' in fit else PAPER_OBSERVATIONS
 
 
 def _find_exact_age(sample: dict, built: dict, age_h: float, solver: dict) -> float:
@@ -64,8 +71,9 @@ def evaluate_fit(fit: dict, observables: dict, *, overrides: dict = None, ages: 
     overrides: as in build_sample_set (e.g. TMSOH present at mixing).
     ages: {sample: hours} used as they are, e.g. those of another evaluation of the same fit.
     """
+    check_fit_medium(fit)
     solver = solver or REPORT_SOLVER
-    samples = build_sample_set(observables, fit['scenario'], overrides=overrides)
+    samples = build_sample_set(observables, fit['scenario'], overrides=overrides, paper=_fit_paper(fit))
     built = get_structure(fit['structure']).build(fit['theta'])
     if ages is None:
         ages = {**fit.get('ages', {}), **built['ages']}
@@ -196,7 +204,8 @@ def calculate_parameter_correlation(fit: dict, observables: dict, *, kinds=PARAM
     it describes the neighbourhood of the best fit, and a parameter the data do not determine shows up as a
     standard error wider than its search box. A parameter in a combination the data do not see at all gets NaN.
     """
-    problem = FitProblem(fit['structure'], build_sample_set(observables, fit['scenario']))
+    check_fit_medium(fit)
+    problem = FitProblem(fit['structure'], build_sample_set(observables, fit['scenario'], paper=_fit_paper(fit)))
     found = calculate_parameter_directions(problem, fit['theta'], kinds=kinds)
     names, sigma = found['parameters'], found['sigma_local'].to_numpy()
     covariance = np.linalg.pinv(found['J'].T @ found['J'])
