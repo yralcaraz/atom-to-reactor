@@ -137,6 +137,27 @@ def _paper_sample(obs_id: str) -> dict:
             'age_mode': 'none', 'age_h': None, 'label': exp['label']}
 
 
+def _hold_heated(sample: dict, hold_h: float) -> list:
+    """The heating episodes of a sample as holds of hold_h hours, each over before the next room-temperature spectrum.
+
+    An episode that would run past that spectrum starts earlier, so that it ends at the spectrum; one never starts
+    before the previous ends, and is cut where the next recorded one starts. Starts are on the clock of the first spectrum.
+    """
+    spectra = sorted({float(t) for block in sample['blocks'] for t in block['t_spec_s']})
+    starts = [start for start, _, _ in sample['heated']]
+    hold, clock, episodes = 3600.0 * hold_h, 0.0, []
+    for k, (start, T, _) in enumerate(sample['heated']):
+        following = starts[k + 1] if k + 1 < len(starts) else np.inf
+        next_spectrum = min([t for t in spectra if t > start], default=np.inf)
+        if start + hold > next_spectrum:
+            start = next_spectrum - hold
+        start = max(start, clock)
+        duration = min(hold, following - start, next_spectrum - start)
+        episodes.append((start, T, duration))
+        clock = start + duration
+    return episodes
+
+
 def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclude=(), paper=PAPER_OBSERVATIONS,
                      error_floor: dict = None, floor_scale: float = 1.0, overrides: dict = None) -> list:
     """The samples a model is compared with, under one scenario of the unknown ages.
@@ -147,7 +168,8 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
     floor_scale multiplies the declared error floor (0 removes it).
     overrides: {sample: {'hold_h': hours of its known pre-history, 'pre_history': [(T_C or None for room
     temperature, hours), ...] from mixing to the first spectrum (the age is then known), 'heated_duration_h':
-    hours of every heating episode (at most until the next one starts), 'added_M': {species: mol/L present at
+    hours of every heating episode (at most until the next one starts), 'heated_hold_h': hours of every heating
+    episode as a hold that is over before the next room-temperature spectrum (see _hold_heated), 'added_M': {species: mol/L present at
     mixing on top of the recipe}}}, for the sensitivity to the times the files do not fix and to what the recipe
     does not list.
     """
@@ -172,6 +194,8 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
             starts = [start for start, _, _ in sample['heated']][1:] + [np.inf]
             sample['heated'] = [(start, T, min(3600.0 * change['heated_duration_h'], following - start))
                                 for (start, T, _), following in zip(sample['heated'], starts)]
+        if 'heated_hold_h' in change:
+            sample['heated'] = _hold_heated(sample, change['heated_hold_h'])
         for species, added in change.get('added_M', {}).items():
             sample['c0_M'][species] = sample['c0_M'].get(species, 0.0) + added
         if not sample['pre_segments']:                       # the age is unknown
