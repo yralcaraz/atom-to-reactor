@@ -44,9 +44,17 @@ Objective (what the fit minimises):
 χ² = Σ z²,   z = (predicted share − measured share) / σ
 ```
 
-## 2. The five models
+## 2. The models
 
-Each model adds one thing to the one before it.
+**Names: MX-suffix.** X says which reaction energies are free; the suffix says how the barriers are grouped.
+
+| X | Reaction energies | | Suffix | Barriers |
+|---|---|---|---|---|
+| M0, M1 | none: computed values | | (none) | one per family (M0: one for all) |
+| M3 | R1–R4 | | `-split` | R1 apart from R2 and R3 |
+| M5 | every independent reaction: R1–R4, R8, R9 (sixth fit) | | `-first` | the first step of TMSPA (no P–OH yet) apart in every family: R1 in hydrolysis, R5 in transfer (sixth fit) |
+
+M2 is not used; M4 is the "+W" of notebook 03 (part of the added water not available), kept as the suffix `+W`. Each model of the ladder adds one thing to the one before it.
 
 | # | Model | What it assumes | Free parameters | Count |
 |---|---|---|---|---|
@@ -55,23 +63,26 @@ Each model adds one thing to the one before it.
 | 3 | **M1-split** | M1 with R1 separate from R2 and R3 | `g hydrolysis_R1`, `g hydrolysis_R23`, `g transfer`, `g condensation`, `g solvent_attack` | 5 |
 | 4 | **M3** | M1 with ΔG_rxn of R1–R4 free | the 4 barriers of M1 + `dG R1`, `dG R2`, `dG R3`, `dG R4` | 8 |
 | 5 | **M3-split** | M1-split with ΔG_rxn of R1–R4 free | the 5 barriers of M1-split + `dG R1` … `dG R4` | 9 |
+| 6 | **M3-first** | M3 with the first step of TMSPA apart in hydrolysis (R1, with N15) and transfer (R5); R2–R3 and R6–R7 share one class each | `g hydrolysis_R1`, `g hydrolysis_R23`, `g transfer_R5`, `g transfer_R67`, `g condensation`, `g solvent_attack` + `dG R1` … `dG R4` | 10 |
+| 7 | **M5-first** | M3-first with ΔG_rxn of every independent reaction free | the 6 barriers of M3-first + `dG R1` … `dG R4`, `dG R8`, `dG R9` | 12 |
 
-Freed energies (M3, M3-split):
+Freed energies (M3, M3-split, M3-first; M5-first adds R8 and R9):
 
 ```
-dG Rj = ΔG_rxn,j − computed value        (j = R1…R4)
-χ² = Σ z² + dᵀ · Σ_MD⁻¹ · d              (d = the four dG; Σ_MD = covariance of the MD standard errors)
+dG Rj = ΔG_rxn,j − computed value        (j = R1…R4, and R8, R9 in M5)
+χ² = Σ z² + dᵀ · Σ_MD⁻¹ · d              (Σ_MD = covariance of the MD standard errors)
 ```
 
-- R5–R7 follow from them (transfer = hydrolysis + condensation); R8 and R9 keep their computed values.
-- The constraint adds 4 residuals, one per freed energy.
+- R5–R7 and N10–N15 follow from them through the species (transfer = hydrolysis + condensation). In M3 models R8 and R9 keep their computed values.
+- The constraint adds one residual per freed energy.
+- Box: ±0.75 eV, or, when the run sets `energy_box_sigma` (sixth fit: 3), ±k standard errors of each computed value.
 
 Optional parameters, on top of any model:
 
 | Parameter | When | Meaning |
 |---|---|---|
 | `water fraction` | structure name ends in `+W` | Fraction of the added water that is available |
-| `c0 H2O TMSPa alone` | the tube "TMSPa alone" is in the sample set (third fit) | Water at mixing of the tube mixed without water |
+| `c0 H2O TMSPa alone` | the tube "TMSPa alone" is in the sample set (third to fifth fit; the sixth declares it at 65.6 mM) | Water at mixing of the tube mixed without water |
 | `log10 age 2 % H2O` | `free` scenario | Age of the 2 % H2O sample at its first spectrum |
 
 The last two come from the sample set, not from the structure: every model takes them.
@@ -92,7 +103,7 @@ Rules of the third fit ([plan](plan-fit_improvement.md)):
 | Input | ΔG_rxn of R1–R9 | eV | Computed (DFT + solvation) |
 | Fixed | ΔS‡ = 0, α = 0.5 | | Assumed, not fitted |
 | Fitted | `g <family>` | eV | Search box 0.60–1.70 (narrower for some families) |
-| Fitted | `dG R1…R4` | eV | Search box ±0.75 around the computed value |
+| Fitted | `dG R1…R4` (and `dG R8`, `dG R9` in M5) | eV | Search box ±0.75 around the computed value, or ±k standard errors (sixth fit: ±3) |
 | Fitted | `water fraction` | – | Search box 0.05–1 |
 | Fitted | `c0 H2O TMSPa alone` | M | Search box 0–0.3 |
 | Fitted | `log10 age` | log10 h | 1 h to 30 days |

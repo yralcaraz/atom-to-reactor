@@ -251,6 +251,7 @@ Discussed on 2026-10-22. Each subsection gives the question, what was found, the
 | 9 | Purity of the TMSPA? | Pure; the trace rule stays as a check | 6.3.7 |
 | 10 | Does the 2 % tube weigh too much in χ²? | No change: the per-value fit rule protects the few important values | 6.3.8 |
 | 11 | How to use the fifth fit? | Only as starting points of the search | 6.3.9 |
+| 12 | Which models must be fitted? | M5-first, M3-first, M3-split and the cheap ladder; not M3, and not the nested ones at 1 h | 6.3.12 |
 
 #### 6.3.1 From the molecule to the score: every number and its error
 
@@ -429,7 +430,7 @@ Only independent reactions can be given an offset: R1–R9 contain six (R1–R4,
 
 **Barriers.** Where the fifth fit treats reactions differently:
 
-| Reactions | Barrier in M3-split | Sixth fit (M3-R1R5-G6) |
+| Reactions | Barrier in M3-split | Sixth fit (M5-first) |
 |---|---|---|
 | R1, N15 | own class | own class |
 | R2, R3, N12 | one shared class | one shared class |
@@ -443,7 +444,7 @@ Only independent reactions can be given an offset: R1–R9 contain six (R1–R4,
 - **Rule:** the first silyl group leaving a phosphate with no P–OH yet (TMSPA) is its own mechanism. It places N15 (TMSPA + H₂O → MMSPA + HMDSO) with R1, as before, and now also separates R5 (TMSPA + TMSOH) from R6–R7. Cost: one barrier, which the tubes may not determine (transfer was already only an upper limit).
 - An alternative with the same number of barriers (one shift for every step whose phosphate already has a P–OH, shared by hydrolysis and transfer) was set aside: it would put R6–R7 near 0.16 eV.
 
-Structures of the sixth fit: **M3-R1R5** (the rule, offsets of R1–R4) and **M3-R1R5-G6** (the rule, offsets of all six independent reactions; the main structure). M0 to M3-split are refitted under the same setup, as the ladder.
+Structures of the sixth fit: **M3-first** (the rule, offsets of R1–R4) and **M5-first** (the rule, offsets of all six independent reactions; the main structure). Names are `MX-suffix`: X says which energies are free (M1 none, M3 R1–R4, M5 every independent reaction; M4 is taken by the "+W" of notebook 03), the suffix how the barriers are grouped (`-split`: R1 apart; `-first`: the first step of TMSPA apart in every family). The names M3-R1R5 and M3-R1R5-G6, used earlier on 2026-10-22, are replaced. M0 to M3-split are refitted under the same setup, as the ladder.
 
 #### 6.3.6 How far an energy may move
 
@@ -497,23 +498,23 @@ Setup in `notebooks/results/05_fit6/fit_config.json`; everything not listed is a
 
 | | Fifth fit | Sixth fit |
 |---|---|---|
-| Energies freed | R1–R4 | R1–R4 in M3, M3-split and M3-R1R5; R1–R4, R8, R9 in M3-R1R5-G6 |
+| Energies freed | R1–R4 | R1–R4 in M3, M3-split and M3-first; R1–R4, R8, R9 in M5-first |
 | Energy constraint | Gaussian cost (Σ_MD), box ±0.75 eV | Gaussian cost (Σ_MD), box ±3 σ |
-| Structures | M0 … M3-split | M0 … M3-split, M3-R1R5, M3-R1R5-G6 (main) |
+| Structures | M0 … M3-split, in every reading | M0-BEP, M0-Marcus, M1, M1-split in every reading; M3-split and M3-first at 1 day and free ages; M5-first (main) in every reading; M3 not fitted (6.3.12) |
 | Water of "TMSPa alone" | fitted (0–300 mM) | declared, 65.6 mM |
 | Readings | 1 day, 7 days, free | 1 h, 1 day, free |
-| Search | Sobol screen 8192 points, 32 starts | the same full search for M3-R1R5 and M3-R1R5-G6 at 1 day and free ages; 4096 points and 16 starts for M3 and M3-split (they also start from their own fifth-fit optimum); 2048 points and 8 starts at 1 h for every structure with freed energies. In every case the fifth fit's parameters are extra starts |
-| Night | profiles, leave-one-out, sensitivities, indistinguishability, tolerance check | profiles of the main structure in every reading where it fits, and of M3-R1R5 at 1 day; leave-one-out and sensitivities of the main structure where it fits |
+| Search | Sobol screen 8192 points, 32 starts | the same full search for M3-first and M5-first at 1 day and free ages; 4096 points and 16 starts for M3-split (it also starts from its own fifth-fit optimum); 2048 points and 8 starts for M5-first at 1 h. In every case the fifth fit's parameters are extra starts |
+| Night | profiles, leave-one-out, sensitivities, indistinguishability, tolerance check | profiles of the main structure in every reading where it fits, and of M3-first at 1 day; leave-one-out and sensitivities of the main structure where it fits |
 | Sensitivities | 11 | 7: heating as recorded; cost with σ × 0.5 and × 2; water free; Peter barriers (N10–N15 all at 1.15 eV); error floor × 0 and × 2 |
 | Trace rule | evaluated, and every fit refitted with each trace | evaluated only |
-| Recovery | 3 cases, 7 data sets, with the search of the fits | the main structure with free ages, 2 data sets, with the reduced search (4096 points, 16 starts) |
+| Recovery | 3 cases, 7 data sets, with the search of the fits | the main structure with free ages and at 1 day, 2 data sets each, with the reduced search (4096 points, 16 starts) |
 
 Why each addition to the first plan (decided 2026-10-22, with about 15 h of computing available):
 
-- **Full search for the two new structures.** They have 12–13 parameters, against 10–11 in the fifth fit, and in the fifth fit the profiles still found lower minima than the fit (χ² 58.8 → 57.9 at 1 day, 47.4 → 47.0 with free ages). The reduced search is kept where the risk is small: M3 and M3-split start from their own fifth-fit optimum, and the 1 h reading has failed in every earlier fit.
+- **Full search for the two new structures.** They have 12–13 parameters, against 10–11 in the fifth fit, and in the fifth fit the profiles still found lower minima than the fit (χ² 58.8 → 57.9 at 1 day, 47.4 → 47.0 with free ages). The reduced search is kept where the risk is small: M3-split starts from its own fifth-fit optimum, and the 1 h reading has failed in every earlier fit.
 - **Peter barriers.** N10–N15 at P. Broqvist's 1.15 eV, so no step follows R1 or R2. The four exchange steps at a declared 1.15 eV are the one exception left to "one rule for every reaction" (6.3.5); in the fifth fit this variant failed (worst miss 3.97 at 1 day, 3.13 with free ages).
 - **Error floor × 0 and × 2.** The verdict "fits" uses the declared floor of a share's error (notebook 05 §7.2). Without it the fifth fit failed (worst miss 3.76 at 1 day, 3.23 with free ages).
-- **Profiles of M3-R1R5 at 1 day.** Whether the new barrier of R5 comes out as a value or only a limit, and whether separating it moves the others, without the two extra energies of the main structure.
+- **Profiles of M3-first at 1 day.** Whether the new barrier of R5 comes out as a value or only a limit, and whether separating it moves the others, without the two extra energies of the main structure.
 
 **Using the fifth fit without being bound by it.** Its parameter sets, embedded in each new structure, are only extra starting points of the search. No box, centre or width comes from them.
 
@@ -522,9 +523,9 @@ Why each addition to the first plan (decided 2026-10-22, with about 15 h of comp
 | Stage | Fifth fit | Sixth fit (estimate) |
 |---|---|---|
 | registered, baselines | 8 min | ~10 min |
-| recovery | 171 min | ~60 min (one case, reduced search) |
-| extended | 183 min | ~260 min (five structures; full search for the two new ones at 1 day and free ages) |
-| night | 591 min | ~420 min (profiles: main structure in two or three readings, M3-R1R5 at 1 day, and the move to their minima; leave-one-out; 7 sensitivities × 2 readings, with a full search for those that fail) |
+| recovery | 171 min | ~120 min (two cases, reduced search) |
+| extended | 183 min | ~220 min (M3-split, M3-first and M5-first at 1 day and free ages, full search for the last two; M5-first at 1 h; M1-split) |
+| night | 591 min | ~420 min (profiles: main structure in two or three readings, M3-first at 1 day, and the move to their minima; leave-one-out; 7 sensitivities × 2 readings, with a full search for those that fail) |
 | traces, predictions | 61 min | ~5 min |
 | total | 17 h | ~12–14 h |
 
@@ -534,10 +535,10 @@ The laptop must be on mains power for the whole run (it was on battery when this
 
 | Outcome | Reading |
 |---|---|
-| M3-R1R5-G6 fits, offsets inside the box | The model meets the tubes within 3 σ of the computed energies, with one rule for every reaction |
+| M5-first fits, offsets inside the box | The model meets the tubes within 3 σ of the computed energies, with one rule for every reaction |
 | Some offset on the edge of the box | The model cannot meet the tubes within the computed errors for that reaction: the error is underestimated (6.3.2) or the model is wrong |
 | R8, R9 at their prior | The tubes do not see those energies (expected) |
-| M3-R1R5 no better than M3-split | The R5 split is not needed by the data, but it keeps the rule |
+| M3-first no better than M3-split | The R5 split is not needed by the data, but it keeps the rule |
 | Fits with the water declared, as with water free | The water of "TMSPa alone" is set by its final state, as the balance says |
 | Fails with Peter barriers | The fit needs N15 and N12 to follow R1 and R2: the rule is doing work, and the declared 1.15 eV of the exchange steps should be questioned |
 | Fails without the error floor | The verdict rests on a declared error, as in the fifth fit |
@@ -551,14 +552,35 @@ The laptop must be on mains power for the whole run (it was on battery when this
 5. **The water of "TMSPa alone" is a declared minimum.** It rests on the balance of the network (no other oxygen donor for silyl groups) and on a single final spectrum.
 6. **TMSPA is taken as pure**, while the papers see traces of HMDSO and, after storage, BMSPA.
 7. **The barrier split is a stated rule**, not something the data can confirm for R5.
-8. **The recovery check is reduced** to one case, with two data sets and a weaker search than the fits'.
-9. **The search is reduced for M3, M3-split and the 1 h reading.** A failure there could be a search that stopped short; the fifth fit's optima as starts make that unlikely for M3 and M3-split.
+8. **The recovery check is reduced** to two cases of the main structure, with two data sets each and a weaker search than the fits'.
+9. **The search is reduced for M3-split and for M5-first at 1 h.** A failure there could be a search that stopped short; the fifth fit's optimum as a start makes that unlikely for M3-split.
+10. **Models left out are inferred, not fitted.** M3, and M3-split and M3-first at 1 h, are taken to fail from the nesting of 6.3.12. That holds if the larger structures reach their global minimum.
 
 #### 6.3.11 Open questions
 
 - **Lab:** the ages; whether ¹H spectra of "TMSPa alone" exist (water and TMSOH measured with an internal standard); where the water of that tube came from; the batch and age of the TMSPA; whether the 1 % and 5 % tubes of RXN-02 exist as raw files.
 - **P. Broqvist:** a reference-method check (DLPNO-CCSD(T)) of R1–R4 in the gas phase, for a specific DFT error; MD versus COSMO-RS for these molecules; COSMO-RS for the EC/DEC mixture itself.
 - **Next fits:** COSMO-RS as the centre, with the MD difference as its error; a transition state for R1 (and R5) as a prior on the barrier that sets the switch (§4).
+
+#### 6.3.12 Which models must be fitted, and what is saved
+
+Every change from the fifth fit to the sixth restricts the older structures: the water of "TMSPa alone" goes from free to fixed, and the ±3 σ box is narrower than ±0.75 eV. Data, network and heating are the same. So:
+
+- **A structure that failed in the fifth fit fails in the sixth**, at 1 day and with free ages: its χ² can only rise.
+- **The structures are nested:** M1-split ⊂ M3-split ⊂ M3-first exactly (each is the next with some parameters held equal or at zero), and M3-first ⊂ M5-first almost: M5-first with the offsets of R8 and R9 at zero has the same spectra but a slightly larger prior term, because in the MD covariance R8 and R9 are correlated with R1–R4 (+3 in χ² at the fifth fit's parameters); letting R8 and R9 move removes that cost and may change the TMSOH tubes a little. If M5-first fails clearly in a reading, the smaller ones fail there too.
+
+Both statements assume that each search reaches the global minimum of its structure, which is why the two new structures keep the full search.
+
+| Model | Fifth fit | Sixth fit | Reason |
+|---|---|---|---|
+| M5-first | — | **every reading** | the main structure |
+| M3-first | — | **1 day, free ages** (+ profiles at 1 day) | what separating R5 does, the step between M3-split and M5-first; the selection rule takes the smallest structure that fits |
+| M3-split | fits just (worst 2.96 at 1 day) | **1 day, free ages** | the bridge to the fifth fit: separates the effect of the new setup (water fixed, box) from that of the new structures. It may stop fitting with the water fixed |
+| M3-split, M3-first at 1 h | — | not fitted | nested in M5-first: they fail at 1 h if it does |
+| M3 | fails (worst 18.5 at 1 day, 4.35 free) | not fitted | fails for certain; the question it answered (is the R1 split needed?) is settled, also with the wider prior of 6.3.3 |
+| M0-BEP, M0-Marcus, M1, M1-split | fail (χ² 600–3600) | every reading | fail for certain, but take minutes and keep the ladder under one setup |
+
+**Saved:** about 1 h (M3 in every reading, M3-split and M3-first at 1 h). **Spent instead:** a second recovery case (the main structure at 1 day, two data sets), the reading the fifth fit took as its reference. The total stays at about 12–14 h.
 
 ---
 

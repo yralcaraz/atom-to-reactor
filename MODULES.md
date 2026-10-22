@@ -648,7 +648,7 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 
 ### 7.7 candidates.py · what is free in each model
 
-**Route:** [kinetics/fitting/candidates.py](kinetics/fitting/candidates.py) · **Input:** a structure name and a parameter set θ · **Output:** a self-contained model. `FIT_STRUCTURES` holds `M0-BEP`, `M0-Marcus`, `M1`, `M1-split`, `M3`, `M3-split`; adding `+W` to a name frees the water fraction. The models are defined in [reference-models_summary.md](docs/reference-models_summary.md).
+**Route:** [kinetics/fitting/candidates.py](kinetics/fitting/candidates.py) · **Input:** a structure name and a parameter set θ · **Output:** a self-contained model. `FIT_STRUCTURES` holds `M0-BEP`, `M0-Marcus`, `M1`, `M1-split`, `M3`, `M3-split`, `M3-first`, `M5-first` (names MX-suffix: X the freed energies, the suffix the barrier classes); `set_energy_box_sigma` sets a run-wide box of ±k standard errors for the freed energies; adding `+W` to a name frees the water fraction. The models are defined in [reference-models_summary.md](docs/reference-models_summary.md).
 
 | Name | Input | Output |
 |---|---|---|
@@ -744,7 +744,7 @@ flowchart LR
 | `throughput` | Measures evaluations per second on this machine |
 | `recovery` | Refits synthetic data with a known answer (the check of the pipeline) |
 | `baselines` | Fits M0-BEP, M0-Marcus and M1 |
-| `extended` | Fits M1-split, M3 and M3-split |
+| `extended` | Fits M1-split, M3 and M3-split, or the structures the setup lists (sixth fit: also M3-first, M5-first) |
 | `refit` | Re-checks M3 and M3-split at a tighter tolerance |
 | `night` | Profiles, leave-one-out, indistinguishability, sensitivities |
 | `traces` | Tests a trace of TMSOH at mixing |

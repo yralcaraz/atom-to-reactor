@@ -48,12 +48,15 @@ run-wide changes to the samples and the overrides of its variant. Sensitivities 
 
 Sixth fit (notebooks/results/05_fit6/fit_config.json; docs/reference-fit_results.md §6.3): the freed energies
 in a box of ±3 standard errors around their computed values, the Gaussian constraint kept inside it
-('energy_box_sigma'); two structures with one rule for every reaction, M3-R1R5 (the first step of TMSPA apart in
-hydrolysis and transfer) and M3-R1R5-G6 (with the energies of every independent reaction free), the latter the main
+('energy_box_sigma'); two structures with one rule for every reaction, M3-first (the first step of TMSPA apart in
+hydrolysis and transfer) and M5-first (with the energies of every independent reaction free), the latter the main
 structure ('structures'); the water of 'TMSPa alone' declared at the least its last spectrum needs instead of fitted
-('sample_overrides'); readings 1 h, 1 day and free ages; a reduced search started also from the fifth fit's
-parameters ('effort', 'start_from'); a reduced night ('night': profiles of the main structure where it fits, no
-indistinguishability, no tolerance check, no refits with a trace) and one recovery case of the main structure.
+('sample_overrides'); readings 1 h, 1 day and free ages, the nested M3-split and M3-first only at 1 day and free
+ages and M3 not at all ('structures': 'readings'; a structure nested in one that fails fails too); the full search
+for the two new structures, a reduced one elsewhere, started also from the fifth fit's parameters ('effort',
+'start_from'); a reduced night ('night': profiles of the main structure where it fits and of M3-first at 1 day, no
+indistinguishability, no tolerance check, no refits with a trace) and two recovery cases of the main structure
+(1 day and free ages).
 
 Source: Y. Alcaraz Galván
 """
@@ -106,7 +109,7 @@ PAPER = PAPER_OBSERVATIONS               # paper observations added to every sam
 # M0, M1 and M1-split did not fit in the first run (chi2 above 280) and get a light search; the first run missed
 # the minimum of the freed-energy structures twice, so M3 and M3-split get four times the screen and twice the starts
 EFFORT = {'M0-BEP': (32, 2, 20), 'M0-Marcus': (32, 2, 20), 'M1': (128, 4, 30), 'M1-split': (128, 4, 30),
-          'M3': (8192, 32, 40), 'M3-split': (8192, 32, 40), 'M3-R1R5': (8192, 32, 40), 'M3-R1R5-G6': (8192, 32, 40)}
+          'M3': (8192, 32, 40), 'M3-split': (8192, 32, 40), 'M3-first': (8192, 32, 40), 'M5-first': (8192, 32, 40)}
 # Check fits of the main structure on changed data (trace of TMSOH, full search of a sensitivity variant): they
 # start from the main fit, so they keep the search of the first run
 CHECK_EFFORT = (2048, 16, 40)
@@ -282,11 +285,12 @@ def stage_recovery(args) -> None:
 # ------------------------------------------------------------------------------
 FIRST_PASS_SOLVER = {'method': 'BDF', 'rtol': 1e-6, 'atol': 1e-10, 'max_rhs_calls': 30000}   # search tolerance of the first pass
 PARENTS = {'M1': ('M0-Marcus',), 'M1-split': ('M1',), 'M3': ('M1',), 'M3-split': ('M1-split', 'M3'),
-           'M3-R1R5': ('M3-split',), 'M3-R1R5-G6': ('M3-R1R5',)}
+           'M3-first': ('M3-split',), 'M5-first': ('M3-first',)}
 SCENARIO_ORDER = ('middle', 'short', 'long', 'free')
-SIZE_ORDER = ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split', 'M3-R1R5', 'M3-R1R5-G6')
+SIZE_ORDER = ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split', 'M3-first', 'M5-first')
 MAIN_STRUCTURE = 'M3-split'          # the largest structure: every other one is a special case of it; set in main
 EXTENDED_STRUCTURES = ('M1-split', 'M3', 'M3-split')     # the structures of the extended stage; set in main
+READINGS = {}                        # {structure: readings} of the extended stage when not all (sixth fit); set in main
 START_FROM = None                    # an earlier results directory whose fits also start the search; set in main
 NIGHT = {}                           # the parts of the night and traces stages that run (fit_config.json 'night')
 
@@ -525,7 +529,9 @@ def stage_baselines(args) -> None:
 def stage_extended(args) -> None:
     for scenario in SCENARIO_ORDER:
         for structure in EXTENDED_STRUCTURES:
-            run_structure(structure, scenario, args)
+            # A structure nested in a larger one that fails in a reading fails there too: the setup can leave it out
+            if scenario in READINGS.get(structure, SCENARIO_ORDER):
+                run_structure(structure, scenario, args)
     summarize_fits()
     fits, ok = load_main_fits(), True
     for scenario in SCENARIOS:
@@ -1258,7 +1264,7 @@ def main():
     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
     args = parser.parse_args()
     global RESULTS, CHECK_EFFORT, SCENARIOS, SCENARIO_ORDER, PAPER, FITTED_SAMPLES, RECOVERY, SENSITIVITY_NAMES, \
-        MAIN_STRUCTURE, EXTENDED_STRUCTURES, START_FROM, NIGHT
+        MAIN_STRUCTURE, EXTENDED_STRUCTURES, START_FROM, NIGHT, READINGS
     if args.results:
         RESULTS = Path(args.results).resolve()
     config = apply_fit_config(RESULTS)
@@ -1274,6 +1280,7 @@ def main():
     if config['structures']:
         MAIN_STRUCTURE = config['structures']['main']
         EXTENDED_STRUCTURES = tuple(config['structures']['extended'])
+        READINGS = {name: tuple(readings) for name, readings in config['structures'].get('readings', {}).items()}
     EFFORT.update({name: tuple(effort) for name, effort in config['effort'].items()})
     START_FROM = (REPO / config['start_from']).resolve() if config['start_from'] else None
     NIGHT = dict(config['night'])

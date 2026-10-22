@@ -1,5 +1,10 @@
 """Block 14E — Candidate structures: what is free in each model that the first fit compares.
 
+Names are MX-suffix. X says which reaction energies are free: M0 and M1 none (computed values), M3 those of
+R1–R4, M5 those of every independent reaction (M2 is not used; M4 is the '+W' of notebook 03). The suffix says how
+the barriers are grouped: none, one per family (M0: one for all); '-split', R1 apart from R2 and R3; '-first', the
+first step of TMSPA apart in every family (R1 and R5).
+
 A structure says which barriers are separate parameters, whether the reaction energies of the phosphate
 ladder may move within their computed uncertainty, and whether part of the added water may be unavailable.
 It turns a parameter vector into a self-contained ModelSpec (own network, own species shifts).
@@ -10,9 +15,10 @@ It turns a parameter vector into a self-contained ModelSpec (own network, own sp
     M1-split    M1 with R1 separate from R2 and R3 (R2 and R3 share one barrier)
     M3          M1 with ΔG_rxn of R1–R4 free, constrained by their computed covariance
     M3-split    M1-split with the same freed energies
-    M3-R1R5     M3-split with the rule of R1 applied to transfer as well: the first silyl group leaving TMSPA (no
-                P–OH yet) is its own class in both families, R5 apart from R6 and R7 (sixth fit)
-    M3-R1R5-G6  M3-R1R5 with the reaction energies of every independent reaction free: R1–R4, R8 and R9 (sixth fit)
+    M3-first    M3 with the first step of TMSPA (no P–OH yet) apart in every family: R1 (with N15) in
+                hydrolysis and R5 in transfer; R2–R3 and R6–R7 share one class each (sixth fit)
+    M5-first    the same barriers, with the reaction energies of every independent reaction free: R1–R4, R8 and
+                R9 (sixth fit)
     '+W'        any of them with a common available fraction of the added water (M4 of notebook 03)
 
 Two kinds of parameter come from the sample set and not from the structure: the age of the sample heated after
@@ -313,10 +319,10 @@ FIT_STRUCTURES = {
     'M3-split': replace(_M1_SPLIT, name='M3-split',
                         label='R1 separate from R2 and R3; ΔG_rxn of R1–R4 free within their covariance',
                         freed=FREED_REACTIONS, parent='M1-split'),
-    'M3-R1R5': replace(_M1, name='M3-R1R5', split=SPLIT_FIRST_STEP, freed=FREED_REACTIONS, parent='M3-split',
+    'M3-first': replace(_M1, name='M3-first', split=SPLIT_FIRST_STEP, freed=FREED_REACTIONS, parent='M3-split',
                        label='first step of TMSPA apart in hydrolysis (R1) and transfer (R5); ΔG_rxn of R1–R4 free '
                              'within their covariance'),
-    'M3-R1R5-G6': replace(_M1, name='M3-R1R5-G6', split=SPLIT_FIRST_STEP, freed=FREED_INDEPENDENT, parent='M3-R1R5',
+    'M5-first': replace(_M1, name='M5-first', split=SPLIT_FIRST_STEP, freed=FREED_INDEPENDENT, parent='M3-first',
                           label='first step of TMSPA apart in hydrolysis (R1) and transfer (R5); ΔG_rxn of every '
                                 'independent reaction (R1–R4, R8, R9) free within their covariance'),
 }
