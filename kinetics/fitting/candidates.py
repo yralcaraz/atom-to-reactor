@@ -10,6 +10,9 @@ It turns a parameter vector into a self-contained ModelSpec (own network, own sp
     M1-split    M1 with R1 separate from R2 and R3 (R2 and R3 share one barrier)
     M3          M1 with ΔG_rxn of R1–R4 free, constrained by their computed covariance
     M3-split    M1-split with the same freed energies
+    M3-R1R5     M3-split with the rule of R1 applied to transfer as well: the first silyl group leaving TMSPA (no
+                P–OH yet) is its own class in both families, R5 apart from R6 and R7 (sixth fit)
+    M3-R1R5-G6  M3-R1R5 with the reaction energies of every independent reaction free: R1–R4, R8 and R9 (sixth fit)
     '+W'        any of them with a common available fraction of the added water (M4 of notebook 03)
 
 Two kinds of parameter come from the sample set and not from the structure: the age of the sample heated after
@@ -21,6 +24,14 @@ build_fitted_model turns a fit result into a ModelSpec that reactors take like a
 Freed energies are parameters d_j = ΔG_rxn,j − computed value for R1–R4. They are applied as species shifts,
 so R5–R7 follow (transfer = hydrolysis + condensation) and R8, R9 keep their computed values. Their
 constraint is Gaussian with the covariance of the MD standard errors (kinetics.thermo).
+
+The network is the active variant (kinetics.data.network; fifth fit: R1–R9 and N10–N15). A step that
+'follows' a reaction (N12 follows R2, N15 follows R1) takes the barrier class of that reaction in each structure,
+so it adds no parameter; a class of FIXED_BARRIERS_EV ('exchange': N10, N11, N13, N14) has a declared barrier
+and is not fitted. Their ΔG come from the species energies, freed shifts included.
+
+Sixth fit: the box of a freed energy can be set for a whole run to ±k standard errors of its computed value
+(set_energy_box_sigma, fit_config.json 'energy_box_sigma'); the Gaussian constraint stays inside it.
 
 The search box of each barrier is DECLARED: it is narrower than the 0.60–1.70 eV scanned in notebook 03 where
 no observation allows the excluded part and the solver crawls there (solvent attack below 1.10 eV).
@@ -34,23 +45,34 @@ import numpy as np
 from scipy.linalg import cholesky, solve_triangular
 
 from kinetics.data.medium import get_active_medium
-from kinetics.data.network import NETWORK
+from kinetics.data.network import NETWORK, get_active_network
 from kinetics.fitting.residuals import FREE_AGE_BOUNDS_H
 from kinetics.microkinetics.models import get_model
 from kinetics.thermo.reaction import calculate_network_thermo
 from kinetics.thermo.uncertainty import calculate_solvation_covariance, calculate_species_shifts
 
+# Fifth fit: the box of the first hydrolysis reaches 1.80 eV. N15 (TMSPA + H2O → MMSPA + HMDSO) shares its barrier
+# and starts the reaction about seven times faster than R1 at the same g, so g_R1 has to rise by about 0.05 eV; the
+# fourth fit's 7 day reading already sat at 1.635 eV
 BARRIER_BOX_EV = {
     'all reactions': (0.60, 1.70),
-    'hydrolysis': (0.80, 1.70), 'hydrolysis_R1': (0.80, 1.70), 'hydrolysis_R23': (0.80, 1.70),
-    'transfer': (0.60, 1.50), 'condensation': (1.00, 1.70), 'solvent_attack': (1.10, 1.60),
+    'hydrolysis': (0.80, 1.70), 'hydrolysis_R1': (0.80, 1.80), 'hydrolysis_R23': (0.80, 1.70),
+    'transfer': (0.60, 1.50), 'transfer_R5': (0.60, 1.50), 'transfer_R67': (0.60, 1.50),
+    'condensation': (1.00, 1.70), 'solvent_attack': (1.10, 1.60),
 }
 ENERGY_BOX_EV = (-0.75, 0.75)            # about three standard errors of the computed ΔG_rxn
 WATER_BOX = (0.05, 1.0)
 RECIPE_PREFIX = 'c0 '                    # 'c0 <species> <sample>': amount at mixing of a species the recipe does not fix
 FREED_REACTIONS = ('R1', 'R2', 'R3', 'R4')
+FREED_INDEPENDENT = ('R1', 'R2', 'R3', 'R4', 'R8', 'R9')     # every reaction of R1–R9 that is not a sum of others
 SPLIT_HYDROLYSIS = {'hydrolysis_R1': ('R1',), 'hydrolysis_R23': ('R2', 'R3')}
-FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'transfer', 'condensation', 'solvent_attack')
+SPLIT_FIRST_STEP = {**SPLIT_HYDROLYSIS, 'transfer_R5': ('R5',), 'transfer_R67': ('R6', 'R7')}
+FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'transfer', 'transfer_R5', 'transfer_R67',
+                'condensation', 'solvent_attack')
+# Barriers that are declared, not fitted. 'exchange': a silyl group moving between two phosphates or two glycols
+# (N10, N11, N13, N14). DECLARED: the value P. Broqvist gives every step he has no data for (class "other" of his
+# tmspa_reaction_network_model notebook); at room temperature it takes about a year in our tubes
+FIXED_BARRIERS_EV = {'exchange': 1.15}
 
 
 @dataclass(frozen=True)
@@ -81,7 +103,7 @@ class FitStructure:
             return ['all reactions']
         families = []
         for rxn_id, rxn in self.network().items():
-            if rxn['class'] not in families:
+            if rxn['class'] not in families and rxn['class'] not in FIXED_BARRIERS_EV:
                 families.append(rxn['class'])
         return sorted(families, key=FAMILY_ORDER.index)
 
@@ -90,7 +112,9 @@ class FitStructure:
         not fix adds that amount at mixing [M]; a sample whose age is a fit parameter (free scenario) adds
         log10(age in hours)."""
         out = [FitParameter(f'g {c}', 'barrier', c, *BARRIER_BOX_EV[c], 'eV') for c in self.barrier_classes()]
-        out += [FitParameter(f'dG {r}', 'energy', r, *ENERGY_BOX_EV, 'eV') for r in self.freed]
+        k = get_energy_box_sigma()
+        boxes = [(-k * s, k * s) for s in _energy_tools(self.freed)[3]] if k and self.freed else [ENERGY_BOX_EV] * len(self.freed)
+        out += [FitParameter(f'dG {r}', 'energy', r, *box, 'eV') for r, box in zip(self.freed, boxes)]
         if self.water:
             out.append(FitParameter('water fraction', 'water', 'H2O', *WATER_BOX, '1'))
         for sample in samples:
@@ -108,13 +132,18 @@ class FitStructure:
 
     # --- model ------------------------------------------------------------------------------------
     def network(self) -> dict:
-        """The network with the split classes (the default network when nothing is split)."""
-        if not self.split:
-            return NETWORK
-        net = {rxn_id: dict(rxn) for rxn_id, rxn in NETWORK.items()}
+        """The active network with the split classes, and each step that follows a reaction in that reaction's class
+        (the active network as it is when nothing changes)."""
+        active = get_active_network()
+        if not self.split and not any('follows' in rxn for rxn in active.values()):
+            return active
+        net = {rxn_id: dict(rxn) for rxn_id, rxn in active.items()}
         for new_class, members in self.split.items():
             for rxn_id in members:
                 net[rxn_id]['class'] = new_class
+        for rxn in net.values():
+            if 'follows' in rxn:
+                rxn['class'] = net[rxn['follows']]['class']
         return net
 
     def build(self, theta: dict) -> dict:
@@ -141,6 +170,13 @@ class FitStructure:
                 entry = params.setdefault(c, dict(params.get('default', {})))
                 entry.pop('E0_eV', None)
                 entry['g_eV'] = float(theta[f'g {c}'])
+        network = self.network()
+        for c in sorted({rxn['class'] for rxn in network.values()} & set(FIXED_BARRIERS_EV)):
+            entry = params[c] = dict(params.get('default', {}))
+            entry.pop('E0_eV', None)
+            entry['g_eV'] = FIXED_BARRIERS_EV[c]
+            if self.shape is not None:
+                entry['shape'] = self.shape
         shifts, prior, prior_rows = {}, np.zeros(0), []
         if self.freed:
             d = np.array([float(theta[f'dG {r}']) for r in self.freed])
@@ -151,7 +187,7 @@ class FitStructure:
                            't_h': np.nan, 'age_h': np.nan, 'measured': 0.0, 'predicted': d[j], 'sigma': sigma[j],
                            'z': d[j] / sigma[j]} for j, r in enumerate(self.freed)]
         model = replace(spec, name=f'{self.name} (fit)', label=self.label, family_params=params,
-                        network=self.network() if self.split else None, species_shifts_eV=shifts)
+                        network=network, species_shifts_eV=shifts)
         ages = {name[len('log10 age '):]: float(10.0 ** value) for name, value in theta.items()
                 if name.startswith('log10 age ')}
         added = {}
@@ -173,6 +209,17 @@ class FitStructure:
 
 
 _ENERGY_TOOLS = {}
+_ENERGY_BOX_SIGMA = [None]
+
+
+def get_energy_box_sigma():
+    """k of the run's energy box (±k standard errors of the computed value), or None: the fixed ENERGY_BOX_EV."""
+    return _ENERGY_BOX_SIGMA[0]
+
+
+def set_energy_box_sigma(k: float = None):
+    _ENERGY_BOX_SIGMA[0] = None if k is None else float(k)
+    return _ENERGY_BOX_SIGMA[0]
 
 
 def _energy_tools(freed: tuple, prior_scale: float = 1.0):
@@ -202,11 +249,13 @@ def scale_energy_prior(structure: FitStructure, built: dict, theta: dict, prior_
 def tabulate_reaction_barriers(structure: FitStructure, theta: dict, temperatures_K: dict = None) -> dict:
     """ΔG‡ [eV] of every reaction at the temperature where its family is observed, and its ΔG_rxn.
 
-    temperatures_K: {rxn_id: T}; default 295.65 K (22.5 °C) for R1–R3 and R5–R7, 353.15 K for R4, R8, R9.
+    temperatures_K: {rxn_id: T}; default 353.15 K for R4, R8, R9 and N11 (seen at 80 °C), 295.65 K (22.5 °C) for
+    every other reaction of the structure's network.
     With ΔS‡ = 0 the barrier does not depend on T; the temperature only says where the value is anchored.
     """
     model = structure.build(theta)['model']
-    temperatures_K = temperatures_K or {r: (353.15 if r in ('R4', 'R8', 'R9') else 295.65) for r in NETWORK}
+    temperatures_K = temperatures_K or {r: (353.15 if r in ('R4', 'R8', 'R9', 'N11') else 295.65)
+                                        for r in structure.network()}
     out = {}
     for T in sorted(set(temperatures_K.values())):
         rates = model.calculate_rates(T)
@@ -217,7 +266,8 @@ def tabulate_reaction_barriers(structure: FitStructure, theta: dict, temperature
     return out
 
 
-OBSERVED_AT_K = {'hydrolysis': 295.65, 'transfer': 295.65, 'condensation': 353.15, 'solvent_attack': 353.15}
+OBSERVED_AT_K = {'hydrolysis': 295.65, 'transfer': 295.65, 'condensation': 353.15, 'solvent_attack': 353.15,
+                 'exchange': 295.65}
 
 
 def build_fitted_model(fit: dict, name: str = None):
@@ -245,7 +295,8 @@ def build_fitted_model(fit: dict, name: str = None):
             'a diagnostic first fit, not a calibration',
             f"chi2 {fit['chi2']:.1f} over {fit['n_residuals']} residuals, largest standardised residual {fit['max_abs_z']:.2f}",
             'Barriers are anchored at the temperature where each family was observed; ΔS‡ = 0 is assumed, not fitted',
-            'Reaction energies of R1–R4 moved from their computed values within the covariance of the MD standard errors',
+            f"Reaction energies of {', '.join(structure.freed) or 'no reaction'} moved from their computed values within "
+            'the covariance of the MD standard errors',
         ))
 
 
@@ -262,6 +313,12 @@ FIT_STRUCTURES = {
     'M3-split': replace(_M1_SPLIT, name='M3-split',
                         label='R1 separate from R2 and R3; ΔG_rxn of R1–R4 free within their covariance',
                         freed=FREED_REACTIONS, parent='M1-split'),
+    'M3-R1R5': replace(_M1, name='M3-R1R5', split=SPLIT_FIRST_STEP, freed=FREED_REACTIONS, parent='M3-split',
+                       label='first step of TMSPA apart in hydrolysis (R1) and transfer (R5); ΔG_rxn of R1–R4 free '
+                             'within their covariance'),
+    'M3-R1R5-G6': replace(_M1, name='M3-R1R5-G6', split=SPLIT_FIRST_STEP, freed=FREED_INDEPENDENT, parent='M3-R1R5',
+                          label='first step of TMSPA apart in hydrolysis (R1) and transfer (R5); ΔG_rxn of every '
+                                'independent reaction (R1–R4, R8, R9) free within their covariance'),
 }
 
 

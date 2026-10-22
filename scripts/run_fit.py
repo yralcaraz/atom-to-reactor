@@ -37,6 +37,24 @@ mixing of the MD solvation in EC and in DEC of the 2026-10-08 snapshot; readings
 New sensitivities: the covariance of the computed energies x4, and the protocol of the article for the 2 % water
 tube (8 h at room temperature before the first spectrum, with or without an 8 h step at 30 °C, and 8 h holds).
 
+Fifth fit (notebooks/results/05_fit5/fit_config.json; docs/reference-fit_improvements.md §2): the 2 % water tube
+heated 8 h at each step of its ramp, the six steps placed on the file clock and written as explicit episodes
+('sample_overrides'); the network with N10–N15 of P. Broqvist's generated network ('network'), N12 and N15 in the
+barrier class of R2 and R1, the four silyl exchanges at a fixed 1.15 eV. Every fit records its network, the
+run-wide changes to the samples and the overrides of its variant. Sensitivities chosen in the setup
+('sensitivities'): the fourth fit's minus its three readings of the article, plus the heating as recorded, an
+8 h step at 30 °C before the first spectrum, 3 h at room temperature before each round of the 2 % tube instead of
+1 h, and N10–N15 all at 1.15 eV.
+
+Sixth fit (notebooks/results/05_fit6/fit_config.json; docs/reference-fit_results.md §6.3): the freed energies
+in a box of ±3 standard errors around their computed values, the Gaussian constraint kept inside it
+('energy_box_sigma'); two structures with one rule for every reaction, M3-R1R5 (the first step of TMSPA apart in
+hydrolysis and transfer) and M3-R1R5-G6 (with the energies of every independent reaction free), the latter the main
+structure ('structures'); the water of 'TMSPa alone' declared at the least its last spectrum needs instead of fitted
+('sample_overrides'); readings 1 h, 1 day and free ages; a reduced search started also from the fifth fit's
+parameters ('effort', 'start_from'); a reduced night ('night': profiles of the main structure where it fits, no
+indistinguishability, no tolerance check, no refits with a trace) and one recovery case of the main structure.
+
 Source: Y. Alcaraz Galván
 """
 
@@ -49,6 +67,7 @@ import argparse
 import sys
 import time
 import warnings
+from contextlib import contextmanager
 from pathlib import Path
 
 import numpy as np
@@ -60,6 +79,7 @@ if str(REPO) not in sys.path:
 
 from kinetics.data import load_experimental_data, load_lab_observables
 from kinetics.data.medium import get_active_medium
+from kinetics.data.network import get_active_network_variant, set_active_network_variant
 from kinetics.fitting import (
     DELTA_CHI2_95, REPORT_SOLVER, SCENARIOS, FitProblem, FitStructure, add_profile_points, apply_fit_config,
     build_sample_set,
@@ -69,8 +89,9 @@ from kinetics.fitting import (
     calculate_prediction_band, refine_profile_edges, simulate_synthetic_shares, summarize_residuals,
     tabulate_reaction_barriers, tabulate_residuals, write_fit_result,
 )
+from kinetics.fitting.candidates import get_energy_box_sigma
 from kinetics.fitting.estimation import RECIPE_FACTORS
-from kinetics.fitting.residuals import PAPER_OBSERVATIONS
+from kinetics.fitting.residuals import PAPER_OBSERVATIONS, get_sample_overrides
 from kinetics.thermo.reaction import calculate_network_thermo
 from kinetics.microkinetics.models import MODELS, get_model
 from kinetics.reactor import (
@@ -85,7 +106,7 @@ PAPER = PAPER_OBSERVATIONS               # paper observations added to every sam
 # M0, M1 and M1-split did not fit in the first run (chi2 above 280) and get a light search; the first run missed
 # the minimum of the freed-energy structures twice, so M3 and M3-split get four times the screen and twice the starts
 EFFORT = {'M0-BEP': (32, 2, 20), 'M0-Marcus': (32, 2, 20), 'M1': (128, 4, 30), 'M1-split': (128, 4, 30),
-          'M3': (8192, 32, 40), 'M3-split': (8192, 32, 40)}
+          'M3': (8192, 32, 40), 'M3-split': (8192, 32, 40), 'M3-R1R5': (8192, 32, 40), 'M3-R1R5-G6': (8192, 32, 40)}
 # Check fits of the main structure on changed data (trace of TMSOH, full search of a sensitivity variant): they
 # start from the main fit, so they keep the search of the first run
 CHECK_EFFORT = (2048, 16, 40)
@@ -189,11 +210,16 @@ RECOVERY = {}                            # the run's changes to the cases (fit_c
 
 
 def recovery_cases() -> dict:
-    """RECOVERY_TRUTHS with the run's changes: 'truths' {case: {name: value}} replaces the truth of a case, and
-    'effort': 'fits' gives every case at least the search of the fits of its structure (EFFORT), so the check
+    """RECOVERY_TRUTHS with the run's changes: 'cases' {case: {structure, scenario, truth, seeds, profiled, effort}}
+    replaces the cases of RECOVERY_TRUTHS (sixth fit), 'truths' {case: {name: value}} replaces the truth of a case,
+    and 'effort': 'fits' gives every case at least the search of the fits of its structure (EFFORT), so the check
     tests the search the fits actually ran with."""
+    base = RECOVERY_TRUTHS
+    if RECOVERY.get('cases'):
+        base = {label: (c['structure'], c['scenario'], c['truth'], tuple(c['seeds']), list(c['profiled']),
+                        tuple(c['effort'])) for label, c in RECOVERY['cases'].items()}
     cases = {}
-    for label, (structure, scenario, truth, seeds, profiled, effort) in RECOVERY_TRUTHS.items():
+    for label, (structure, scenario, truth, seeds, profiled, effort) in base.items():
         truth = {**truth, **RECOVERY.get('truths', {}).get(label, {})}
         if RECOVERY.get('effort') == 'fits':
             effort = tuple(max(a, b) for a, b in zip(effort, EFFORT[structure]))
@@ -220,7 +246,7 @@ def stage_recovery(args) -> None:
             t0 = time.perf_counter()
             result = cached(RESULTS / 'recovery' / f'{label}_seed{seed}.json', compute)
             stale = [k for k, v in truth.items() if k not in result['truth'] or abs(result['truth'][k] - v) > 1e-12]
-            stored_effort = result.get('effort', RECOVERY_TRUTHS[label][5])      # files from before the record: the case's own
+            stored_effort = result.get('effort', effort)      # files from before the record: the case's own
             if stale or list(stored_effort) != list(effort):
                 raise SystemExit(f"recovery/{label}_seed{seed}.json was computed with another truth or search "
                                  f"({stale or stored_effort}): move it away (e.g. to recovery_first_run/)")
@@ -255,10 +281,14 @@ def stage_recovery(args) -> None:
 # Fits of the candidate structures
 # ------------------------------------------------------------------------------
 FIRST_PASS_SOLVER = {'method': 'BDF', 'rtol': 1e-6, 'atol': 1e-10, 'max_rhs_calls': 30000}   # search tolerance of the first pass
-PARENTS = {'M1': ('M0-Marcus',), 'M1-split': ('M1',), 'M3': ('M1',), 'M3-split': ('M1-split', 'M3')}
+PARENTS = {'M1': ('M0-Marcus',), 'M1-split': ('M1',), 'M3': ('M1',), 'M3-split': ('M1-split', 'M3'),
+           'M3-R1R5': ('M3-split',), 'M3-R1R5-G6': ('M3-R1R5',)}
 SCENARIO_ORDER = ('middle', 'short', 'long', 'free')
-SIZE_ORDER = ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split')
-MAIN_STRUCTURE = 'M3-split'          # the largest structure: every other one is a special case of it
+SIZE_ORDER = ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split', 'M3-R1R5', 'M3-R1R5-G6')
+MAIN_STRUCTURE = 'M3-split'          # the largest structure: every other one is a special case of it; set in main
+EXTENDED_STRUCTURES = ('M1-split', 'M3', 'M3-split')     # the structures of the extended stage; set in main
+START_FROM = None                    # an earlier results directory whose fits also start the search; set in main
+NIGHT = {}                           # the parts of the night and traces stages that run (fit_config.json 'night')
 
 
 def base_name(structure: str) -> str:
@@ -314,15 +344,19 @@ def run_one(structure, scenario: str, args, *, tag: str = '', starts=(), sample_
     def compute():
         data = samples if samples is not None else sample_set(scenario, **(sample_options or {}))
         problem = FitProblem(structure, data, prior_scale=prior_scale)
-        n_screen, n_starts, max_nfev = effort or EFFORT[base_name(structure.name)]
+        # a setup may give one reading its own search: key 'structure|scenario' of EFFORT (sixth fit)
+        n_screen, n_starts, max_nfev = effort or EFFORT.get(f'{base_name(structure.name)}|{scenario}',
+                                                            EFFORT[base_name(structure.name)])
         usable = [c for c in (complete_start(problem, s) for s in starts) if c is not None]
         block = fit_tmsoh_block(structure, data, args) if n_screen > 0 else {}
         fit = fit_structure(problem, n_screen=max(int(n_screen * args.scale), 0), n_starts=n_starts, max_nfev=max_nfev,
                             seed=args.seed, workers=args.workers, start_points=usable, seed_values=block)
         fit['tmsoh_block'] = block
-        fit.update(scenario=scenario, tag=tag, label=structure.label,
+        fit.update(scenario=scenario, tag=tag, label=structure.label, energy_box_sigma=get_energy_box_sigma(),
                    barriers=tabulate_reaction_barriers(structure, fit['theta']),
-                   medium=get_active_medium().to_dict(), paper=[s['name'] for s in data if s['kind'] == 'paper'])
+                   medium=get_active_medium().to_dict(), paper=[s['name'] for s in data if s['kind'] == 'paper'],
+                   network=get_active_network_variant(), sample_overrides=get_sample_overrides(),
+                   variant_overrides=(sample_options or {}).get('overrides', {}))
         return fit
 
     path = fit_path(structure.name, scenario, tag)
@@ -334,9 +368,34 @@ def run_one(structure, scenario: str, args, *, tag: str = '', starts=(), sample_
     return fit
 
 
+def earlier_run_starts(structure: str, scenario: str) -> list:
+    """Parameter sets of an earlier run (START_FROM) that start the search of this fit: the fit of the same
+    structure, or of its nearest ancestor there, embedded in this structure; from the same reading, else from every
+    reading the earlier run has (without its ages). Only starting points: they bound nothing."""
+    if START_FROM is None:
+        return []
+    chain, queue = [], [structure]
+    while queue:
+        name = queue.pop(0)
+        chain.append(name)
+        queue += [p for p in PARENTS.get(name, ()) if p not in chain]
+    for name in chain:
+        files = sorted((START_FROM / 'fits').glob(f'{name}__*.json'))
+        files = [f for f in files if f.stem.count('__') == 1]
+        same = [f for f in files if f.stem == f'{name}__{scenario}']
+        if not files:
+            continue
+        thetas = [load_fit_result(str(f))['theta'] for f in (same or files)]
+        if not same:
+            thetas = [{k: v for k, v in th.items() if not k.startswith('log10 age')} for th in thetas]
+        return [embed_parent_theta(structure, th) if name != structure else th for th in thetas]
+    return []
+
+
 def run_structure(structure: str, scenario: str, args, extra_starts=()) -> dict:
-    """Fit of a registered structure, started also from its parents in this scenario and from its own other scenarios."""
-    starts = list(extra_starts)
+    """Fit of a registered structure, started also from its parents in this scenario, from its own other scenarios
+    and from the fits of an earlier run (START_FROM)."""
+    starts = list(extra_starts) + earlier_run_starts(structure, scenario)
     for parent in PARENTS.get(structure, ()):
         if fit_path(parent, scenario).exists():
             parent_fit = load_fit_result(str(fit_path(parent, scenario)))
@@ -465,7 +524,7 @@ def stage_baselines(args) -> None:
 
 def stage_extended(args) -> None:
     for scenario in SCENARIO_ORDER:
-        for structure in ('M1-split', 'M3', 'M3-split'):
+        for structure in EXTENDED_STRUCTURES:
             run_structure(structure, scenario, args)
     summarize_fits()
     fits, ok = load_main_fits(), True
@@ -695,7 +754,34 @@ SENSITIVITIES = {
                                                          'heated_duration_h': 8.0}}}, 1.0),
     'glovebox 4 h': ({'overrides': {'TMSOH, glovebox': {'hold_h': 4.0}}}, 1.0),
     'glovebox 16 h': ({'overrides': {'TMSOH, glovebox': {'hold_h': 16.0}}}, 1.0),
+    # Fifth fit, whose base heats the 2 % tube 8 h per step (fit_config.json): the heating the files record (the
+    # base of fits 1-4); the other reading of NMR 1 "after 30 °C", an 8 h step at 30 °C ending 1 h before it (cut at
+    # mixing when the age is shorter); and N10-N15 all at P. Broqvist's 1.15 eV ('network': a variant of
+    # kinetics.data.network for the fits of this variant)
+    'heating as recorded': ({'overrides': {'2 % H2O': {'heated_episodes': None}}}, 1.0),
+    '30 C before NMR 1': ({'overrides': {'2 % H2O': {'added_episodes': [[-9.0, 30.0, 8.0]]}}}, 1.0),
+    'Peter barriers': ({'network': 'R1-R9+N10-N15, Peter barriers'}, 1.0),
+    # Fifth fit: the 1 h at room temperature declared before each room-temperature round of the 2 % tube is not
+    # neutral (the ³¹P shares relax for about 2 h after a fast cool-down): every step ends at least 3 h before
+    'cooling 3 h': ({'overrides': {'2 % H2O': {'cooling_h': 3.0}}}, 1.0),
+    # Sixth fit, whose base declares the water of 'TMSPa alone' (fit_config.json): that water fitted again, in
+    # the range of the observables, as in fits 3-5
+    'water free': ({'overrides': {'TMSPa alone': {'unknown_M': {'H2O': [0.0, 0.3]}, 'added_M': {'H2O': 0.0}}}}, 1.0),
 }
+FOURTH_FIT_SENSITIVITIES = ('floor x0', 'floor x2', 'covariance x0.5', 'covariance x2', 'covariance x4', 'ramp held 8 h',
+                            'article 8 h RT', 'article 8 h RT + 30 C', 'glovebox 4 h', 'glovebox 16 h')
+SENSITIVITY_NAMES = FOURTH_FIT_SENSITIVITIES   # the variants of this run (fit_config.json 'sensitivities'); set in main
+
+
+@contextmanager
+def network_variant(variant: str = None):
+    """The fits inside use `variant` of kinetics.data.network (None: the run's own network)."""
+    previous = get_active_network_variant()
+    set_active_network_variant(variant or previous)
+    try:
+        yield
+    finally:
+        set_active_network_variant(previous)
 
 
 def run_sensitivities(structure: str, scenario: str, args) -> pd.DataFrame:
@@ -703,16 +789,20 @@ def run_sensitivities(structure: str, scenario: str, args) -> pd.DataFrame:
     rows = [{'variant': 'as fitted', 'scenario': scenario, 'search': 'full', 'chi2': main['chi2'], 'max |z|': main['max_abs_z'],
              'worst': main['worst'], 'fits': main['fits'], **main['theta'],
              **{f'dG‡ {rxn}': b['dG_barrier_eV'] for rxn, b in main['barriers'].items()}}]
-    for variant, (options, prior_scale) in SENSITIVITIES.items():
+    for variant in SENSITIVITY_NAMES:
+        options, prior_scale = SENSITIVITIES[variant]
+        options = dict(options)
+        network = options.pop('network', None)
         tag = f'__{variant}'.replace(' ', '_')
-        fit = run_one(structure, scenario, args, tag=tag, starts=[main['theta']],
-                      sample_options=options, prior_scale=prior_scale, effort=(128, 3, 30))
-        search = 'reduced'
-        if not fit['fits']:
-            # A variant is not called a failure on a reduced search: it is fitted again with the full one
-            full = run_one(structure, scenario, args, tag=tag + '__full_search', starts=[main['theta'], fit['theta']],
-                           sample_options=options, prior_scale=prior_scale, effort=CHECK_EFFORT)
-            fit, search = (full, 'full') if full['chi2'] < fit['chi2'] else (fit, 'full, no better')
+        with network_variant(network):
+            fit = run_one(structure, scenario, args, tag=tag, starts=[main['theta']],
+                          sample_options=options, prior_scale=prior_scale, effort=(128, 3, 30))
+            search = 'reduced'
+            if not fit['fits']:
+                # A variant is not called a failure on a reduced search: it is fitted again with the full one
+                full = run_one(structure, scenario, args, tag=tag + '__full_search', starts=[main['theta'], fit['theta']],
+                               sample_options=options, prior_scale=prior_scale, effort=CHECK_EFFORT)
+                fit, search = (full, 'full') if full['chi2'] < fit['chi2'] else (fit, 'full, no better')
         rows.append({'variant': variant, 'scenario': scenario, 'search': search, 'chi2': fit['chi2'],
                      'max |z|': fit['max_abs_z'], 'worst': fit['worst'], 'fits': fit['fits'], **fit['theta'],
                      **{f'dG‡ {rxn}': b['dG_barrier_eV'] for rxn, b in fit['barriers'].items()}})
@@ -781,14 +871,19 @@ def stage_night(args) -> None:
         raise SystemExit('the synthetic recovery failed: the night run stops here')
     fits = load_main_fits()
     selected = select_consistent(fits, load_trace_verdicts(fits))
-    profiled = [MAIN_STRUCTURE, 'M1'] + ([selected[0]] if selected and selected[0] not in (MAIN_STRUCTURE, 'M1') else [])
+    # The structures profiled, each in every reading or ({structure: [readings]}, sixth fit) in the listed ones
+    profiled = NIGHT.get('profiled', [MAIN_STRUCTURE, 'M1'])
+    profiled = dict(profiled) if isinstance(profiled, dict) else {name: list(SCENARIO_ORDER) for name in profiled}
+    if selected and selected[0] not in profiled:
+        profiled[selected[0]] = list(SCENARIO_ORDER)
     log(f'night: profiles of {profiled}; leave-one-out, sensitivities and indistinguishability on {MAIN_STRUCTURE}')
-    # 1. Profiles of the main structure, then of the baseline structure
-    for structure in profiled:
-        for scenario in SCENARIO_ORDER:
-            run_profiles(structure, scenario, args, refine=scenario in ('middle', 'free'))
+    # 1. Profiles of the main structure, then of the baseline structure (sixth fit: only where the structure fits)
+    walked = [(structure, scenario) for structure, readings in profiled.items() for scenario in SCENARIO_ORDER
+              if scenario in readings and (not NIGHT.get('profile_fitting_only') or fits[(structure, scenario)]['fits'])]
+    for structure, scenario in walked:
+        run_profiles(structure, scenario, args, refine=scenario in ('middle', 'free'))
     replaced = [adopt_profile_minimum(structure, scenario, args, refine=scenario in ('middle', 'free'))
-                for structure in profiled for scenario in SCENARIO_ORDER]
+                for structure, scenario in walked]
     if any(replaced):
         summarize_fits()
         fits = load_main_fits()
@@ -799,14 +894,19 @@ def stage_night(args) -> None:
         else:
             log(f'leave-one-out {MAIN_STRUCTURE} {scenario}: skipped, the structure does not fit this scenario')
     # 3. Structures the data cannot tell apart
-    rows = []
-    for scenario in ('middle', 'free'):
-        rows += run_indistinguishability(scenario, args)
-        run_water_profile(scenario, args)
-    pd.DataFrame(rows).to_csv(RESULTS / 'indistinguishability.csv', index=False)
+    if NIGHT.get('indistinguishability', True):
+        rows = []
+        for scenario in ('middle', 'free'):
+            rows += run_indistinguishability(scenario, args)
+            run_water_profile(scenario, args)
+        pd.DataFrame(rows).to_csv(RESULTS / 'indistinguishability.csv', index=False)
     # 4. Sensitivity to the declared error floor, the covariance and the times the files do not fix
-    pd.concat([run_sensitivities(MAIN_STRUCTURE, scenario, args) for scenario in ('middle', 'free')],
+    pd.concat([run_sensitivities(MAIN_STRUCTURE, scenario, args) for scenario in ('middle', 'free')
+               if not NIGHT.get('profile_fitting_only') or fits[(MAIN_STRUCTURE, scenario)]['fits']],
               ignore_index=True).to_csv(RESULTS / 'sensitivities.csv', index=False)
+    if not NIGHT.get('tolerance_check', True):
+        summarize_night()
+        return
     # 5. Solver tolerance: two profiles repeated at rtol 1e-8
     names = ['g solvent_attack', 'g hydrolysis_R23']
     loose = run_profiles(MAIN_STRUCTURE, 'middle', args, refine=True)['intervals'].set_index('parameter')
@@ -892,6 +992,8 @@ def stage_traces(args) -> None:
         scan = [r for r in rows if r['scenario'] == scenario]
         log(f'trace scan {MAIN_STRUCTURE} {scenario}: chi2 ' + ', '.join(
             f"{r['chi2']:.1f} at {r['TMSOH at mixing (M)']:.0e} M" for r in scan))
+    if not NIGHT.get('trace_refits', True):
+        return
     starts = [{k: v for k, v in fit['theta'].items() if not k.startswith('log10 age')} for fit in fits.values()]
     for label, level in TRACE_REFIT_M.items():
         for scenario, fit in fits.items():
@@ -909,7 +1011,8 @@ def stage_traces(args) -> None:
 STORAGE_C0_M = {'TMSPA': 0.050, 'H2O': 0.020, 'EC': 4.5}      # the sealed electrolyte of notebook 01, Block 8
 STORAGE_T_K = 298.15
 DS_RANGE_J_MOL_K = (-150.0, -100.0, -50.0, 0.0, 50.0)         # declared range of the activation entropy
-T_OBSERVED_K = {'hydrolysis': 295.65, 'transfer': 295.65, 'condensation': 353.15, 'solvent_attack': 353.15}
+T_OBSERVED_K = {'hydrolysis': 295.65, 'transfer': 295.65, 'condensation': 353.15, 'solvent_attack': 353.15,
+                'exchange': 295.65}
 EC_DEC_DENSITY_G_ML = 0.5 * (1.321 + 0.975)                   # as in notebook 03 §5.4
 
 
@@ -1154,7 +1257,8 @@ def main():
     parser.add_argument('--results', default=None, help='results directory (default notebooks/results/05)')
     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
     args = parser.parse_args()
-    global RESULTS, CHECK_EFFORT, SCENARIOS, SCENARIO_ORDER, PAPER, FITTED_SAMPLES, RECOVERY
+    global RESULTS, CHECK_EFFORT, SCENARIOS, SCENARIO_ORDER, PAPER, FITTED_SAMPLES, RECOVERY, SENSITIVITY_NAMES, \
+        MAIN_STRUCTURE, EXTENDED_STRUCTURES, START_FROM, NIGHT
     if args.results:
         RESULTS = Path(args.results).resolve()
     config = apply_fit_config(RESULTS)
@@ -1162,7 +1266,17 @@ def main():
     SCENARIO_ORDER = tuple(sc for sc in SCENARIO_ORDER if sc in config['scenarios'])
     PAPER = tuple(config['paper_observations'])
     RECOVERY = config['recovery']
+    SENSITIVITY_NAMES = tuple(config['sensitivities'] or FOURTH_FIT_SENSITIVITIES)
+    unknown = [name for name in SENSITIVITY_NAMES if name not in SENSITIVITIES]
+    if unknown:
+        raise SystemExit(f"{config['source']}: unknown sensitivities {unknown} (known: {list(SENSITIVITIES)})")
     FITTED_SAMPLES = LAB_FITTED_SAMPLES + PAPER
+    if config['structures']:
+        MAIN_STRUCTURE = config['structures']['main']
+        EXTENDED_STRUCTURES = tuple(config['structures']['extended'])
+    EFFORT.update({name: tuple(effort) for name, effort in config['effort'].items()})
+    START_FROM = (REPO / config['start_from']).resolve() if config['start_from'] else None
+    NIGHT = dict(config['night'])
     if args.quick:
         args.scale, args.profile_nfev = 0.05, 3
         for name in EFFORT:
@@ -1171,8 +1285,11 @@ def main():
     warnings.filterwarnings('ignore', category=RuntimeWarning)
     RESULTS.mkdir(parents=True, exist_ok=True)
     log(f'--- stage {args.stage} (workers {args.workers}) ---')
-    log(f"setup ({config['source']}): {config['medium'].label()}; readings {', '.join(SCENARIOS)}; "
-        f"paper observations {', '.join(PAPER) or 'none'}")
+    log(f"setup ({config['source']}): {config['medium'].label()}; network {config['network']}; energy box "
+        f"{'±%g standard errors' % config['energy_box_sigma'] if config['energy_box_sigma'] else 'fixed'}; main structure "
+        f"{MAIN_STRUCTURE}; readings "
+        f"{', '.join(SCENARIOS)}; paper observations {', '.join(PAPER) or 'none'}; samples changed for the run: "
+        f"{', '.join(config['sample_overrides']) or 'none'}")
     t0 = time.perf_counter()
     STAGES[args.stage](args)
     log(f'--- stage {args.stage} done in {(time.perf_counter() - t0) / 60:.1f} min ---')

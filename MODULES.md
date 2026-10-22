@@ -19,7 +19,7 @@
 - Functions whose name starts with `_` are internal and are not listed.
 - Units are part of the names (`T_K`, `t_end_s`, `g_eV`, `C_M`). Verbs are fixed: `load_` reads a file, `build_` assembles a structure, `calculate_` evaluates a quantity, `simulate_` integrates in time, `find_` searches, `tabulate_`/`describe_` return a table.
 - "Options" in an input column means keyword arguments with defaults; only the ones that change the result are named.
-- The equations behind each block are in the [theory document](docs/theory-multiscale_microkinetics.md); the models the fit compares are in [reference-fit_models.md](docs/reference-fit_models.md); how a fit runs from start to end is in [reference-fitting_system.md](docs/reference-fitting_system.md).
+- The equations behind each block are in the [theory document](docs/theory-multiscale_microkinetics.md); the models the fit compares are in [reference-models_summary.md](docs/reference-models_summary.md); how a fit runs from start to end is in [reference-fitting_system.md](docs/reference-fitting_system.md).
 
 ---
 
@@ -155,7 +155,7 @@ flowchart LR
 
 ### 2.3 network.py · the reaction network
 
-**Route:** [kinetics/data/network.py](kinetics/data/network.py) · **Input:** none (declared in the file) · **Output:** `NETWORK` ({reaction: reactants, products, family}) and `NETWORK_SPECIES` (the 11 species).
+**Route:** [kinetics/data/network.py](kinetics/data/network.py) · **Input:** none (declared in the file) · **Output:** `NETWORK` ({reaction: reactants, products, family}), `NETWORK_SPECIES` (the 11 species) and `EXTRA_REACTIONS` (N10–N15 of P. Broqvist's generated network, combinations of R1–R9).
 
 | Function | Input | Output |
 |---|---|---|
@@ -165,6 +165,8 @@ flowchart LR
 | `find_reaction_cycles` | Network | Reaction combinations with zero net change (the Wegscheider cycles) |
 | `expand_stoichiometry` | {species: coefficient} | Species list with repeats |
 | `format_equation` | One reaction | Text, e.g. `2 TMSOH ⇌ HMDSO + H2O` |
+| `build_network` | A variant: `R1-R9`, `R1-R9+N10-N15`, `R1-R9+N10-N15, Peter barriers` | The network of that variant |
+| `get_active_network`, `set_active_network_variant` | —; a variant or `None` (`R1-R9`) | The network the fit structures use, set per fit run (7.10) |
 
 ### 2.4 experimental.py · data from Gogoi et al. 2024
 
@@ -636,6 +638,7 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 |---|---|---|
 | `build_sample_set` | Observables, scenario. Options: `roles`, `exclude`, `paper`, `floor_scale`, `overrides` | The list of samples a model is compared with |
 | `build_sample_history` | One sample, optional age | (temperature segments from mixing, spectrum times since mixing) |
+| `set_sample_overrides`, `merge_sample_overrides` | {sample: changes}; two of them | The changes every sample set of a run starts from (7.10); one on top of the other, key by key |
 | `calculate_predicted_shares` | One sample, a model. Options: `age_h`, `water_fraction`, `solver` | The predicted shares per block, or `None` if the simulation fails |
 | `calculate_residuals` | A model, samples. Options: `ages`, `water_fraction`, `return_details` | The whitened residual vector |
 | `find_free_age` | A model, samples | {sample: the age that model prefers} (free scenario) |
@@ -645,7 +648,7 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 
 ### 7.7 candidates.py · what is free in each model
 
-**Route:** [kinetics/fitting/candidates.py](kinetics/fitting/candidates.py) · **Input:** a structure name and a parameter set θ · **Output:** a self-contained model. `FIT_STRUCTURES` holds `M0-BEP`, `M0-Marcus`, `M1`, `M1-split`, `M3`, `M3-split`; adding `+W` to a name frees the water fraction. The models are defined in [reference-fit_models.md](docs/reference-fit_models.md).
+**Route:** [kinetics/fitting/candidates.py](kinetics/fitting/candidates.py) · **Input:** a structure name and a parameter set θ · **Output:** a self-contained model. `FIT_STRUCTURES` holds `M0-BEP`, `M0-Marcus`, `M1`, `M1-split`, `M3`, `M3-split`; adding `+W` to a name frees the water fraction. The models are defined in [reference-models_summary.md](docs/reference-models_summary.md).
 
 | Name | Input | Output |
 |---|---|---|
@@ -697,13 +700,14 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 
 ### 7.10 config.py · the setup of one fit run
 
-**Route:** [kinetics/fitting/config.py](kinetics/fitting/config.py) · **Input:** `fit_config.json` in a results directory · **Output:** the solvation medium, the readings fitted and the paper observations of that run. Read by every stage of `run_fit.py` and by the notebooks; a directory without the file has the setup of fits 1–3.
+**Route:** [kinetics/fitting/config.py](kinetics/fitting/config.py) · **Input:** `fit_config.json` in a results directory · **Output:** the solvation medium, the network, the run-wide changes to the samples, the readings fitted, the paper observations and the sensitivity variants of that run. Read by every stage of `run_fit.py` and by the notebooks; a directory without the file has the setup of fits 1–3.
 
 | Function | Input | Output |
 |---|---|---|
 | `load_fit_config` | A results directory | The setup, with the medium as a `SolvationMedium` |
-| `apply_fit_config` | A results directory | The same, after making its medium the active one |
+| `apply_fit_config` | A results directory | The same, after making its medium, network and changes to the samples the active ones |
 | `check_fit_medium` | A fit result | Raises if the fit was computed in another medium than the active one |
+| `check_fit_setup` | A fit result | `check_fit_medium`, and the same for the network and the run-wide changes to the samples |
 
 ---
 

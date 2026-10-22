@@ -40,15 +40,15 @@ from kinetics.fitting.design import (
 
 from kinetics.fitting.residuals import (
     FREE_AGE_BOUNDS_H, REPORT_SOLVER, SCENARIO_AGES_H, SCENARIOS, SEARCH_SOLVER, build_sample_history,
-    build_sample_set, calculate_predicted_shares, calculate_residuals, find_free_age, summarize_residuals,
-    tabulate_residuals,
+    build_sample_set, calculate_predicted_shares, calculate_residuals, find_free_age, get_sample_overrides,
+    merge_sample_overrides, set_sample_overrides, summarize_residuals, tabulate_residuals,
 )
 from kinetics.fitting.candidates import (
     FIT_STRUCTURES, FitParameter, FitStructure, build_fitted_model, embed_parent_theta, get_structure,
     tabulate_reaction_barriers,
 )
 from kinetics.fitting.config import (
-    DEFAULT_FIT_CONFIG, FIT_CONFIG_FILE, apply_fit_config, check_fit_medium, load_fit_config,
+    DEFAULT_FIT_CONFIG, FIT_CONFIG_FILE, apply_fit_config, check_fit_medium, check_fit_setup, load_fit_config,
 )
 from kinetics.fitting.estimation import (
     DELTA_CHI2_95, FIT_RULE_MAX_Z, FitProblem, add_profile_points, build_profile_grid, calculate_parameter_directions,
@@ -59,7 +59,7 @@ from kinetics.fitting.estimation import (
 )
 
 __all__ = [
-    "DEFAULT_FIT_CONFIG", "FIT_CONFIG_FILE", "apply_fit_config", "check_fit_medium", "load_fit_config",
+    "DEFAULT_FIT_CONFIG", "FIT_CONFIG_FILE", "apply_fit_config", "check_fit_medium", "check_fit_setup", "load_fit_config",
     "FIT_STRUCTURES", "FitParameter", "FitStructure", "build_fitted_model", "embed_parent_theta", "get_structure",
     "tabulate_reaction_barriers",
     "DELTA_CHI2_95", "FIT_RULE_MAX_Z", "FitProblem", "add_profile_points", "build_profile_grid",
@@ -68,8 +68,8 @@ __all__ = [
     "fit_leave_one_out", "fit_structure", "get_profile_theta", "load_fit_result", "refine_profile_edges",
     "simulate_synthetic_shares", "write_fit_result",
     "FREE_AGE_BOUNDS_H", "REPORT_SOLVER", "SCENARIO_AGES_H", "SCENARIOS", "SEARCH_SOLVER", "build_sample_history",
-    "build_sample_set", "calculate_predicted_shares", "calculate_residuals", "find_free_age", "summarize_residuals",
-    "tabulate_residuals",
+    "build_sample_set", "calculate_predicted_shares", "calculate_residuals", "find_free_age", "get_sample_overrides",
+    "merge_sample_overrides", "set_sample_overrides", "summarize_residuals", "tabulate_residuals",
     "DEFAULT_G_GRID_EV", "FAMILIES", "find_barrier_bounds", "get_family_parameter", "project_bounds_to_entropy",
     "scan_family_barriers", "summarize_feasible_intervals",
     "DEFAULT_SCAN_GRID_EV", "SHARED_BARRIER", "build_observation", "build_share_window", "describe_observations",

@@ -170,8 +170,11 @@ The last three are read from two folders set with the environment variables `ATO
 |---|---|---|
 | [MODULES.md](MODULES.md) | Module reference: one diagram of the project, one per block, and every function with its input and output | Current (2026-10-07) |
 | [theory-multiscale_microkinetics](docs/theory-multiscale_microkinetics.md) | Theory: statistical mechanics, solvation cycle, barrier models, reactor equations | Rev 1; data facts corrected 2026-10-07 |
-| [reference-fit_models](docs/reference-fit_models.md) | The model structures the fit compares: equations, variables, free parameters | Draft |
+| [reference-models_summary](docs/reference-models_summary.md) | The model structures the fit compares: equations, variables, free parameters (was `reference-fit_models`) | Draft |
 | [reference-fitting_system](docs/reference-fitting_system.md) | How a fit runs: what is minimised, the files, the stages of the runner and their outputs | Draft |
+| [reference-fitting_improvements](docs/reference-fitting_improvements.md) | The fourth fit and the plan of the fifth (was `reference-fit_improvements`) | Current (2026-10-20) |
+| [reference-fit_results](docs/reference-fit_results.md) | Review of the fifth fit, and the questions, decisions and limitations of the sixth (§6.3) | Current (2026-10-22) |
+| [guide-commits](docs/guide-commits.md) | What each change set modifies against the commit before it | Living document |
 | [guide-operando_experimental_protocol](docs/guide-operando_experimental_protocol.md) | Guide to notebook 02 | Under review |
 | [reference-api_migration](docs/reference-api_migration.md) | Function and module names before and after the 2026-09-29 layout | Under review |
 

@@ -6,7 +6,7 @@
 | **Source** | Y. Alcaraz Galván |
 | **Scope** | The fit of the kinetic models to the lab NMR data as one system: what is compared with what, what is minimised, which files take part, the stages of the runner and the files they write. Read from the code; no fit was run to write it. |
 | **Applies to** | Branch `fit/first-fit`, 2026-10-07. Sections 1–7 describe the system of the second fit; section 8 lists what the third fit changed |
-| **See also** | [reference-fit_models.md](reference-fit_models.md) for the equations and free parameters of each model; [MODULES.md](../MODULES.md) §7 for every function with its input and output |
+| **See also** | [reference-models_summary.md](reference-models_summary.md) for the equations and free parameters of each model; [MODULES.md](../MODULES.md) §7 for every function with its input and output |
 
 The work on the data has two parts, and they share the same models and reactors:
 
@@ -102,7 +102,7 @@ In this order, each with a declared search box:
 
 | Parameters | Present in | Box |
 |---|---|---|
-| `g <family>` intrinsic barriers | every structure | 0.60–1.70 eV, narrower for some families |
+| `g <family>` intrinsic barriers | every structure | 0.60–1.70 eV, narrower for some families; 0.80–1.80 eV for the first hydrolysis (fifth fit). The class `exchange` (N10, N11, N13, N14) is fixed at 1.15 eV, not fitted |
 | `dG R1` … `dG R4` shifts of the reaction energies | M3, M3-split | ±0.75 eV around the computed value |
 | `water fraction` | names ending in `+W` | 0.05–1 |
 | `log10 age 2 % H2O` | `free` scenario | 1 h to 30 days |
@@ -281,3 +281,19 @@ Reasons and limits are in [plan-fit_improvement.md](plan-fit_improvement.md). Wh
 - **Values.** The lab sample set has 85 values (77 in the second fit): the tube adds two spectra of four shares.
 - **Trace rule.** A fit is accepted only if its parameters, unchanged, still fit with 1 µM and with 1 mM TMSOH at mixing in the tubes whose recipe holds TMSPA and no TMSOH.
 - **Earlier fits.** A fit made before these changes is reproduced by building the sample set with `exclude=('TMSPa alone',)`. The observables file of the second fit is kept in the data folder as `lab_observables_second_fit_261006.json`.
+
+## 9. Changes of the fifth fit (2026-10-20)
+
+Reasons and limits are in [reference-fitting_improvements.md](reference-fitting_improvements.md) §2; the list of changes against the commit before them is in [guide-commits.md](guide-commits.md). What changed in the system:
+
+| Where | Change |
+|---|---|
+| [network.py](../kinetics/data/network.py) | `EXTRA_REACTIONS` N10–N15 and three variants (`R1-R9`, `R1-R9+N10-N15`, `R1-R9+N10-N15, Peter barriers`); the active one is set per run, like the solvation medium (`set_active_network_variant`) |
+| [candidates.py](../kinetics/fitting/candidates.py) | A structure takes the active network. A step that `follows` a reaction takes that reaction's barrier class (N12 → R2, N15 → R1); the class `exchange` has the fixed barrier of `FIXED_BARRIERS_EV` (1.15 eV). No new parameter. The box of `g hydrolysis_R1` reaches 1.80 eV |
+| [residuals.py](../kinetics/fitting/residuals.py) | Run-wide changes to the samples (`set_sample_overrides`), with the overrides of each call on top (`merge_sample_overrides`). New override keys: `heated_episodes` (explicit heating steps, replacing the recorded ones; `None` keeps them), `added_episodes` and `cooling_h` (at least that many hours at room temperature before every spectrum; a step that ends later is moved earlier). A step before the first spectrum lies inside the age and is cut at mixing |
+| [config.py](../kinetics/fitting/config.py) | `fit_config.json` keys `network`, `sample_overrides` and `sensitivities`; `apply_fit_config` sets the network and the changes to the samples; `check_fit_setup` refuses to run a fit forward with another network or other run-wide changes |
+| [reporting.py](../kinetics/fitting/reporting.py) | `evaluate_fit` and `calculate_parameter_correlation` call `check_fit_setup` |
+| [run_fit.py](../scripts/run_fit.py) | Every fit records `network`, `sample_overrides` (the run's) and `variant_overrides` (its variant's). New sensitivities `heating as recorded`, `30 C before NMR 1`, `cooling 3 h`, `Peter barriers` (a variant may name its own network); the setup chooses which run (`None`: those of the fourth fit) |
+
+- **Earlier fits.** A results folder without the new keys runs as before: R1–R9, the recorded heating, the fourth fit's sensitivities. With its own setup the fourth fit is reproduced exactly (χ² 50.1352 at 1 day, 39.6541 with free ages).
+- **Speed.** One evaluation of the lab set at 1 day takes 0.79 s with fifteen reactions against 0.61 s with nine (search solver, one process).

@@ -19,7 +19,9 @@ from kinetics.data.snapshot import (
 from kinetics.data.medium import DEFAULT_MEDIUM, SolvationMedium, get_active_medium, set_active_medium
 from kinetics.data.species import load_medium_species_database, load_species_database
 from kinetics.data.network import (
-    NETWORK, NETWORK_SPECIES, build_stoichiometric_matrix, find_reaction_cycles, format_equation, list_species,
+    EXTRA_REACTIONS, NETWORK, NETWORK_SPECIES, NETWORK_VARIANTS, build_network, build_stoichiometric_matrix,
+    find_reaction_cycles, format_equation, get_active_network, get_active_network_variant, list_species,
+    set_active_network_variant,
 )
 from kinetics.data.experimental import (
     get_barrier_windows, get_measured_shifts, get_water_series, load_experimental_data,
@@ -38,8 +40,9 @@ __all__ = [
     "load_snapshot", "get_dataset_records", "get_solvation_records", "get_solvent", "list_solvation_sets", "count_elements", "calculate_molar_mass",
     "DEFAULT_MEDIUM", "SolvationMedium", "get_active_medium", "set_active_medium",
     "load_medium_species_database", "load_species_database",
-    "NETWORK", "NETWORK_SPECIES", "build_stoichiometric_matrix", "find_reaction_cycles", "format_equation",
-    "list_species",
+    "EXTRA_REACTIONS", "NETWORK", "NETWORK_SPECIES", "NETWORK_VARIANTS", "build_network", "build_stoichiometric_matrix",
+    "find_reaction_cycles", "format_equation", "get_active_network", "get_active_network_variant", "list_species",
+    "set_active_network_variant",
     "load_experimental_data", "get_measured_shifts", "get_barrier_windows", "get_water_series",
     "DEFAULT_LAB_NMR_DIR", "build_lab_nmr_inventory", "read_jdf", "load_spectrum", "load_text_spectrum",
     "estimate_noise", "calculate_window_integrals", "refine_window_phase", "calculate_area_shares",

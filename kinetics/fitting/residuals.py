@@ -22,6 +22,8 @@ The K shares of a spectrum sum to one, so their K residuals are scaled by sqrt((
 χ² of K − 1 independent values when the K errors are equal.
 
     build_sample_set            observables + scenario → the samples a fit compares with
+    set_sample_overrides        changes to the samples that hold for a whole fit run (fit_config.json)
+    merge_sample_overrides      the changes of a run with those of one call on top
     build_sample_history        temperature segments from mixing and the spectrum times of one sample
     calculate_predicted_shares  the shares a model predicts for one sample
     calculate_residuals         whitened residual vector of a model over a sample set (χ² = Σ r²)
@@ -158,6 +160,51 @@ def _hold_heated(sample: dict, hold_h: float) -> list:
     return episodes
 
 
+def _cool_before_spectra(sample: dict, cooling_h: float) -> list:
+    """The heating episodes of a sample, each moved earlier where needed so that it ends at least cooling_h hours
+    before the next spectrum; a moved one never starts before the previous one ends (it is shortened instead)."""
+    spectra = sorted({float(t) for block in sample['blocks'] for t in block['t_spec_s']})
+    cooling, clock, episodes = 3600.0 * cooling_h, -np.inf, []
+    for start, T, duration in sample['heated']:
+        next_spectrum = min([t for t in spectra if t > start], default=np.inf)
+        stop = min(start + duration, next_spectrum - cooling)
+        start = max(stop - duration, clock)
+        episodes.append((start, T, stop - start))
+        clock = stop
+    return episodes
+
+
+def _episodes(rows) -> list:
+    """[(start_h, T_C, duration_h), ...] on the clock of the first spectrum → [(start_s, T_K, duration_s), ...] in time order."""
+    return sorted((3600.0 * float(start), float(T_C) + ZERO_CELSIUS_K, 3600.0 * float(hours)) for start, T_C, hours in rows)
+
+
+# Changes to the samples that hold for a whole fit run (fit_config.json 'sample_overrides', set by
+# kinetics.fitting.config): every sample set starts from them, and the overrides of a call go on top
+_ACTIVE_OVERRIDES = [{}]
+
+
+def get_sample_overrides() -> dict:
+    return _ACTIVE_OVERRIDES[0]
+
+
+def set_sample_overrides(overrides: dict = None) -> dict:
+    """Make `overrides` ({sample: {key: value}}, keys as in build_sample_set) the changes every sample set of the
+    run starts from (None: none) and return them."""
+    _ACTIVE_OVERRIDES[0] = deepcopy(overrides or {})
+    return _ACTIVE_OVERRIDES[0]
+
+
+def merge_sample_overrides(base: dict, extra: dict = None) -> dict:
+    """`base` with `extra` on top, key by key within a sample ('added_M' species by species)."""
+    out = deepcopy(base or {})
+    for name, change in (extra or {}).items():
+        entry = out.setdefault(name, {})
+        for key, value in change.items():
+            entry[key] = {**entry.get(key, {}), **value} if key == 'added_M' else deepcopy(value)
+    return out
+
+
 def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclude=(), paper=PAPER_OBSERVATIONS,
                      error_floor: dict = None, floor_scale: float = 1.0, overrides: dict = None) -> list:
     """The samples a model is compared with, under one scenario of the unknown ages.
@@ -167,15 +214,22 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
     paper: one-sided observations of Gogoi 2024 added to the set (ids of data/experimental_gogoi2024.json).
     floor_scale multiplies the declared error floor (0 removes it).
     overrides: {sample: {'hold_h': hours of its known pre-history, 'pre_history': [(T_C or None for room
-    temperature, hours), ...] from mixing to the first spectrum (the age is then known), 'heated_duration_h':
-    hours of every heating episode (at most until the next one starts), 'heated_hold_h': hours of every heating
-    episode as a hold that is over before the next room-temperature spectrum (see _hold_heated), 'added_M': {species: mol/L present at
-    mixing on top of the recipe}}}, for the sensitivity to the times the files do not fix and to what the recipe
-    does not list.
+    temperature, hours), ...] from mixing to the first spectrum (the age is then known), 'heated_episodes':
+    [(start_h, T_C, hours), ...] on the clock of the first spectrum, replacing the recorded heating (None: the
+    recorded one), 'added_episodes': the same, added to it (a negative start lies before the first spectrum and
+    is cut at mixing), 'cooling_h': hours at room temperature at least before every spectrum (an episode that
+    ends later is moved earlier, see _cool_before_spectra), 'heated_duration_h': hours of every heating episode (at most until the next one starts),
+    'heated_hold_h': hours of every heating episode as a hold that is over before the next room-temperature
+    spectrum (see _hold_heated), 'added_M': {species: mol/L present at mixing on top of the recipe},
+    'unknown_M': {species: (low, high)} replacing the amounts at mixing that are fit parameters ({}: none; sixth
+    fit: the water of 'TMSPa alone' declared through 'added_M' instead)}}, for the sensitivity to the times the
+    files do not fix and to what the recipe does not list. They go on top of the run's own changes
+    (set_sample_overrides).
     """
     if scenario not in SCENARIOS:
         raise ValueError(f"scenario must be one of {SCENARIOS}")
     error_floor = error_floor or observables['_meta'].get('error_floor', DEFAULT_ERROR_FLOOR)
+    overrides = merge_sample_overrides(get_sample_overrides(), overrides)
     samples = []
     for name, record in observables['samples'].items():
         if name in exclude:
@@ -183,7 +237,9 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
         sample = _lab_sample(name, record, observables, error_floor, floor_scale, tuple(roles))
         if sample is None:
             continue
-        change = (overrides or {}).get(name, {})
+        change = overrides.get(name, {})
+        if change.get('heated_episodes') is not None:
+            sample['heated'] = _episodes(change['heated_episodes'])
         if 'pre_history' in change:
             sample['pre_segments'] = [(sample['T_rt_K'] if T_C is None else T_C + ZERO_CELSIUS_K, 3600.0 * hours)
                                       for T_C, hours in change['pre_history']]
@@ -196,8 +252,14 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
                                 for (start, T, _), following in zip(sample['heated'], starts)]
         if 'heated_hold_h' in change:
             sample['heated'] = _hold_heated(sample, change['heated_hold_h'])
+        if change.get('added_episodes'):
+            sample['heated'] = sorted(sample['heated'] + _episodes(change['added_episodes']))
+        if change.get('cooling_h') is not None:
+            sample['heated'] = _cool_before_spectra(sample, change['cooling_h'])
         for species, added in change.get('added_M', {}).items():
             sample['c0_M'][species] = sample['c0_M'].get(species, 0.0) + added
+        if 'unknown_M' in change:
+            sample['unknown_M'] = {sp: (float(low), float(high)) for sp, (low, high) in (change['unknown_M'] or {}).items()}
         if not sample['pre_segments']:                       # the age is unknown
             if scenario != 'free':
                 sample.update(age_mode='fixed', age_h=SCENARIO_AGES_H[scenario])
@@ -223,8 +285,30 @@ def build_sample_history(sample: dict, age_h: float = None) -> tuple:
             raise ValueError(f"{sample['name']}: an age is needed (free scenario)")
         segments.append((sample['T_rt_K'], 3600.0 * age_h))
     t_zero = sum(d for _, d in segments)                     # the first spectrum, on the clock that starts at mixing
+    early = [episode for episode in sample['heated'] if episode[0] < 0.0]
+    if early:                                                # heating before the first spectrum, inside the age
+        if sample['pre_segments']:
+            raise ValueError(f"{sample['name']}: heating before the first spectrum needs an unknown age, not a known history")
+        segments, clock = [], -t_zero
+        for start, T_K, duration in early:
+            stop = start + duration
+            if stop > 1e-6:
+                raise ValueError(f"{sample['name']}: a heating episode before the first spectrum must end before it")
+            start = max(start, -t_zero)                      # an episode longer than the age is cut at mixing
+            if stop <= start:
+                continue
+            if start < clock - 1e-6:
+                raise ValueError(f"{sample['name']}: heating episodes overlap")
+            if start > clock:
+                segments.append((sample['T_rt_K'], start - clock))
+            segments.append((T_K, stop - start))
+            clock = stop
+        if clock < 0.0:
+            segments.append((sample['T_rt_K'], -clock))
     clock = 0.0
     for start, T_K, duration in sample['heated']:
+        if start < 0.0:
+            continue
         if start < clock - 1e-6:
             raise ValueError(f"{sample['name']}: heating episodes overlap")
         if start > clock:

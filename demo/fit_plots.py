@@ -23,6 +23,7 @@ from demo.reactor_plots import CONCENTRATION_PANELS, plot_concentration_panels
 from demo.style import BLUE_RAMP, GRID, INK, INK_MUTED, INK_SOFT, RULE, SERIES, SURFACE
 from kinetics.constants import ZERO_CELSIUS_K
 from kinetics.data.observables import PHOSPHATE_WINDOWS
+from kinetics.fitting.residuals import SHARE_SPECIES
 from kinetics.reactor.protocol import build_protocol_schedule
 
 SCENARIO_ORDER = ('short', 'middle', 'long', 'free')
@@ -807,15 +808,19 @@ def _temperature_note(curve, t0: float) -> str:
 
 
 def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model: str, beyond: float = 1.15,
-                             before: str = None, margin_h: float = 24.0, solvent_stage: bool = False):
+                             before: str = None, margin_h: float = 24.0, solvent_stage: bool = False, measured=None):
     """Concentrations the model gives one tube, in the four panels of the reactor figures
-    (demo.reactor_plots.plot_concentration_panels). No measurement is drawn.
+    (demo.reactor_plots.plot_concentration_panels). The measured shares are drawn as points.
 
     trajectories: kinetics.fitting.reporting.simulate_fit_trajectories. spectrum_times: hours since mixing of the
     spectra of the tube. model: the age reading, written in the title after the tube. A
-    heated tube gets its temperature above the panels.
+    heated tube gets its temperature above the panels. measured: kinetics.fitting.reporting.tabulate_fit_shares
+    of the fit (all samples; the tube is picked out here). A point is the measured amount (share × total_M) at its
+    spectrum time, in molecules: a silyl window counts silyl groups, so HMDSO (two per molecule) is halved. A window
+    of two species (TMSOEG with TMSOdiEG) is their sum and is drawn grey; the P-silyl window has no curve and is not
+    drawn, nor are the points of a panel that says 'none in this tube'. No error bar is drawn; a negative point lowers the axis to show it.
     The clock is the experimental one: t = 0 is the addition of TMSPA (the tubes with TMSPA) or of TMSOH (mixing).
-    Each NMR event is a vertical line, drawn across the panels: the ³¹P and ¹³C scans taken within 1 h of each other
+    Each NMR event is a mark on the time axis, like solvent and TMSPA: the ³¹P and ¹³C scans taken within 1 h of each other
     are one event (their mean time). Nothing is greyed out.
     solvent_stage: the tube was prepared as the bench protocol says (kinetics.reactor.protocol.build_protocol_schedule):
     EC/DEC with water only, stirred and left to equilibrate before t = 0, with the water of the stock (before the 5 vol%
@@ -824,7 +829,7 @@ def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model
     before: text under the panels on what is known of the age. margin_h (or 15 % of the measured span if longer) is
     drawn after the last spectrum; where before is None, the curve runs to beyond × the last spectrum instead.
     Concentrations below 1 µM are drawn as 0 (what is left there is the integrator's noise, with either sign), every
-    axis starts at 0, and a panel with nothing above 1 µM says so.
+    axis starts at 0 unless a measured point is below 0 (then the axis reaches it), and a panel with nothing above 1 µM says so.
     """
     rows = trajectories[trajectories['sample'] == sample]
     t0, t1 = min(spectrum_times), max(spectrum_times)
@@ -862,6 +867,25 @@ def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model
             ax.set_yticks([])
             ax.text(0.5, 0.5, 'none in this tube (all below 1 µM)', transform=ax.transAxes, ha='center', va='center',
                     fontsize=9, color=INK_MUTED)
+    points = measured[measured['sample'] == sample] if measured is not None else None
+    drawn = {}                                                        # per panel: the legend labels of its points
+    if points is not None:
+        for ax, (_, members) in zip(fig.axes[:4], CONCENTRATION_PANELS):
+            if not sim['C_mM'][[sim['idx'][sp] for sp in members]].any():       # a panel that says 'none in this tube' has no points
+                continue
+            for window in members:
+                for nucleus, seen in points[points['window'] == window].groupby('nucleus'):
+                    owners = SHARE_SPECIES[nucleus][window]                 # the species of the window, with their silyl groups
+                    single = len(owners) == 1
+                    drawn.setdefault(ax, set()).add('NMR (measured)' if single else
+                                                    f"NMR (measured): {' + '.join(owners)}, one {NUCLEUS_LABELS[nucleus]} window")
+                    per_molecule = 1.0 / owners[next(iter(owners))] if single else 1.0
+                    colour = next((line.get_color() for line in ax.get_lines() if line.get_label() in owners and single), INK_MUTED)
+                    y = 1000.0 * seen['measured'] * seen['total_M'] * per_molecule
+                    ax.plot(seen['t_h'], y, 'o', color=colour, markersize=5, markeredgecolor=SURFACE, markeredgewidth=0.8,
+                            clip_on=False, zorder=4)
+                    bottom, top = ax.get_ylim()
+                    ax.set_ylim(min(bottom, 1.08 * float(y.min())), max(top, 1.08 * float(y.max())))
 
     def label_x(ax, marks):
         """Adds named ticks {time: (name, time text)} to the x axis; the numbered ticks and the marks that would collide are dropped or joined."""
@@ -872,15 +896,13 @@ def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model
             near = [k for k in joined if abs(k - time) <= gap]
             if near:
                 (first, first_when) = joined[near[0]]                 # two marks on one spot: one label, both times
-                joined[near[0]] = (f'{first} +\n{name}', f"({first_when.strip('()').replace(' h', '')}, {when.strip('()')})")
+                joined[near[0]] = (first if first == name else f'{first} +\n{name}',
+                                   f"({first_when.strip('()').replace(' h', '')}, {when.strip('()')})")
             else:
                 joined[time] = (name, when)
         ticks = [tick for tick in ax.get_xticks() if lo <= tick <= hi and all(abs(tick - m) > 1.5 * gap for m in joined)]
         ax.set_xticks(ticks + list(joined))
         ax.set_xticklabels([f'{tick:g}' for tick in ticks] + [f'{name}\n{when}' for name, when in joined.values()])
-        for tick in ax.get_xticklabels()[len(ticks):]:
-            tick.set_color(INK)
-            tick.set_fontweight('bold')
 
     start, end = -pre_h, t[-1]
     nmr_times = []                                 # one event for the scans of both nuclei, which follow each other within the hour
@@ -890,24 +912,24 @@ def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model
         else:
             nmr_times.append([time])
     nmr_times = [float(np.mean(group)) for group in nmr_times]
-    style = '-' if len(nmr_times) == 1 else '--'
     for ax in fig.axes:
         ax.set_xlim(start, end)
-        for t_nmr in nmr_times:
-            ax.axvline(t_nmr, color=INK_SOFT, linewidth=1.1, linestyle=style, zorder=3)
     marks = {0.0: ('TMSPA' if with_tmspa else 'mixing', '(0 h)')}
     if solvent_stage:
         marks[start] = ('solvent', f'({start:.0f} h)')
-    nmr_handle = Line2D([], [], color=INK_SOFT, linewidth=1.1, linestyle=style, label='NMR data')
+    for t_nmr in nmr_times:
+        marks[t_nmr] = ('NMR', f'({t_nmr:.0f} h)')
     for ax, (_, members) in zip(fig.axes[:4], CONCENTRATION_PANELS):
         label_x(ax, marks)
         if sim['C_mM'][[sim['idx'][sp] for sp in members]].any():          # a panel that says 'none in this tube' has no legend
-            handles = [*ax.get_legend_handles_labels()[0], nmr_handle]
+            handles = [*ax.get_legend_handles_labels()[0]]
+            for label in sorted(drawn.get(ax, ())):                     # the plain label first, then those of the summed windows
+                handles.append(Line2D([], [], color=INK_MUTED, marker='o', linestyle='none', markersize=5, label=label))
             ax.legend(handles=handles, loc='center left' if len(handles) > 2 else 'best')
     if len(nmr_times) == 1:
-        note = f'Vertical line: the NMR spectrum, at {nmr_times[0]:.0f} h.'
+        note = f'NMR: the spectrum, marked on the time axis, at {nmr_times[0]:.0f} h.'
     else:
-        note = (f'Vertical dashed lines: the {len(nmr_times)} NMR spectra, at ' + ', '.join(f'{x:.0f}' for x in nmr_times)
+        note = (f'NMR: the {len(nmr_times)} spectra, marked on the time axis, at ' + ', '.join(f'{x:.0f}' for x in nmr_times)
                 + ' h (the ³¹P and ¹³C scans of one round count as one).')
     note += f'\n{before or ""}\nThe model runs on after the last spectrum.'
     if solvent_stage:

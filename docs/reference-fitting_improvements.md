@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Status** | Fourth fit: run on 2026-10-19/20, results in `notebooks/results/05_fit4/`. Fifth fit: prepared on 2026-10-20, not launched |
+| **Status** | Fourth fit: run on 2026-10-19/20, results in `notebooks/results/05_fit4/`. Fifth fit: prepared on 2026-10-20, ready to launch, not launched |
 | **Source** | Y. Alcaraz Galván |
 | **Scope** | What changes from one fit to the next, why, what each run cannot settle, and how to start it. The third fit is in `plan-fit_improvement.md` |
-| **Applies to** | Branch `fit/first-fit`. Fourth fit: commit `b06be37` plus the patch the chain recorded (`code_vs_commit.patch`). Fifth fit: the commit of 2026-10-20 plus the changes listed in `guide-commits.md` |
+| **Applies to** | Branch `fit/first-fit`. Fourth fit: commit `b06be37` plus the patch the chain recorded (`code_vs_commit.patch`). Fifth fit: commit `d1125a2` plus the changes listed in `guide-commits.md` |
 | **Evidence** | Third and fourth fits (`notebooks/results/05_fit3/`, `05_fit4/`); the raw NMR inventory (`.jdf` headers and file names); P. Broqvist's 2026-10-08 snapshot and `tmspa_reaction_network_model` notebook; Gogoi et al. 2022 (RXN-01) and 2024 (RXN-02) with the SI of RXN-02 |
 | **Confidentiality** | Quotes numbers derived from the lab NMR spectra (private repository) |
 
@@ -101,7 +101,7 @@ Two changes. Everything else stays as in the fourth fit: structures, solvation m
 | # | Change | Why |
 |---|---|---|
 | C1 | The 2 % tube is heated **8 h at each step** of the ramp, with the six steps placed on the clock of the files by one rule (2.3) and written as explicit episodes in `fit_config.json` | The bench protocol (RXN-02 Methods) says 8 h per step; the fourth fit used the ~17 min that the in-situ spectra cover. Its 8 h sensitivity placed the steps over two spectra |
-| C2 | The network takes **N10–N15** of P. Broqvist's generated network, with **no new free parameter** (2.4) | They are in the database network. Two of them (N12, N15) are hydrolyses that release HMDSO instead of TMSOH: a route without the TMSOH avalanche, which the nine-reaction model lacks |
+| C2 | The network takes **N10–N15** of P. Broqvist's generated network, with **no new free parameter** (2.4) | They are in the database network, so they belong in the model unless something rules them out. Two of them (N12, N15) are further hydrolyses; N15 turns out to be a second, faster start of the same avalanche (2.4) |
 
 The approach behind both: follow the bench protocol (solvent and water stirred 24 h, left 12 h, TMSPa added at t = 0, NMR after an unknown age) and, where the files contradict it, take the reading that needs the fewest events nobody recorded.
 
@@ -177,7 +177,7 @@ gantt
 
 Every step contains its in-situ spectrum, and none overlaps a room-temperature acquisition (²⁹Si included). The episodes go into `notebooks/results/05_fit5/fit_config.json` (`sample_overrides`), so the data file of the observables, and with it the fourth fit, stay as they are.
 
-**What it moves.** The 30 °C and 40 °C steps change nothing measurable: with the fourth fit's barrier, 8 h at 40 °C open less than 0.1 mM of EC, and the phosphate and silanol equilibria come back on cooling. The 70 °C and 80 °C steps matter: run with the fourth fit's parameters they open about 90 mM of EC (CO₂) and 45 mM of the second ring-opening product, against a ¹³C window that sees almost none. The fit will have to raise the solvent-attack barrier or move other values; the misplaced fourth-fit sensitivity gave χ² 50.1 → 59.5 at 1 day, still fitting, with the R4 shift going from −0.22 to −0.28 eV.
+**What it moves.** The 30 °C and 40 °C steps change nothing measurable: with the fourth fit's barrier, 8 h at 40 °C open less than 0.1 mM of EC, and the phosphate and silanol equilibria come back on cooling. The 70 °C and 80 °C steps matter: run with the fourth fit's parameters they open about 90 mM of EC (CO₂) and 45 mM of the second ring-opening product, against a ¹³C window that sees almost none. With the fourth fit's 1 day parameters unchanged, the base heating alone takes χ² from 50.1 to 90.7 (worst miss 3.6, ring-opened EC in the last spectrum). The fit will have to raise the solvent-attack barrier or move other values; the misplaced fourth-fit sensitivity gave χ² 50.1 → 59.5 at 1 day after refitting, still fitting, with the R4 shift going from −0.22 to −0.28 eV.
 
 ### 2.4 C2: reactions N10–N15
 
@@ -194,9 +194,19 @@ P. Broqvist's notebook builds every atom-balanced step of one or two computed mo
 
 - **No new species and no new end point.** The reaction energies follow from the species energies, so a combination keeps its exact sum, freed energies included; where R1–R9 are at equilibrium, so are N10–N15. They add routes, not equilibria.
 - **Each route needs a barrier, and no measurement fixes one.** P. Broqvist uses 1.15 eV for all six (his class "other": "no data; the v1 value"). With that value N15 would run 10³–10⁷ times faster than our first hydrolysis (ΔG‡ 1.34–1.60 eV) and take over the start of the reaction on a number nobody measured.
-- **So no new free parameter.** N15 and N12 are hydrolyses: each takes the barrier of the hydrolysis it starts from (R1 and R2). The four exchanges keep 1.15 eV fixed: at room temperature that is about a year for the amounts in our tubes, so they are present and inert; at 80 °C they only speed the approach to an equilibrium that R1–R9 already set. A direct phosphate-to-phosphate exchange was screened and withdrawn in the third fit (not needed, not found in the literature); here it is kept at that slow, fixed value.
-- **What may change.** N15 and N12 consume water without releasing TMSOH, so they convert TMSPa slowly and steadily instead of after an induction. That is a possible way for the model to reach the partial conversion of "TMSPa alone" at its first spectrum (measured 81 % TMSPA, model 100 %), its largest miss.
+- **So no new free parameter.** N15 and N12 are hydrolyses: each takes the barrier of the hydrolysis it starts from (R1 and R2). The four exchanges keep 1.15 eV fixed: at room temperature that is months to years for the amounts in our tubes, so they are present and inert; at 80 °C they only speed the approach to an equilibrium that R1–R9 already set. A direct phosphate-to-phosphate exchange was screened and withdrawn in the third fit (not needed, not found in the literature); here it is kept at that slow, fixed value.
+- **They do not avoid the avalanche.** N15 and N12 release HMDSO instead of TMSOH, but their products give TMSOH back at once through R6 and R7 run backwards (transfer barriers of 0.6–0.7 eV). So they are further starts of the same avalanche, not a route around it (checked below).
 - **Sensitivity `Peter barriers`**: all six at 1.15 eV, as in his notebook.
+
+**Checked before the run** (the fourth fit's 1 day parameters run forward, one added step at a time):
+
+| Added | χ² (fourth fit: 50.1) | Worst miss | ΔG‡ at 22.5 °C |
+|---|---|---|---|
+| N10, N11, N13 or N14 | 50.1–50.3 | 2.96 (unchanged) | 1.09–1.22 eV, fixed |
+| N12 | 57.8 | −3.0, BMSPA of the 0.5 % tube | 0.93 eV (R2: 0.96) |
+| N15 | 2204 | +47, BMSPA of the 0.5 % tube | 1.29 eV (R1: 1.34) |
+
+N15 is the one that matters. With the barrier class of R1, its more negative ΔG gives it a barrier 0.05 eV lower, so it starts the reaction about seven times faster than R1; its products (MMSPA + HMDSO) give TMSOH back at once through R6 run backwards, which feeds the avalanche. The 0.5 % tube, which the fourth fit placed just before its fall, then falls before its spectrum. The fit compensates by raising g_R1 by about 0.05 eV. The fourth fit's 7 day reading already sat at g_R1 = 1.635 eV, so the search box of g_R1 now reaches 1.80 eV instead of 1.70; the other boxes are unchanged.
 
 Neither network has water opening EC (RXN-02 cites it from 40 °C); it stays out, as in the fourth fit (1.5, point 6).
 
@@ -217,12 +227,13 @@ Kept: `floor x0`, `floor x2`, `covariance x0.5`, `x2`, `x4`, `glovebox 4 h`, `gl
 |---|---|
 | `heating as recorded` | The 2 % tube heated only during its in-situ spectra (the fourth fit's base) |
 | `30 C before NMR 1` | An extra 8 h at 30 °C ending 1 h before NMR 1 (the other reading of "after 3oC"); cut at mixing when the age is shorter |
+| `cooling 3 h` | Every step of the 2 % tube ends at least 3 h before the next room-temperature round instead of 1 h (the 50, 60, 70 and 80 °C steps move 0.9–1.9 h earlier) |
 | `Peter barriers` | N10–N15 all at 1.15 eV |
 
 ### 2.7 Limitations of the run
 
-1. **The steps are a reading.** 8 h comes from the article, the 1 h cooling is declared, and NMR 1 as the room-temperature reference rests on the SI and on the absence of any 30 °C file before it. `heating as recorded` and `30 C before NMR 1` bound the choice.
-2. **N12 and N15 share barriers by assumption.** The data cannot tell N15 from R1: both start TMSPa hydrolysis. The fitted g_R1 is now the barrier of both routes.
+1. **The steps are a reading.** 8 h comes from the article, the 1 h cooling is declared, and NMR 1 as the room-temperature reference rests on the SI and on the absence of any 30 °C file before it. `heating as recorded`, `30 C before NMR 1` and `cooling 3 h` bound the choice. The cooling is not neutral: after a fast cool-down the ³¹P shares relax for about 2 h, and with the fourth fit's 1 day parameters χ² is 154, 91 and 76 for 0, 1 and 3 h at room temperature before the round.
+2. **N12 and N15 share barriers by assumption.** The data cannot tell N15 from R1: both start TMSPa hydrolysis. The fitted g_R1 is now the barrier of both routes, and it will be about 0.05 eV higher than in the fourth fit for that reason alone; the two values are not comparable one to one.
 3. Points 1–7 of 1.5 still hold, except that the heated 2 % tube now spends 48 h above room temperature.
 
 ### 2.8 How to start it
@@ -231,6 +242,8 @@ Kept: `floor x0`, `floor x2`, `covariance x0.5`, `x2`, `x4`, `glovebox 4 h`, `gl
 tmux new -s fit5 bash notebooks/results/05_fit5/run_chain.sh
 ```
 
-The fourth fit's chain took about 14.5 h with 12 workers; the time of one evaluation with nine and with fifteen reactions is in `guide-commits.md`. The chain writes `provenance.txt` and `code_vs_commit.patch` when it starts and stops at the first failed stage; `run.log` says where it is. Do not edit `kinetics/` or `scripts/run_fit.py` while it runs.
+The laptop must stay on its charger: on external power closing the lid does not suspend it and GNOME does not suspend it when idle. The chain runs 14 workers (12 in the fourth fit; 16 threads on 4 performance and 8 efficiency cores, two left free). Each worker takes about 100 MB.
+
+The fourth fit's chain took about 14.5 h with 12 workers. Over the search box one evaluation costs 10–20 % more than in the fourth fit (the 8 h steps about 5 %, the six added steps the rest; details in `guide-commits.md`), the two extra workers save a little, and `cooling 3 h` adds two short fits, so the fifth chain should take about 15–16 h (14–18 h): started at 19:00, it ends the next morning around 10:00–11:00. A failed recovery check stops it at the night stage, as in the fourth fit. The chain writes `provenance.txt` and `code_vs_commit.patch` when it starts and stops at the first failed stage; `run.log` says where it is. Do not edit `kinetics/` or `scripts/run_fit.py` while it runs.
 
 Afterwards, in this order: `fits_summary.csv` (does M3-split still fit, and with which reading), `sensitivities.csv` (`heating as recorded`, `30 C before NMR 1`, `Peter barriers`), `trace_verdict.csv`, `intervals.csv`. A notebook reads the run after `apply_fit_config('notebooks/results/05_fit5')`, which also sets the heating of the 2 % tube and the network.
