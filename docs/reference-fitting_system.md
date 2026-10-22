@@ -318,3 +318,19 @@ Reasons, decisions and limits are in [reference-fit_results.md](reference-fit_re
 - **Earlier fits.** A results folder without the new keys runs as before.
 - **Speed.** One evaluation of the lab set takes 0.74 s at 1 day and 0.94 s with free ages for M5-first (twelve and thirteen parameters).
 - **The sixth fit's setup** (`notebooks/results/05_fit6/fit_config.json`): main structure M5-first in the readings 1 h, 1 day and free ages; M3-first and M3-split at 1 day and free ages; M3 left out; two recovery cases of M5-first (free ages, 1 day). Why each model is or is not fitted: [reference-fit_results.md](reference-fit_results.md) §6.3.12. `start_when_plugged.sh` in that folder waits for mains power, runs every stage on a tiny search in `/tmp/fit6_smoke` and starts `run_chain.sh` only if they all pass.
+
+## 11. Changes of fit 6.2 (2026-10-22, branch `fit/cosmors`, not run yet)
+
+Why: [reference-fit_results.md](reference-fit_results.md) §6.3.13. How it runs on a cloud machine: [guide-google_cloud.md](guide-google_cloud.md).
+
+| Where | Change |
+|---|---|
+| [snapshot.py](../kinetics/data/snapshot.py) | `get_cosmors_records`: COSMO-RS solvation free energies of the snapshot per solvent [eV] |
+| [medium.py](../kinetics/data/medium.py) | `SolvationMedium.method`: `md` (default, every earlier fit) or `cosmors`; stored in `fit_config.json` under `solvation.method` only when not `md` |
+| [species.py](../kinetics/data/species.py) | A COSMO-RS medium takes `dE_solv_eV` from the COSMO-RS table, mixed by the medium's rule; no standard error stored |
+| [uncertainty.py](../kinetics/thermo/uncertainty.py) | `calculate_method_gap`: per reaction, the solvation of the medium's method minus that of the MD (zero in an MD medium). The MD standard errors are kept in every medium |
+| [candidates.py](../kinetics/fitting/candidates.py) | The covariance of the freed energies adds the squared gap per reaction (independent); the ±k σ box follows |
+| [run_fit.py](../scripts/run_fit.py) | `shift_to_active_medium`: starts taken from an earlier run computed in another medium keep their reaction energies |
+
+- **Earlier fits.** An MD medium gives a zero gap and the same covariance: fits 1–6 run as before.
+

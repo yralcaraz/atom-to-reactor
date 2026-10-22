@@ -107,3 +107,32 @@ The documents and notebooks of the fifth fit's review and of the sixth fit's set
 
 **Checks**: links to the renamed documents resolved in every document of `docs/`, `MODULES.md` and `README.md` (the notebooks still cite the older `plan-fit_improvement.md`).
 
+## 2026-10-22 - Fit 6.2 setup: COSMO-RS solvation (branch `fit/cosmors`)
+
+**Commit** "Fit 6.2 setup: COSMO-RS solvation, cloud run" on the branch `fit/cosmors` (worktree `atom-to-reactor-cosmors`) · **against** `ee6ab2a`
+
+Why: [reference-fit_results.md](reference-fit_results.md) §6.3.13. The sixth fit runs on the laptop from `ee6ab2a`; this branch is developed in a separate worktree so that its code never reaches the running chain.
+
+**Code**
+
+| File | Change |
+|---|---|
+| `kinetics/data/snapshot.py` | `get_cosmors_records` (solvation free energy per solvent, eV) |
+| `kinetics/data/medium.py` | `SolvationMedium.method` (`md`, `cosmors`); label and dict round trip |
+| `kinetics/data/species.py` | `_cosmors_database`: a COSMO-RS medium's database |
+| `kinetics/thermo/uncertainty.py` | `calculate_method_gap` |
+| `kinetics/fitting/candidates.py` | The squared gap per reaction added to the covariance of the freed energies |
+| `scripts/run_fit.py` | `shift_to_active_medium` for starts from a run in another medium |
+| `tests/test_medium.py` | `test_cosmors_medium` (mixture, gap, unchanged MD covariance, σ of the prior) |
+
+**Documents**: `docs/reference-fit_results.md` §6.3.13; `docs/reference-fitting_system.md` §11; new `docs/guide-google_cloud.md`; `README.md`.
+
+**Not in git** (lab-derived): `notebooks/results/05_fit6.2/fit_config.json` (the sixth fit's setup with `solvation.method = cosmors`, recovery truths moved to the COSMO-RS frame, a `why` list) and `notebooks/results/05_fit6.2/run_vm.sh` (smoke run of every stage, then the chain; paths relative to the repository; resumes after a stop).
+
+**Checks**
+
+- `tests/test_medium.py` passes (run at low priority while the sixth fit runs).
+- COSMO-RS centre, R1 / R2 / R3 / R4 / R8 / R9: +0.134 / +0.128 / +0.102 / −0.136 / −0.024 / −0.083 eV; gap to the MD +0.387 / +0.310 / +0.163 / −0.233 / −0.137 / −0.067; σ of the prior 0.40 / 0.32 / 0.18 / 0.26 / 0.17 / 0.13.
+- The fifth fit's 1 day parameters, embedded in M5-first and moved to the COSMO-RS frame: χ² of the spectra 46.62 in both frames; prior term 15.23 (MD) and 1.15 (COSMO-RS).
+- Not smoke-tested on the laptop (the sixth fit uses its processors); `run_vm.sh` runs the smoke test on the machine before the chain.
+

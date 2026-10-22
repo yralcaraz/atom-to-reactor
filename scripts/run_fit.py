@@ -82,6 +82,8 @@ if str(REPO) not in sys.path:
 
 from kinetics.data import load_experimental_data, load_lab_observables
 from kinetics.data.medium import get_active_medium
+from kinetics.data.species import load_medium_species_database
+from kinetics.fitting.config import load_fit_config
 from kinetics.data.network import get_active_network_variant, set_active_network_variant
 from kinetics.fitting import (
     DELTA_CHI2_95, REPORT_SOLVER, SCENARIOS, FitProblem, FitStructure, add_profile_points, apply_fit_config,
@@ -392,8 +394,22 @@ def earlier_run_starts(structure: str, scenario: str) -> list:
         thetas = [load_fit_result(str(f))['theta'] for f in (same or files)]
         if not same:
             thetas = [{k: v for k, v in th.items() if not k.startswith('log10 age')} for th in thetas]
-        return [embed_parent_theta(structure, th) if name != structure else th for th in thetas]
+        thetas = [embed_parent_theta(structure, th) if name != structure else th for th in thetas]
+        return [shift_to_active_medium(th) for th in thetas]
     return []
+
+
+def shift_to_active_medium(theta: dict) -> dict:
+    """A parameter set of the earlier run (START_FROM) with its freed energies moved so that every reaction energy
+    keeps its value when the earlier run computed them in another medium (fit 6.2: COSMO-RS after MD): an offset
+    is measured from the computed value, which depends on the medium."""
+    earlier = load_fit_config(START_FROM)['medium']
+    if earlier == get_active_medium():
+        return theta
+    freed = [k[3:] for k in theta if k.startswith('dG ')]
+    before = calculate_network_thermo(298.15, species_db=load_medium_species_database(earlier))['dG_rxn_eV']
+    now = calculate_network_thermo(298.15)['dG_rxn_eV']
+    return {**theta, **{f'dG {r}': theta[f'dG {r}'] + before[r] - now[r] for r in freed}}
 
 
 def run_structure(structure: str, scenario: str, args, extra_starts=()) -> dict:

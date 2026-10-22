@@ -20,12 +20,17 @@ Without explicit records, the components are those of the active solvation mediu
 linear mixture each term is weighted by the mole fraction of its solvent: σ_solute² = Σ_s (x_s σ_solute,s)², and
 the pure-solvent reference terms combine into one term shared by every species, σ_ref² = Σ_s (x_s σ_ref,s)².
 
+Fit 6.2: in a COSMO-RS medium these standard errors stay those of the MD, and calculate_method_gap gives, per
+reaction, the gap between the two solvation methods, which the prior of the freed energies adds as an independent
+variance per reaction (kinetics.fitting.candidates).
+
 Source: Y. Alcaraz Galván
 """
 
 import math
 from collections import Counter
 from copy import deepcopy
+from dataclasses import replace
 from functools import lru_cache
 
 import numpy as np
@@ -35,7 +40,7 @@ from kinetics.constants import KJ_MOL_TO_EV
 from kinetics.data.network import NETWORK, list_species
 from kinetics.data.medium import SolvationMedium, get_active_medium
 from kinetics.data.snapshot import get_solvation_records
-from kinetics.data.species import resolve_species_database
+from kinetics.data.species import load_medium_species_database, resolve_species_database
 
 
 def calculate_solvation_sigma_components(solvation_records: dict = None) -> dict:
@@ -106,6 +111,22 @@ def calculate_solvation_covariance(rxn_ids, network: dict = None, solvation_reco
             value += sum(nets[i].values()) * sum(nets[j].values()) * sigma_solvent ** 2
             cov.loc[i, j] = value
     return cov
+
+
+def calculate_method_gap(rxn_ids, network: dict = None, medium: SolvationMedium = None) -> pd.Series:
+    """Per reaction [eV]: the solvation contribution of the medium's method minus that of the MD in the same
+    medium (same snapshot, fractions and rule). Zero in an MD medium. A reaction energy computed with one method
+    lies this far from the other method's."""
+    medium = medium or get_active_medium()
+    if medium.method == 'md':
+        return pd.Series(0.0, index=list(rxn_ids))
+    net = network or NETWORK
+    this, md = load_medium_species_database(medium), load_medium_species_database(replace(medium, method='md'))
+    gap = {}
+    for r in rxn_ids:
+        nets = _net_stoichiometry(net[r]['reactants'], net[r]['products'])
+        gap[r] = sum(nu * (this[sp]['dE_solv_eV'] - md[sp]['dE_solv_eV']) for sp, nu in nets.items())
+    return pd.Series(gap)
 
 
 def calculate_solvation_sigma_naive(reactants, products, solvation_records: dict = None) -> float:

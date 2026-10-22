@@ -16,6 +16,7 @@ import os
 from collections import Counter
 from functools import lru_cache
 
+from kinetics.constants import EV_TO_KCAL_MOL
 from kinetics.paths import DATA_DIR_VAR, data_path
 
 DEFAULT_SNAPSHOT_FILE = "tank_api_snapshot_2026-09-24.json"
@@ -83,6 +84,20 @@ def get_solvation_records(path: str = DEFAULT_SNAPSHOT_PATH, solvent: str = DEFA
         raise KeyError(f"No MD solvation in '{solvent}' in {os.path.basename(path)}: "
                        f"it has {sorted(list_solvation_sets(path))}")
     return records
+
+
+@lru_cache(maxsize=8)
+def get_cosmors_records(path: str = DEFAULT_SNAPSHOT_PATH, solvent: str = DEFAULT_SOLVENT) -> dict:
+    """{species: COSMO-RS solvation free energy [eV]} in one neat solvent (openCOSMO-RS table of the snapshot,
+    298.15 K, 1 M ideal gas → 1 M ideal solution). Raises if the snapshot has no table or no row in that solvent."""
+    table = load_snapshot(path).get('cosmors')
+    if not table:
+        raise KeyError(f"No COSMO-RS table in {os.path.basename(path)}")
+    rows = {r['solute_pipeline_id']: r['dg_solv_kcal_mol'] / EV_TO_KCAL_MOL for r in table['rows']
+            if r['solvent_pipeline_id'] == solvent and r.get('dg_solv_kcal_mol') is not None}
+    if not rows:
+        raise KeyError(f"No COSMO-RS row in '{solvent}' in {os.path.basename(path)}")
+    return rows
 
 
 def get_structure(pipeline_id: str, path: str = DEFAULT_SNAPSHOT_PATH) -> tuple[list, list]:

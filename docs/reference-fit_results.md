@@ -582,6 +582,30 @@ Both statements assume that each search reaches the global minimum of its struct
 
 **Saved:** about 1 h (M3 in every reading, M3-split and M3-first at 1 h). **Spent instead:** a second recovery case (the main structure at 1 day, two data sets), the reading the fifth fit took as its reference. The total stays at about 12–14 h.
 
+#### 6.3.13 Fit 6.2: the same fit with COSMO-RS solvation
+
+Decided on 2026-10-22, while the sixth fit runs: the other solvation method of 6.3.4 as its own fit, not mixed into the sixth. Setup in `notebooks/results/05_fit6.2/fit_config.json`, code on the branch `fit/cosmors`, run on a cloud machine ([guide-google_cloud.md](guide-google_cloud.md)).
+
+| | Sixth fit | Fit 6.2 |
+|---|---|---|
+| Solvation of every species | MD energy (MACE), EC and DEC mixed linearly | COSMO-RS free energy (openCOSMO-RS, 298 K), EC and DEC mixed linearly |
+| Computed ΔG_rxn R1 / R2 / R3 / R4 / R8 / R9 (eV) | −0.253 / −0.182 / −0.061 / +0.097 / +0.113 / −0.016 | +0.134 / +0.128 / +0.102 / −0.136 / −0.024 / −0.083 |
+| σ of each energy (prior) | MD standard error | MD standard error ⊕ the gap to the MD, per reaction and independent |
+| σ R1 / R2 / R3 / R4 / R8 / R9 (eV) | 0.10 / 0.09 / 0.08 / 0.12 / 0.10 / 0.11 | 0.40 / 0.32 / 0.18 / 0.26 / 0.17 / 0.13 |
+| Box (±3 σ) | ±0.24 to ±0.36 eV | ±0.38 to ±1.20 eV |
+| Everything else | — | as the sixth fit: models, readings, water, search, night, sensitivities, recovery |
+
+Decisions and how they follow from the discussion:
+
+- **One method per fit, the other to size the error** (6.3.4). The gap between COSMO-RS and MD is taken as one standard error of the computed energy, independent per reaction. A gap shared by all reactions (one direction, as in 6.3.2) was the other option; independent is the less restrictive and the simpler to state.
+- **The MD standard errors stay in the prior.** COSMO-RS has no stored error; the MD sampling error is kept as a floor.
+- **Starts from the fifth fit, moved to the COSMO-RS frame.** An offset is measured from the computed value, so the fifth fit's offsets are shifted by the gap: every reaction energy keeps its value. Checked: the fifth fit's 1 day parameters give the same χ² of the spectra in both frames (46.6); only the prior term changes (15.2 with the MD errors, 1.2 in the COSMO-RS frame).
+- **Recovery truths** moved the same way.
+
+What it can show: whether the tubes need smaller offsets from COSMO-RS than from MD (the fifth fit's energies are −0.16, −0.06, +0.01, −0.09 eV from COSMO-RS against +0.23, +0.25, +0.18, −0.33 from MD), and whether the barriers change with the solvation method. Held at COSMO-RS without offsets the tubes are not met (6.3.4); with offsets inside their σ they should be. The spectra fix the four energies of R1–R4 whatever the centre (6.3.3), so the main difference expected is in how the result is read and in the reactions the tubes see less (R8, R9).
+
+Limitations, on top of 6.3.10: the COSMO-RS values are free energies at 298 K only; the gap to the MD as an error is a declaration; the very wide box (R1 ±1.2 eV) leaves the energies held mainly by the tubes.
+
 ---
 
 ## 7. Solvation in EC/DEC: linear or preferential mixing

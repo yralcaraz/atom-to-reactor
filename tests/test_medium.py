@@ -18,11 +18,14 @@ if repo_root not in sys.path:
 import numpy as np
 
 from kinetics.data.medium import DEFAULT_MEDIUM, SolvationMedium, get_active_medium, set_active_medium
-from kinetics.data.snapshot import SNAPSHOT_2026_10_08_PATH, get_solvation_records
+from dataclasses import replace
+
+from kinetics.data.snapshot import SNAPSHOT_2026_10_08_PATH, get_cosmors_records, get_solvation_records
 from kinetics.data.species import load_species_database, resolve_species_database
 from kinetics.fitting.config import apply_fit_config, check_fit_medium, load_fit_config
 from kinetics.thermo.reaction import calculate_network_thermo
-from kinetics.thermo.uncertainty import calculate_solvation_covariance, calculate_solvation_sigma
+from kinetics.fitting.candidates import _energy_tools
+from kinetics.thermo.uncertainty import calculate_method_gap, calculate_solvation_covariance, calculate_solvation_sigma
 
 EC_DEC = SolvationMedium('tank_api_snapshot_2026-10-08.json', (('EC', 0.5), ('DEC', 0.5)))
 KCAL_TO_EV = 1.0 / 23.0605
@@ -62,6 +65,35 @@ def test_linear_ec_dec_mixture():
         set_active_medium(None)
     assert np.isclose(calculate_network_thermo(298.15).loc['R1', 'dG_rxn_eV'],
                       calculate_network_thermo(298.15, species_db=load_species_database()).loc['R1', 'dG_rxn_eV'])
+
+
+def test_cosmors_medium():
+    """Fit 6.2: COSMO-RS solvation mixed like the MD; MD standard errors kept; the gap to the MD enters the prior."""
+    if not HAVE_NEW:
+        print("skipped: no 2026-10-08 snapshot")
+        return
+    cosmo = replace(EC_DEC, method='cosmors')
+    assert SolvationMedium.from_dict(cosmo.to_dict()) == cosmo and 'method' not in EC_DEC.to_dict()
+    x = cosmo.mole_fractions()
+    expected = x['EC'] * get_cosmors_records(cosmo.path, 'EC')['TMSPA'] + x['DEC'] * get_cosmors_records(cosmo.path, 'DEC')['TMSPA']
+    freed = ('R1', 'R2', 'R3', 'R4')
+    try:
+        set_active_medium(EC_DEC)
+        md_thermo = calculate_network_thermo(298.15)
+        md_cov = calculate_solvation_covariance(list(freed)).to_numpy()
+        assert np.allclose(calculate_method_gap(freed), 0.0)
+        set_active_medium(cosmo)
+        assert math.isclose(resolve_species_database(None)['TMSPA']['dE_solv_eV'], expected, rel_tol=1e-12)
+        thermo = calculate_network_thermo(298.15)
+        gap = calculate_method_gap(freed)
+        for rxn in freed:          # computed energy moves by the gap; same MD standard error
+            assert math.isclose(thermo.loc[rxn, 'dG_rxn_eV'] - md_thermo.loc[rxn, 'dG_rxn_eV'], gap[rxn], abs_tol=1e-9)
+        assert abs(gap['R1'] - 0.387) < 0.002 and abs(gap['R4'] + 0.233) < 0.002
+        assert np.allclose(calculate_solvation_covariance(list(freed)).to_numpy(), md_cov)
+        sigma = _energy_tools(freed)[3]
+        assert np.allclose(sigma, np.sqrt(np.diag(md_cov) + gap.to_numpy() ** 2))
+    finally:
+        set_active_medium(None)
 
 
 def test_fit_config_round_trip():
@@ -207,6 +239,7 @@ def test_fit_config_network_and_samples():
 if __name__ == "__main__":
     test_default_medium_is_the_old_database()
     test_linear_ec_dec_mixture()
+    test_cosmors_medium()
     test_fit_config_round_trip()
     test_pre_history_override_fixes_the_age()
     test_network_variants()

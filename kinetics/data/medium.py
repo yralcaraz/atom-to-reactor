@@ -7,6 +7,11 @@ is built from the neat values with mole fractions (from the volume fractions, de
     linear     ΔE_mix = Σ x_s ΔE_s, standard errors with the same weights (the ideal-mixture limit; no
                preference of a solute for either solvent)
 
+The solvation method (fit 6.2): 'md' (MACE MD energies of the snapshot, the default and the method of fits 1–6) or
+'cosmors' (the openCOSMO-RS solvation free energies of the same snapshot, at 298.15 K, mixed by the same rule). With
+'cosmors' the standard errors of kinetics.thermo stay those of the MD, and the prior of the freed energies adds the
+gap between the two methods (kinetics.thermo.uncertainty.calculate_method_gap).
+
 The medium in use is one per process (the active medium): `resolve_species_database(None)` and the solvation
 standard errors of `kinetics.thermo` follow it. The default is neat EC from the 2026-09-24 snapshot, the medium of
 notebooks 01–03 and of fits 1–3. A fit run sets its medium once, at the start (kinetics.fitting.config).
@@ -27,6 +32,7 @@ from kinetics.paths import data_path
 # notebook 03 §5.4)
 SOLVENT_DENSITY_G_ML = {'EC': 1.321, 'DEC': 0.975}
 MIXING_RULES = ('linear',)
+SOLVATION_METHODS = ('md', 'cosmors')
 
 
 @dataclass(frozen=True)
@@ -35,12 +41,15 @@ class SolvationMedium:
     snapshot: str = DEFAULT_SNAPSHOT_FILE
     volume_fractions: tuple = (('EC', 1.0),)
     rule: str = 'linear'
+    method: str = 'md'
 
     def __post_init__(self):
         if abs(sum(f for _, f in self.volume_fractions) - 1.0) > 1e-9:
             raise ValueError(f'volume fractions must sum to one: {self.volume_fractions}')
         if self.rule not in MIXING_RULES:
             raise ValueError(f"mixing rule must be one of {MIXING_RULES}, not '{self.rule}'")
+        if self.method not in SOLVATION_METHODS:
+            raise ValueError(f"solvation method must be one of {SOLVATION_METHODS}, not '{self.method}'")
 
     @property
     def path(self) -> str:
@@ -62,19 +71,21 @@ class SolvationMedium:
 
     def label(self) -> str:
         date = self.snapshot.replace('tank_api_snapshot_', '').replace('.json', '')
+        what = 'COSMO-RS solvation' if self.method == 'cosmors' else 'MD solvation'
         if self.neat:
-            return f'neat {self.solvents[0]}, MD solvation of the {date} snapshot'
+            return f'neat {self.solvents[0]}, {what} of the {date} snapshot'
         volumes = ':'.join(f'{f:.2f}' for _, f in self.volume_fractions)
         moles = ', '.join(f'x_{s} {x:.3f}' for s, x in self.mole_fractions().items())
-        return f"{':'.join(self.solvents)} {volumes} by volume ({moles}), {self.rule} mixing, MD solvation of the {date} snapshot"
+        return f"{':'.join(self.solvents)} {volumes} by volume ({moles}), {self.rule} mixing, {what} of the {date} snapshot"
 
     def to_dict(self) -> dict:
-        return {'snapshot': self.snapshot, 'volume_fractions': dict(self.volume_fractions), 'rule': self.rule}
+        out = {'snapshot': self.snapshot, 'volume_fractions': dict(self.volume_fractions), 'rule': self.rule}
+        return {**out, 'method': self.method} if self.method != 'md' else out
 
     @classmethod
     def from_dict(cls, record: dict) -> 'SolvationMedium':
         return cls(snapshot=record['snapshot'], volume_fractions=tuple(record['volume_fractions'].items()),
-                   rule=record.get('rule', 'linear'))
+                   rule=record.get('rule', 'linear'), method=record.get('method', 'md'))
 
 
 DEFAULT_MEDIUM = SolvationMedium()

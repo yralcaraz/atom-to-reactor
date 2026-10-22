@@ -6,7 +6,8 @@ One record per snapshot species, keyed by `pipeline_id`:
     G_gas_Eh, G_gas_eV        ωB97M-V/def2-TZVPD Gibbs energy (RRHO, 298.15 K, 1 bar)
     H_gas_eV                  enthalpy at 298.15 K
     E_scf_eV                  electronic SCF energy (qRRHO starts from it)
-    dE_solv_eV                MACE MD solvation energy in the chosen solvent (an energy, not a free energy); None if absent
+    dE_solv_eV                MACE MD solvation energy in the chosen solvent (an energy, not a free energy); None if absent.
+                              In a COSMO-RS medium (fit 6.2): the COSMO-RS solvation free energy, mixed by the medium's rule
     solvent, solvation_T_K    solvent of that energy and temperature of its MD run (None if absent; for a mixture
                               the solvents joined by ':' and no temperature)
     dE_solv_sigma_eV          standard error of dE_solv (snapshot `uncertainty_kjmol`, see thermo/uncertainty.py)
@@ -29,7 +30,8 @@ from functools import lru_cache
 from kinetics.constants import HARTREE_TO_EV, KJ_MOL_TO_EV
 from kinetics.data.medium import SolvationMedium, get_active_medium
 from kinetics.data.snapshot import (
-    DEFAULT_SNAPSHOT_PATH, DEFAULT_SOLVENT, calculate_molar_mass, get_dataset_records, get_solvation_records,
+    DEFAULT_SNAPSHOT_PATH, DEFAULT_SOLVENT, calculate_molar_mass, get_cosmors_records, get_dataset_records,
+    get_solvation_records,
 )
 
 
@@ -50,6 +52,8 @@ def resolve_species_database(species_db: dict = None) -> dict:
 
 @lru_cache(maxsize=4)
 def _cached_medium_database(medium: SolvationMedium) -> dict:
+    if medium.method == 'cosmors':
+        return _cosmors_database(medium)
     if medium.neat:
         return _cached_species_database(medium.path, medium.solvents[0])
     x = medium.mole_fractions()
@@ -64,6 +68,24 @@ def _cached_medium_database(medium: SolvationMedium) -> dict:
             'dE_solv_sigma_eV': math.sqrt(sum((w * e) ** 2 for w, _, e in values)) if complete else None,
             'solvent': ':'.join(medium.solvents) if complete else None,
             'solvation_T_K': None,
+        }
+    return db
+
+
+def _cosmors_database(medium: SolvationMedium) -> dict:
+    """The database of a COSMO-RS medium: gas-phase records as in the MD one, solvation from the COSMO-RS table,
+    mixed linearly with mole fractions. No standard error is stored for it (dE_solv_sigma_eV None)."""
+    x = {medium.solvents[0]: 1.0} if medium.neat else medium.mole_fractions()
+    tables = {s: get_cosmors_records(medium.path, s) for s in medium.solvents}
+    db = {}
+    for name, record in _cached_species_database(medium.path, medium.solvents[0]).items():
+        complete = all(name in tables[s] for s in medium.solvents)
+        db[name] = {
+            **record,
+            'dE_solv_eV': sum(x[s] * tables[s][name] for s in medium.solvents) if complete else None,
+            'dE_solv_sigma_eV': None,
+            'solvent': ':'.join(medium.solvents) if complete else None,
+            'solvation_T_K': 298.15 if complete else None,
         }
     return db
 

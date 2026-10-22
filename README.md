@@ -175,6 +175,7 @@ The last three are read from two folders set with the environment variables `ATO
 | [reference-fitting_improvements](docs/reference-fitting_improvements.md) | The fourth fit and the plan of the fifth (was `reference-fit_improvements`) | Current (2026-10-20) |
 | [reference-fit_results](docs/reference-fit_results.md) | Review of the fifth fit, and the questions, decisions and limitations of the sixth (§6.3) | Current (2026-10-22) |
 | [guide-commits](docs/guide-commits.md) | What each change set modifies against the commit before it | Living document |
+| [guide-google_cloud](docs/guide-google_cloud.md) | Running a fit chain on a Compute Engine machine (fit 6.2) | Draft (2026-10-22) |
 | [guide-operando_experimental_protocol](docs/guide-operando_experimental_protocol.md) | Guide to notebook 02 | Under review |
 | [reference-api_migration](docs/reference-api_migration.md) | Function and module names before and after the 2026-09-29 layout | Under review |
 

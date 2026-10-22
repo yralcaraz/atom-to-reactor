@@ -29,7 +29,8 @@ build_fitted_model turns a fit result into a ModelSpec that reactors take like a
 
 Freed energies are parameters d_j = ΔG_rxn,j − computed value for R1–R4. They are applied as species shifts,
 so R5–R7 follow (transfer = hydrolysis + condensation) and R8, R9 keep their computed values. Their
-constraint is Gaussian with the covariance of the MD standard errors (kinetics.thermo).
+constraint is Gaussian with the covariance of the MD standard errors (kinetics.thermo). In a COSMO-RS medium (fit
+6.2) the computed values are those of COSMO-RS and the covariance adds, per reaction, the squared gap to the MD.
 
 The network is the active variant (kinetics.data.network; fifth fit: R1–R9 and N10–N15). A step that
 'follows' a reaction (N12 follows R2, N15 follows R1) takes the barrier class of that reaction in each structure,
@@ -55,7 +56,7 @@ from kinetics.data.network import NETWORK, get_active_network
 from kinetics.fitting.residuals import FREE_AGE_BOUNDS_H
 from kinetics.microkinetics.models import get_model
 from kinetics.thermo.reaction import calculate_network_thermo
-from kinetics.thermo.uncertainty import calculate_solvation_covariance, calculate_species_shifts
+from kinetics.thermo.uncertainty import calculate_method_gap, calculate_solvation_covariance, calculate_species_shifts
 
 # Fifth fit: the box of the first hydrolysis reaches 1.80 eV. N15 (TMSPA + H2O → MMSPA + HMDSO) shares its barrier
 # and starts the reaction about seven times faster than R1 at the same g, so g_R1 has to rise by about 0.05 eV; the
@@ -236,7 +237,9 @@ def _energy_tools(freed: tuple, prior_scale: float = 1.0):
         unit = [calculate_species_shifts({r: (1.0 if r == rxn else 0.0) for r in freed}) for rxn in freed]
         species = sorted({sp for shifts in unit for sp in shifts})
         matrix = np.array([[shifts.get(sp, 0.0) for shifts in unit] for sp in species])
-        cov = prior_scale * calculate_solvation_covariance(list(freed)).to_numpy()
+        cov = calculate_solvation_covariance(list(freed)).to_numpy()
+        # Fit 6.2: with COSMO-RS solvation the gap to the MD is added per reaction (zero in an MD medium)
+        cov = prior_scale * (cov + np.diag(calculate_method_gap(list(freed)).to_numpy() ** 2))
         computed = calculate_network_thermo(298.15)['dG_rxn_eV'].loc[list(freed)].to_numpy()
         _ENERGY_TOOLS[key] = (matrix, species, cholesky(cov, lower=True), np.sqrt(np.diag(cov)), computed)
     return _ENERGY_TOOLS[key]
