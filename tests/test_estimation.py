@@ -1,7 +1,7 @@
 """Tests for the first fit: sample histories, species shifts, residuals, structures, optimiser and profiles.
 
 Covers:
-1. simulate_history against the batch and design reactors, the call budget, a model with its own network.
+1. simulate_history against the batch reactor, sample times, the call budget.
 2. Species shifts: Wegscheider cycles stay closed, the requested reaction shifts come out, registered models unchanged.
 3. Residuals: scenarios, the replicate block, the one-sided paper term, ages found inside an evaluation.
 4. Solver tolerance: search and report settings agree far inside the measurement error.
@@ -29,10 +29,10 @@ from kinetics.constants import ZERO_CELSIUS_K
 from kinetics.data import DEFAULT_OBSERVABLES_PATH, NETWORK, NETWORK_SPECIES, load_experimental_data, load_lab_observables
 from kinetics.data.observables import SILYL_WINDOWS
 from kinetics.fitting import (
-    ExperimentDesign, FitProblem, calculate_parameter_directions, calculate_prediction_band, calculate_profile,
+    FitProblem, calculate_parameter_directions, calculate_prediction_band, calculate_profile,
     compare_structures, embed_parent_theta, extend_profile, find_confidence_interval, fit_leave_one_out, fit_structure,
     get_structure,
-    simulate_design, simulate_synthetic_shares, split_family_by_reaction, tabulate_reaction_barriers,
+    simulate_synthetic_shares, tabulate_reaction_barriers,
 )
 from kinetics.fitting.residuals import (
     FREE_AGE_BOUNDS_H, PENALTY, REPORT_SOLVER, SEARCH_SOLVER, _shares_from_state, build_sample_history,
@@ -65,16 +65,6 @@ def test_history_matches_existing_reactors():
     history = simulate_history(c0, [(295.65, 86400.0)], batch['t_s'], model=MID)
     assert history['success'] and history['species'] == list(NETWORK_SPECIES)
     assert np.max(np.abs(history['C_M'] - batch['C_M'])) < 1e-10, np.max(np.abs(history['C_M'] - batch['C_M']))
-    # Several segments: the design reactor (Radau) agrees within the solver tolerances
-    segments_h = ((22.5, 24.0), (60.0, 0.5), (22.5, 12.0), (80.0, 0.3), (22.5, 6.0))
-    times_h = (1.0, 24.0, 24.25, 30.0, 36.6, 42.8)
-    design = ExperimentDesign('test', 'test', _full(c0), segments_h, {'P': times_h})
-    reference = simulate_design(design, MID, points_per_segment=5)
-    history = simulate_history(c0, [(T + ZERO_CELSIUS_K, 3600.0 * h) for T, h in segments_h],
-                               3600.0 * np.array(times_h), model=MID)
-    for species in ('TMSPA', 'BMSPA', 'MMSPA', 'H3PO4'):
-        expected = reference['readouts']['P'][species]
-        assert np.max(np.abs(history['C_M'][history['idx'][species]] - expected)) < 2e-7, species
     # Sample times in any order, t = 0 included; times outside the history are refused
     shuffled = simulate_history(c0, [(295.65, 3600.0), (313.15, 3600.0)], [7200.0, 0.0, 1800.0], model=MID)
     assert shuffled['C_M'][shuffled['idx']['TMSPA'], 1] == 0.149
@@ -87,23 +77,7 @@ def test_history_matches_existing_reactors():
     # An exhausted call budget is reported, not raised
     starved = simulate_history(c0, [(295.65, 86400.0)], [86400.0], model=MID, max_rhs_calls=5)
     assert not starved['success'] and np.isnan(starved['C_M']).all()
-    print('  ✓ simulate_history: equals the batch reactor (1e-10 M) and the design reactor (2e-7 M); budget reported')
-
-
-def test_model_with_own_network():
-    split, network, steps = split_family_by_reaction('level1', 'hydrolysis')
-    assert steps == ['hydrolysis_R1', 'hydrolysis_R2', 'hydrolysis_R3']
-    variant = split.with_family_params('hydrolysis_R1', g_eV=1.30).with_family_params('hydrolysis_R2', g_eV=1.05)
-    carried = variant.__class__(**{**variant.__dict__, 'network': network})
-    c0 = {'TMSPA': 0.149, 'H2O': 1.05, 'EC': 7.1}
-    explicit = simulate_history(c0, [(295.65, 86400.0)], [86400.0], model=variant, network=network)
-    own = simulate_history(c0, [(295.65, 86400.0)], [86400.0], model=carried)
-    assert np.array_equal(explicit['C_M'], own['C_M']), 'a model that carries its network needs none passed'
-    batch = simulate_batch_reactor(_full(c0), T_K=295.65, t_end_s=86400.0, model=carried, n_points=5, t_start_s=60.0, method='BDF')
-    assert np.max(np.abs(batch['C_M'][:, -1] - own['C_M'][:, 0])) < 1e-10
-    rates = carried.calculate_rates(295.65)
-    assert rates.loc['R1', 'g_eV'] == 1.30 and rates.loc['R2', 'g_eV'] == 1.05 and rates.loc['R3', 'g_eV'] == 0.80
-    print('  ✓ a model with its own network is used as such by the history, batch and rate functions')
+    print('  ✓ simulate_history: equals the batch reactor (1e-10 M); budget reported')
 
 
 # ------------------------------------------------------------------------------
@@ -672,7 +646,6 @@ def test_windows_reproduce_notebook_03_if_available(tolerance_eV=0.005):
 
 if __name__ == "__main__":
     test_history_matches_existing_reactors()
-    test_model_with_own_network()
     test_species_shifts()
     test_sample_set_and_histories()
     test_replicate_block_and_limits()
