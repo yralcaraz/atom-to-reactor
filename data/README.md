@@ -18,7 +18,7 @@ The data files are read from folders set with two environment variables (see `.e
 | `LAB_NMR_DIR` | the NMR spectra |
 
 The species database, the network thermochemistry and every test are built from the snapshot, so the numerical
-pipeline needs `ATOM_DATA_DIR`. The DFT and MD data are from P. Broqvist's Tank dataset.
+pipeline needs `ATOM_DATA_DIR`. The DFT and MD data are from the Tank dataset.
 
 ## Snapshots: `tank_api_snapshot_<capture date>.json`
 

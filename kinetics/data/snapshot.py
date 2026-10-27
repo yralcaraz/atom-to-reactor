@@ -1,6 +1,6 @@
 """Read-only access to a Tank dataset API snapshot (`tank_api_snapshot_<capture date>.json`).
 
-The snapshot is the single data source of the pipeline (see `data/README.md`): the Tank dataset of P. Broqvist
+The snapshot is the single data source of the pipeline (see `data/README.md`): the Tank dataset
 (DFT, MD solvation, computed NMR shieldings, geometries). It is read from the data folder (`ATOM_DATA_DIR`,
 see `kinetics/paths.py`). It is parsed once and cached; the returned structures are shared, so callers must not mutate them.
 
@@ -8,7 +8,7 @@ Snapshots in use (see `data/README.md`): 2026-09-24 (MD solvation in EC at 298 K
 (MD solvation in EC at 338 K and in DEC at 298 K, openCOSMO-RS table). Since a snapshot may hold the MD solvation in
 more than one solvent, solvation records are always read for one solvent.
 
-Source: Y. Alcaraz Galván; DFT and MD data by P. Broqvist
+Source: Y. Alcaraz Galván; DFT and MD data from the Tank dataset
 """
 
 import json

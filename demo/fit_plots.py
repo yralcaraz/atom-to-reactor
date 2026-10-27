@@ -27,13 +27,17 @@ from kinetics.fitting.residuals import SHARE_SPECIES
 from kinetics.reactor.protocol import build_protocol_schedule
 
 SCENARIO_ORDER = ('short', 'middle', 'long', 'free')
+NEAR_ZERO_ORDER = ('0 min', '5 min', '10 min')   # seventh fit: TMSPA added minutes before the first acquisition
 TMSPA_VOL_FRACTION = 0.05               # TMSPA is added as 5 vol% and dilutes the water of the stock (calculate_recipe_molarities)
 TRACE_MM = 1e-3                          # below 1 µM a simulated concentration is drawn as 0 (integrator noise)
-SCENARIO_LABELS = {'short': 'short (1 h)', 'middle': 'middle (1 d)', 'long': 'long (7 d)', 'free': 'free ages'}
-AGE_LABELS = {'short': '1 h', 'middle': '1 day', 'long': '7 days', 'free': 'free ages'}     # a scenario named by its age
+SCENARIO_LABELS = {'short': 'short (1 h)', 'middle': 'middle (1 d)', 'long': 'long (7 d)', 'free': 'free ages',
+                   **{s: s for s in NEAR_ZERO_ORDER}}
+AGE_LABELS = {'short': '1 h', 'middle': '1 day', 'long': '7 days', 'free': 'free ages',
+              **{s: s for s in NEAR_ZERO_ORDER}}     # a scenario named by its age
 REACTION_LABELS = {'R1': 'R1 · first hydrolysis', 'R2': 'R2 · second hydrolysis', 'R3': 'R3 · third hydrolysis',
                    'R5': 'R5 · first transfer', 'R4': 'R4 · condensation', 'R8': 'R8 · solvent attack'}
-SCENARIO_COLORS = dict(zip(SCENARIO_ORDER, SERIES[:4]))
+# The near-zero readings take the first hues again: no run fits both sets, so no figure draws them together
+SCENARIO_COLORS = {**dict(zip(SCENARIO_ORDER, SERIES[:4])), **dict(zip(NEAR_ZERO_ORDER, SERIES[:3]))}
 _NEUTRAL = '#f0efec'
 DIVERGING = LinearSegmentedColormap.from_list('blue_grey_red', [SERIES[0], _NEUTRAL, SERIES[7]])
 OVERLAY_COLORS = [SERIES[1], SERIES[2], SERIES[4], SERIES[6]]    # fits drawn over one spectrum: not blue (the main fit), not yellow (measured)
@@ -1241,7 +1245,7 @@ def plot_reading_trajectories(curves: dict, points: dict, *, samples: list, wind
     points: {scenario: tabulate_fit_shares of that fit}; a marker is a measured share at the age the scenario gives
     its tube. traced: the same as curves for the same parameters with something added at mixing, drawn dashed.
     """
-    scenarios = [s for s in SCENARIO_ORDER if s in curves]
+    scenarios = [s for s in SCENARIO_ORDER + NEAR_ZERO_ORDER if s in curves]
     colors = dict(zip(samples, SERIES))
     fig, axes = plt.subplots(1, len(scenarios), figsize=(3.7 * len(scenarios), 3.5), layout='constrained', sharey=True, squeeze=False)
     for ax, scenario in zip(axes.flat, scenarios):

@@ -29,7 +29,7 @@ FAMILY_BEP_PARAMETERS = {
     'default':        {'g_eV': 0.80, 'alpha': 0.50},
 }
 
-# Reference for the bench protocol (P. Broqvist): one global E0 chosen so
+# Reference model for the bench protocol: one global E0 chosen so
 # that TMSPA depletion spreads across the RT → 80 °C temperature steps.
 REFERENCE_BEP_PARAMETERS = {
     'default': {'g_eV': 1.15, 'alpha': 0.50},
@@ -41,7 +41,7 @@ LEVEL1_PARAMETERS = {
     'hydrolysis': {
         'shape': 'marcus', 'g_eV': 0.80, 'T_ref_K': 298.15, 'dS_act_J_mol_K': 0.0,
         'prior': {'type': 'interval', 'low_eV': 0.60, 'high_eV': 1.10},
-        'source': "Placeholder from Broqvist tank_model.ipynb; no quantitative anchor yet",
+        'source': "Placeholder from the reference model; no quantitative anchor yet",
     },
     'transfer': {
         'shape': 'marcus', 'g_eV': 0.80, 'T_ref_K': 298.15, 'dS_act_J_mol_K': 0.0,

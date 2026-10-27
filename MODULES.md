@@ -155,7 +155,7 @@ flowchart LR
 
 ### 2.3 network.py · the reaction network
 
-**Route:** [kinetics/data/network.py](kinetics/data/network.py) · **Input:** none (declared in the file) · **Output:** `NETWORK` ({reaction: reactants, products, family}), `NETWORK_SPECIES` (the 11 species) and `EXTRA_REACTIONS` (N10–N15 of P. Broqvist's generated network, combinations of R1–R9).
+**Route:** [kinetics/data/network.py](kinetics/data/network.py) · **Input:** none (declared in the file) · **Output:** `NETWORK` ({reaction: reactants, products, family}), `NETWORK_SPECIES` (the 11 species) and `EXTRA_REACTIONS` (N10–N15 of the generated network of the reference model, combinations of R1–R9).
 
 | Function | Input | Output |
 |---|---|---|
@@ -165,7 +165,7 @@ flowchart LR
 | `find_reaction_cycles` | Network | Reaction combinations with zero net change (the Wegscheider cycles) |
 | `expand_stoichiometry` | {species: coefficient} | Species list with repeats |
 | `format_equation` | One reaction | Text, e.g. `2 TMSOH ⇌ HMDSO + H2O` |
-| `build_network` | A variant: `R1-R9`, `R1-R9+N10-N15`, `R1-R9+N10-N15, Peter barriers` | The network of that variant |
+| `build_network` | A variant: `R1-R9`, `R1-R9+N10-N15`, `R1-R9+N10-N15, fixed 1.15 eV` | The network of that variant |
 | `get_active_network`, `set_active_network_variant` | —; a variant or `None` (`R1-R9`) | The network the fit structures use, set per fit run (7.10) |
 
 ### 2.4 experimental.py · data from Gogoi et al. 2024
@@ -648,7 +648,7 @@ How a fit runs from the first stage to the last, the scenarios, the fit rule and
 
 ### 7.7 candidates.py · what is free in each model
 
-**Route:** [kinetics/fitting/candidates.py](kinetics/fitting/candidates.py) · **Input:** a structure name and a parameter set θ · **Output:** a self-contained model. `FIT_STRUCTURES` holds `M0-BEP`, `M0-Marcus`, `M1`, `M1-split`, `M3`, `M3-split`, `M3-first`, `M5-first` (names MX-suffix: X the freed energies, the suffix the barrier classes); `set_energy_box_sigma` sets a run-wide box of ±k standard errors for the freed energies; adding `+W` to a name frees the water fraction. The models are defined in [reference-models_summary.md](docs/reference-models_summary.md).
+**Route:** [kinetics/fitting/candidates.py](kinetics/fitting/candidates.py) · **Input:** a structure name and a parameter set θ · **Output:** a self-contained model. `FIT_STRUCTURES` holds `M0-BEP`, `M0-Marcus`, `M1`, `M1-split`, `M3`, `M3-split`, `M3-first`, `M5`, `M5-first` (names MX-suffix: X the freed energies, the suffix the barrier classes); `set_energy_box_sigma` sets a run-wide box of ±k standard errors for the freed energies; adding `+W` to a name frees the water fraction, adding `+BEP` gives it the barrier rule of the reference model (capped BEP with α = 1, `with_bep_rule`). The models are defined in [reference-models_summary.md](docs/reference-models_summary.md).
 
 | Name | Input | Output |
 |---|---|---|
@@ -744,7 +744,7 @@ flowchart LR
 | `throughput` | Measures evaluations per second on this machine |
 | `recovery` | Refits synthetic data with a known answer (the check of the pipeline) |
 | `baselines` | Fits M0-BEP, M0-Marcus and M1 |
-| `extended` | Fits M1-split, M3 and M3-split, or the structures the setup lists (sixth fit: also M3-first, M5-first) |
+| `extended` | Fits M1-split, M3 and M3-split, or the structures the setup lists (sixth fit: also M3-first, M5-first; seventh fit: M1, M5, M5-first and their `+BEP` forms). `--structures` limits one call (of this stage and of recovery, night, traces, predictions) to some of them; in the seventh fit night, traces and predictions analyse every structure of `night.structures` |
 | `refit` | Re-checks M3 and M3-split at a tighter tolerance |
 | `night` | Profiles, leave-one-out, indistinguishability, sensitivities |
 | `traces` | Tests a trace of TMSOH at mixing |

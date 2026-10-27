@@ -7,7 +7,7 @@ Covers:
 4. Solver tolerance: search and report settings agree far inside the measurement error.
 5. Structures, the optimiser and profiles: known parameters are recovered from synthetic shares, a parameter the
    samples cannot see is reported as not determined, the water a recipe does not fix is recovered, nesting never
-   raises χ².
+   raises χ². Seventh fit: the near-zero ages, M5 and the barrier rule of the reference model.
 6. With the lab file present: the windows of notebook 03 give its barrier intervals through the new forward path.
 
 Source: Y. Alcaraz Galván; expected intervals read from notebooks/results/03 (computed from the Tank
@@ -342,6 +342,56 @@ def test_structures_build_models():
     print('  ✓ structures: parameter lists, registered models reproduced, split and freed energies, constraint')
 
 
+def test_seventh_fit_setup():
+    from kinetics.data.network import set_active_network_variant
+    from kinetics.fitting import DEFAULT_FIT_CONFIG
+    from kinetics.fitting.candidates import FIXED_BARRIERS_EV
+    observables = build_synthetic_observables()
+    # Near-zero ages: readings a run must list; a run without fit_config.json keeps the four of the first fits
+    assert DEFAULT_FIT_CONFIG['scenarios'] == ['short', 'middle', 'long', 'free']
+    for scenario, age_h in (('0 min', 0.0), ('5 min', 5.0 / 60.0), ('10 min', 10.0 / 60.0)):
+        samples = {s['name']: s for s in build_sample_set(observables, scenario)}
+        assert all(s['age_h'] == age_h for s in samples.values() if s['age_mode'] == 'fixed')
+        assert samples['2 % H2O']['age_mode'] == 'fixed', 'at a common age the heated tube has no age parameter'
+    zero = build_sample_set(observables, '0 min')
+    segments, times = build_sample_history(next(s for s in zero if s['name'] == '2 % H2O'))
+    assert segments[0][1] == 0.0 and abs(sum(d for _, d in segments) / 3600.0 - 145.0) < 1e-9
+    assert np.allclose(times[0] / 3600.0, [0.1, 33.0, 72.0, 96.0, 120.0, 145.0]), 'the first spectrum at its own offset'
+    residuals, details = calculate_residuals(MID, zero, return_details=True)
+    assert all(d['ok'] for d in details.values()) and np.all(np.isfinite(residuals))
+    # M5: the barriers of M1 and the energies of M5-first, nested between them
+    def rates_of(structure, theta):
+        return get_structure(structure).build(theta)['model'].calculate_rates(300.0)
+
+    m1 = [p.name for p in get_structure('M1').parameters()]
+    assert [p.name for p in get_structure('M5').parameters()] == m1 + ['dG R1', 'dG R2', 'dG R3', 'dG R4', 'dG R8', 'dG R9']
+    level1_theta = {'g hydrolysis': 0.80, 'g transfer': 0.80, 'g condensation': 1.30, 'g solvent_attack': 1.32}
+    m5 = embed_parent_theta('M5', level1_theta)
+    assert np.allclose(rates_of('M5', m5)['k_f'].values, rates_of('M1', level1_theta)['k_f'].values, rtol=1e-12)
+    m5.update({'g hydrolysis': 1.2, 'dG R2': 0.1, 'dG R8': -0.05})
+    first = embed_parent_theta('M5-first', m5)
+    assert np.allclose(rates_of('M5-first', first)['k_f'].values, rates_of('M5', m5)['k_f'].values, rtol=1e-12)
+    # The capped BEP rule (α = 1): ΔG‡ = E₀ downhill and E₀ + ΔG_rxn uphill, whichever way a step is written; M0-BEP keeps α = 0.5
+    try:
+        set_active_network_variant('R1-R9+N10-N15')
+        for name in ('M1', 'M5', 'M5-first'):
+            capped = get_structure(f'{name}+BEP')
+            assert [p.name for p in capped.parameters()] == [p.name for p in get_structure(name).parameters()]
+        assert get_structure('M5-first+BEP').parent == 'M3-first+BEP'
+        model = get_structure('M5-first+BEP').build({**first, 'dG R1': 0.2, 'dG R4': -0.1})['model']
+        assert model.family_params['exchange']['g_eV'] == FIXED_BARRIERS_EV['exchange']
+        rates = model.calculate_rates(300.0)
+        x, g = rates['dG_rxn_eV'], rates['g_eV']
+        assert (x > 0).any() and (x < 0).any() and set(rates['barrier_model']) == {'bep_cap'}
+        assert np.allclose(rates['dG_barrier_f_eV'], np.maximum(g, g + x), atol=1e-12)
+        assert np.allclose(rates['dG_barrier_r_eV'], np.maximum(g, g - x), atol=1e-12), 'the reverse step: the same rule'
+        m0 = rates_of('M0-BEP', {'g all reactions': 1.0})
+        assert np.allclose(m0['dG_barrier_f_eV'], np.maximum(m0['g_eV'], m0['g_eV'] + 0.5 * m0['dG_rxn_eV']), atol=1e-12)
+    finally:
+        set_active_network_variant(None)
+    print("  ✓ seventh fit: near-zero ages opt-in, M5 nested between M1 and M5-first, the barrier rule of the reference model")
+
+
 def test_interval_finder():
     v = np.linspace(-3.0, 3.0, 25)
     parabola = pd.DataFrame({'parameter': 'p', 'value': 1.0 + 0.1 * v, 'chi2': 5.0 + v ** 2})
@@ -604,6 +654,7 @@ if __name__ == "__main__":
     test_free_ages_and_tables()
     test_search_and_report_tolerances_agree()
     test_structures_build_models()
+    test_seventh_fit_setup()
     test_interval_finder()
     test_fit_recovers_and_reports_blind_spots()
     test_unknown_water_is_recovered()

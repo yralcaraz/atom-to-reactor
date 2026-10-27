@@ -36,7 +36,10 @@ Barrier from the reaction energy and the intrinsic barrier `g` of the family:
 ```
 Marcus       ΔG‡ = g · (1 + ΔG_rxn / 4g)²
 capped BEP   ΔG‡ = max(g, g + α·ΔG_rxn),   α = 0.5      (M0-BEP only)
+Peter's BEP  ΔG‡ = max(g, g + ΔG_rxn)                   (capped BEP with α = 1; any model with the suffix +BEP, seventh fit)
 ```
+
+With α = 1 the capped BEP is P. Broqvist's rule (downhill ΔG‡ = E₀, uphill E₀ + |ΔG_rxn|) and no longer depends on the direction a step is written: the reverse barrier is max(g, g − ΔG_rxn). With α = 0.5 it does, so M0-BEP is not a special case of a `+BEP` model.
 
 Objective (what the fit minimises):
 
@@ -54,7 +57,7 @@ Objective (what the fit minimises):
 | M3 | R1–R4 | | `-split` | R1 apart from R2 and R3 |
 | M5 | every independent reaction: R1–R4, R8, R9 (sixth fit) | | `-first` | the first step of TMSPA (no P–OH yet) apart in every family: R1 in hydrolysis, R5 in transfer (sixth fit) |
 
-M2 is not used; M4 is the "+W" of notebook 03 (part of the added water not available), kept as the suffix `+W`. Each model of the ladder adds one thing to the one before it.
+M2 is not used; M4 is the "+W" of notebook 03 (part of the added water not available), kept as the suffix `+W`. The suffix `+BEP` replaces Marcus by P. Broqvist's rule (§1) in every class, with the same parameters. Each model of the ladder adds one thing to the one before it.
 
 | # | Model | What it assumes | Free parameters | Count |
 |---|---|---|---|---|
@@ -64,9 +67,12 @@ M2 is not used; M4 is the "+W" of notebook 03 (part of the added water not avail
 | 4 | **M3** | M1 with ΔG_rxn of R1–R4 free | the 4 barriers of M1 + `dG R1`, `dG R2`, `dG R3`, `dG R4` | 8 |
 | 5 | **M3-split** | M1-split with ΔG_rxn of R1–R4 free | the 5 barriers of M1-split + `dG R1` … `dG R4` | 9 |
 | 6 | **M3-first** | M3 with the first step of TMSPA apart in hydrolysis (R1, with N15) and transfer (R5); R2–R3 and R6–R7 share one class each | `g hydrolysis_R1`, `g hydrolysis_R23`, `g transfer_R5`, `g transfer_R67`, `g condensation`, `g solvent_attack` + `dG R1` … `dG R4` | 10 |
-| 7 | **M5-first** | M3-first with ΔG_rxn of every independent reaction free | the 6 barriers of M3-first + `dG R1` … `dG R4`, `dG R8`, `dG R9` | 12 |
+| 7 | **M5** | M1 with ΔG_rxn of every independent reaction free (seventh fit) | the 4 barriers of M1 + `dG R1` … `dG R4`, `dG R8`, `dG R9` | 10 |
+| 8 | **M5-first** | M3-first with ΔG_rxn of every independent reaction free; also M5 with the barriers of M3-first | the 6 barriers of M3-first + `dG R1` … `dG R4`, `dG R8`, `dG R9` | 12 |
 
-Freed energies (M3, M3-split, M3-first; M5-first adds R8 and R9):
+The seventh fit runs the chain M1 ⊂ M5 ⊂ M5-first, each also as `+BEP`: first the energies are freed, then the barriers split.
+
+Freed energies (M3, M3-split, M3-first; M5 and M5-first add R8 and R9):
 
 ```
 dG Rj = ΔG_rxn,j − computed value        (j = R1…R4, and R8, R9 in M5)
@@ -99,9 +105,9 @@ Rules of the third fit ([plan](plan-fit_improvement.md)):
 |---|---|---|---|
 | State | C_i(t): TMSPA, BMSPA, MMSPA, H3PO4, H2O, TMSOH, HMDSO, EC, TMSOEG, TMSOdiEG, CO2 | M | Solved by the reactor |
 | Input | Composition at mixing, temperature history, spectrum times | M, K, s | Lab records (`lab_observables.json`). The water of "TMSPa alone" is not recorded: fitted |
-| Input | Sample age (mixing → first spectrum) | h | Not recorded: 1 h, 1 day or 7 days by scenario, or free |
+| Input | Sample age (mixing → first spectrum) | h | Not recorded: 1 h, 1 day or 7 days by scenario, or free; 0, 5 or 10 min in the seventh fit |
 | Input | ΔG_rxn of R1–R9 | eV | Computed (DFT + solvation) |
-| Fixed | ΔS‡ = 0, α = 0.5 | | Assumed, not fitted |
+| Fixed | ΔS‡ = 0, α = 0.5 (M0-BEP), α = 1 (`+BEP`) | | Assumed, not fitted |
 | Fitted | `g <family>` | eV | Search box 0.60–1.70 (narrower for some families) |
 | Fitted | `dG R1…R4` (and `dG R8`, `dG R9` in M5) | eV | Search box ±0.75 around the computed value, or ±k standard errors (sixth fit: ±3) |
 | Fitted | `water fraction` | – | Search box 0.05–1 |

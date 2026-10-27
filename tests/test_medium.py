@@ -1,7 +1,7 @@
 """Tests for the solvation medium (kinetics/data/medium.py), the network variants (kinetics/data/network.py) and the
 setup of a fit run (kinetics/fitting/config.py, with the run-wide changes to the samples of kinetics/fitting/residuals.py).
 
-Source: Y. Alcaraz Galván; expected mixture energies as in P. Broqvist's tmspa_reaction_network_model notebook
+Source: Y. Alcaraz Galván; expected mixture energies as in the reference model
 (EC:DEC linear, 2026-10-08 snapshot: R1 −5.8, R2 −4.2, R3 −1.4, R4 +2.3 kcal/mol)
 """
 
@@ -116,7 +116,7 @@ def test_network_variants():
     from kinetics.fitting.candidates import FIXED_BARRIERS_EV, get_structure
     assert get_active_network_variant() == 'R1-R9' and set(build_network()) == {f'R{i}' for i in range(1, 10)}
     thermo = calculate_network_thermo(298.15, network=build_network('R1-R9+N10-N15'))['dG_rxn_eV']
-    # each added step is a combination of R1-R9 (Peter's notebook), so its ΔG is that combination exactly
+    # each added step is a combination of R1-R9 (generated network of the reference model), so its ΔG is that combination exactly
     for rxn, combination in {'N10': {'R2': 1, 'R1': -1}, 'N11': {'R9': 1, 'R8': -1}, 'N12': {'R2': 1, 'R7': 1},
                              'N13': {'R2': 1, 'R3': -1}, 'N14': {'R3': 1, 'R1': -1}, 'N15': {'R1': 1, 'R6': 1}}.items():
         assert abs(thermo[rxn] - sum(c * thermo[r] for r, c in combination.items())) < 1e-9, rxn
@@ -138,7 +138,7 @@ def test_network_variants():
         assert abs(rates.loc['N15', 'dG_rxn_eV'] - rates.loc['R1', 'dG_rxn_eV'] - rates.loc['R6', 'dG_rxn_eV']) < 1e-9
         shared = get_structure('M0-Marcus').build({'g all reactions': 1.0})['model']
         assert shared.family_params['exchange']['g_eV'] == FIXED_BARRIERS_EV['exchange']
-        set_active_network_variant('R1-R9+N10-N15, Peter barriers')
+        set_active_network_variant('R1-R9+N10-N15, fixed 1.15 eV')
         assert all(get_structure('M3-split').network()[r]['class'] == 'exchange' for r in EXTRA_REACTIONS)
     finally:
         set_active_network_variant(None)

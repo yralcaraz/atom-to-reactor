@@ -40,8 +40,8 @@ from kinetics.fitting.design import (
 
 from kinetics.fitting.residuals import (
     FREE_AGE_BOUNDS_H, REPORT_SOLVER, SCENARIO_AGES_H, SCENARIOS, SEARCH_SOLVER, build_sample_history,
-    build_sample_set, calculate_predicted_shares, calculate_residuals, find_free_age, get_sample_overrides,
-    merge_sample_overrides, set_sample_overrides, summarize_residuals, tabulate_residuals,
+    build_sample_set, calculate_predicted_shares, calculate_residuals, find_free_age, get_free_age_bounds,
+    get_sample_overrides, merge_sample_overrides, set_free_age_bounds, set_sample_overrides, summarize_residuals, tabulate_residuals,
 )
 from kinetics.fitting.candidates import (
     FIT_STRUCTURES, FitParameter, FitStructure, build_fitted_model, embed_parent_theta, get_structure,
@@ -68,8 +68,8 @@ __all__ = [
     "fit_leave_one_out", "fit_structure", "get_profile_theta", "load_fit_result", "refine_profile_edges",
     "simulate_synthetic_shares", "write_fit_result",
     "FREE_AGE_BOUNDS_H", "REPORT_SOLVER", "SCENARIO_AGES_H", "SCENARIOS", "SEARCH_SOLVER", "build_sample_history",
-    "build_sample_set", "calculate_predicted_shares", "calculate_residuals", "find_free_age", "get_sample_overrides",
-    "merge_sample_overrides", "set_sample_overrides", "summarize_residuals", "tabulate_residuals",
+    "build_sample_set", "calculate_predicted_shares", "calculate_residuals", "find_free_age", "get_free_age_bounds",
+    "get_sample_overrides", "merge_sample_overrides", "set_free_age_bounds", "set_sample_overrides", "summarize_residuals", "tabulate_residuals",
     "DEFAULT_G_GRID_EV", "FAMILIES", "find_barrier_bounds", "get_family_parameter", "project_bounds_to_entropy",
     "scan_family_barriers", "summarize_feasible_intervals",
     "DEFAULT_SCAN_GRID_EV", "SHARED_BARRIER", "build_observation", "build_share_window", "describe_observations",

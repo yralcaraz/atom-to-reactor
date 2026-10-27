@@ -19,7 +19,7 @@ The shared default database is that of the active solvation medium (kinetics/dat
 2026-09-24 snapshot unless a run sets another. In a mixture a species has a solvation energy only if every
 solvent of the mixture has an MD record of it.
 
-Source: Y. Alcaraz Galván; DFT and MD data by P. Broqvist
+Source: Y. Alcaraz Galván; DFT and MD data from the Tank dataset
 """
 
 import math

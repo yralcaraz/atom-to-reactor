@@ -107,3 +107,50 @@ The documents and notebooks of the fifth fit's review and of the sixth fit's set
 
 **Checks**: links to the renamed documents resolved in every document of `docs/`, `MODULES.md` and `README.md` (the notebooks still cite the older `plan-fit_improvement.md`).
 
+## 2026-10-22 - Seventh fit setup: near-zero ages, M5, P. Broqvist's barrier rule
+
+**Not committed yet** (branch `fit/near-zero-ages`, worktree `/home/yeray/projects/atom-to-reactor-fit7`) · **against** `ee6ab2a` (sixth fit ready to launch)
+
+Why: meeting of 2026-10-22, "Simple M1 fit at near-zero ages", and its follow-up the same evening. Go back to a small fit, take the time from adding TMSPA to the first NMR as 0, 5 and 10 min, compare Marcus with P. Broqvist's rule, and add one model between M1 and M5-first. Nothing changes for a results folder whose `fit_config.json` does not ask for it; the sixth fit (`05_fit6`) is untouched.
+
+**Code**
+
+| File | Change |
+|---|---|
+| `kinetics/fitting/residuals.py` | Readings `0 min`, `5 min`, `10 min` in `SCENARIO_AGES_H` and `SCENARIOS`. `DEFAULT_SCENARIOS`: the four readings of a folder without `fit_config.json` |
+| `kinetics/fitting/config.py` | The default setup takes `DEFAULT_SCENARIOS` (was every scenario), so the new readings enter only a run that lists them |
+| `kinetics/fitting/candidates.py` | Structure `M5`: the four barriers of M1 with the energies of every independent reaction free (R1–R4, R8, R9), nested between M1 and M5-first. `FitStructure.shape_params` and `with_peter_bep`: suffix `+BEP`, capped BEP with α = 1 (`PETER_BEP_ALPHA`) in every class, the exchange steps at 1.15 eV included; `get_structure` reads the suffix like `+W` |
+| `scripts/run_fit.py` | `M5` in `EFFORT`, `PARENTS` (M1 → M5 → M5-first) and `SIZE_ORDER`; `+BEP` forms nest like their Marcus forms and also start from them. The near-zero readings first in `SCENARIO_ORDER` (5 and 10 min start from 0 min) and in the common ages of the selection rule. The summary tables hold every structure of the run (`SIZE_ORDER` extended from the setup). New option `--structures`: one call of extended, recovery, night, traces and predictions limited to some structures of the setup (`ONLY`). Night, traces and predictions analyse every structure of `night.structures` (`ANALYSED`; default the main structure, as before), in the readings the setup allows (new `night` keys `refined`, `loo_fitting_only`, `loo_effort`, `sensitivity_readings`, `recovery_required`; `tolerance_check` also as `{structure: [reading, [two parameters]]}`), and skip a reading the run does not have instead of raising (the sixth fit's smoke failure). Recovery truth `"fit"`: the run's own fit, kept in `recovery/<case>_truth.json`. Covariance sensitivities skipped without freed energies. `structure` column in `sensitivities.csv`, `trace_sensitivity.csv`, `tolerance_check.csv`; `sample_trajectories.csv` from 36 s, with "TMSPa alone" and tube A. Docstring |
+| `tests/test_estimation.py` | `test_seventh_fit_setup`: near-zero readings opt-in and simulated at age 0 (the first spectrum at its own offset), M5 at M1's values is M1 and M5-first at M5's is M5, `+BEP` gives max(E₀, E₀ + ΔG) forward and max(E₀, E₀ − ΔG) backward in every reaction of N10–N15, M0-BEP keeps α = 0.5 |
+
+**Documents**: `docs/reference-fitting_system.md` (§2.2 readings, §2.5a `+BEP`, §3 and §4 structures and `--structures`, new §11); `docs/reference-models_summary.md` (Peter's BEP in §1, M5 and `+BEP` in §2, ages and α in §3); `MODULES.md` (structures, extended stage).
+
+**Not in git** (lab-derived): `notebooks/results/05_fit7/fit_config.json` (readings 0, 5 and 10 min; structures M1, M5, M5-first and their `+BEP` forms; everything else as in the sixth fit: network R1–R9 + N10–N15, EC/DEC 1:1 linear MD, 8 h heating steps of the 2 % tube, water of "TMSPa alone" declared at 65.6 mM, energy box ±3 σ; search: M1 4096 points and 32 starts, M5 and M5-first 8192 and 32 at 0 min and 2048 and 8 at 5 and 10 min; no earlier run as starts; every structure analysed in every reading: profiles, leave-one-out with 1024 points and 8 starts, ten sensitivities, solver tolerance at 0 min, recovery with the fit as truth at 0 min, traces, predictions; a `why` list) and `run_chain.sh` (phase 1: every stage with `--structures "M1,M1+BEP"`, to finish within 10 h; phase 2: every stage for all; `run_chain.sh M1` stops after phase 1; runs the code of the worktree).
+
+**Checks**
+
+- `test_seventh_fit_setup` passes; `test_sample_set_and_histories`, `test_free_ages_and_tables`, `test_structures_build_models` and every test of `test_medium` still pass. The rest of the suite (the synthetic fits of `test_estimation`, `test_fitting`, `test_reporting`) was not run.
+- Static check of the setup (no fit): the three readings give every unknown age 0, 5 and 10 min (the glovebox tube keeps its known 8 h at 80 °C); M1 and M1+BEP 4 parameters, M5 and M5+BEP 10, M5-first and M5-first+BEP 12; parents and search per reading as set; `run_chain.sh` passes `bash -n`.
+- One evaluation of the lab set at 0 min (no fit): M1 0.23 s and M1+BEP 0.16 s, 80 residuals, none penalised.
+
+**Effects on what exists**: none for fits 1–6. Their folders list their own readings (or none: the default is still the four), and their structures, nesting and starts are unchanged (M5 is a new parent of M5-first only where a fit of M5 exists).
+
+
+## 2026-10-23 - Eighth fit setup: 10 min and free ages up to 7 days, parallel chain for the cloud
+
+Worktree `atom-to-reactor-fit8`, branch `fit/ten-min-free`, from the seventh fit's code (uncommitted, as in its worktree) plus:
+
+| File | Change |
+|---|---|
+| `kinetics/fitting/residuals.py` | `set_free_age_bounds` / `get_free_age_bounds`: the range of the free ages for a whole run (default 1 h to 30 days, `DEFAULT_FREE_AGE_BOUNDS_H`); the functions read the active range |
+| `kinetics/fitting/config.py` | Setup key `free_age_bounds_h` ([low, high] in hours; None: the default), applied by `apply_fit_config` |
+| `kinetics/fitting/candidates.py`, `reporting.py`, `__init__.py` | The age parameter and the exact-age search read the active range (were the constant) |
+| `scripts/run_fit.py` | Option `--readings`: one call limited to some readings of the setup (`ONLY_READINGS`), also the recovery cases. Night key `recovery` (default true): false leaves the recovery out of the night, so that it runs as its own stage beside it. `--quick` also shrinks the recovery search. Each fit records `free_age_bounds_h`. Docstring |
+
+**Not in git** (lab-derived): `notebooks/results/05_fit8/fit_config.json` (readings 10 min and free ages 10 min to 7 days; the seventh fit's structures and setup; full search everywhere, started also from the fits of 05_fit7; recovery of every structure in both readings, profiles everywhere, leave-one-out only where a structure fits, no sensitivities, no indistinguishability, no tolerance check; a `why` list), `run_chain.sh` (every structure and reading its own process: extended per reading, recovery and night per structure and reading, then the stages again without limits for the tables, traces, predictions; `smoke` runs it with `--quick` in `05_fit8_smoke`) and `cloud.sh` (the VM: n4-highcpu-64 Spot, create, setup, smoke, start, status, resume, back, delete).
+
+**Checks**
+
+- The free-age, config, age and scenario tests pass (5). Static check with the eighth fit's setup (no fit): free ages from 10 min (log10 −0.78) to 7 days (2.23) on the 2 % tube, the unheated tubes profiled, the heated probe tube at 10 min; M5-first 13 parameters, one evaluation 0.1 s; 3 starts from the seventh fit per reading; `--readings free` limits the readings and the recovery cases. `run_chain.sh` and `cloud.sh` pass `bash -n`. The chain itself was not run (its smoke is the first step on the VM).
+
+**Effects on what exists**: none for fits 1–7 (the range stays 1 h to 30 days without the key; without `--readings` and the night key every call runs as before).

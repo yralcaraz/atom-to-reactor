@@ -112,7 +112,7 @@ MODELS = {
         family_params=FAMILY_BEP_PARAMETERS,
         status='sensitivity',
         assumptions=(
-            'E0 = 0.80 eV for hydrolysis, condensation and transfer is a placeholder (tank_model.ipynb)',
+            'E0 = 0.80 eV for hydrolysis, condensation and transfer is a placeholder (reference model)',
             'Solvent attack E0 = 1.30 eV is derived from the 80 °C protocol of Gogoi et al. 2024',
             'Condensation at 0.80 eV contradicts Gogoi 2024 (Finding 16)',
             'Barrier depends on the direction a reaction is written (Finding 15)',
@@ -144,16 +144,12 @@ MODELS = {
 }
 
 
-# Names under which a model appears in result files written before it was renamed
-LEGACY_MODEL_NAMES = {'peter_reference': 'reference_bep'}
-
-
 def get_model(model) -> ModelSpec:
-    """ModelSpec from a registry name (a ModelSpec is returned unchanged; a legacy name resolves to the current one)."""
+    """ModelSpec from a registry name (a ModelSpec is returned unchanged)."""
     if isinstance(model, ModelSpec):
         return model
     try:
-        return MODELS[LEGACY_MODEL_NAMES.get(model, model)]
+        return MODELS[model]
     except KeyError:
         raise KeyError(f"Unknown model '{model}'. Registered: {list(MODELS)}") from None
 

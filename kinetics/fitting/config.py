@@ -11,6 +11,8 @@ themselves; see scripts/run_fit.recovery_cases). Sixth fit: the box of the freed
 ('energy_box_sigma', kinetics.fitting.candidates), and for scripts/run_fit.py the structures of the run
 ('structures': main and extended), their search ('effort'), the fits whose parameters start the search
 ('start_from': an earlier results directory) and the parts of the night and traces stages that run ('night').
+Seventh fit: the readings of near-zero ages ('0 min', '5 min', '10 min'), which only a run that lists them uses.
+Eighth fit: the range of the free ages ('free_age_bounds_h', [low, high] in hours; None: 1 h to 30 days).
 A results directory without the file is a run of the default setup, that of the first three fits: neat EC from
 the 2026-09-24 snapshot, R1–R9, the four readings and E1.
 
@@ -31,13 +33,15 @@ from kinetics.data.network import (
     DEFAULT_NETWORK_VARIANT, NETWORK_VARIANTS, get_active_network_variant, set_active_network_variant,
 )
 from kinetics.fitting.candidates import set_energy_box_sigma
-from kinetics.fitting.residuals import PAPER_OBSERVATIONS, SCENARIOS, get_sample_overrides, set_sample_overrides
+from kinetics.fitting.residuals import (
+    DEFAULT_SCENARIOS, PAPER_OBSERVATIONS, SCENARIOS, get_sample_overrides, set_free_age_bounds, set_sample_overrides,
+)
 
 FIT_CONFIG_FILE = 'fit_config.json'
 DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'network': DEFAULT_NETWORK_VARIANT, 'sample_overrides': {},
-                      'scenarios': list(SCENARIOS), 'paper_observations': list(PAPER_OBSERVATIONS),
+                      'scenarios': list(DEFAULT_SCENARIOS), 'paper_observations': list(PAPER_OBSERVATIONS),
                       'sensitivities': None, 'recovery': {}, 'energy_box_sigma': None, 'structures': None,
-                      'effort': {}, 'start_from': None, 'night': {}}
+                      'effort': {}, 'start_from': None, 'night': {}, 'free_age_bounds_h': None}
 
 
 def load_fit_config(results_dir) -> dict:
@@ -64,6 +68,7 @@ def apply_fit_config(results_dir) -> dict:
     set_active_network_variant(config['network'])
     set_sample_overrides(config['sample_overrides'])
     set_energy_box_sigma(config['energy_box_sigma'])
+    set_free_age_bounds(config['free_age_bounds_h'])
     return config
 
 

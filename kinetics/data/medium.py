@@ -15,7 +15,7 @@ notebooks 01–03 and of fits 1–3. A fit run sets its medium once, at the star
     get_active_medium   the medium in use
     set_active_medium   change it (None: back to the default)
 
-Source: Y. Alcaraz Galván; mixing rules as in P. Broqvist's tmspa_reaction_network_model notebook
+Source: Y. Alcaraz Galván; mixing rules as in the reference model
 """
 
 from dataclasses import dataclass

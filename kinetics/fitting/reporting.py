@@ -27,8 +27,8 @@ from kinetics.fitting.candidates import get_structure
 from kinetics.fitting.config import check_fit_setup
 from kinetics.fitting.estimation import FitProblem, calculate_parameter_directions
 from kinetics.fitting.residuals import (
-    FREE_AGE_BOUNDS_H, N_AGE_GRID, PAPER_OBSERVATIONS, REPORT_SOLVER, SHARE_SPECIES, _block_shares, _initial_composition, _whiten_sample,
-    build_sample_history, build_sample_set, calculate_residuals,
+    N_AGE_GRID, PAPER_OBSERVATIONS, REPORT_SOLVER, SHARE_SPECIES, _block_shares, _initial_composition, _whiten_sample,
+    build_sample_history, build_sample_set, calculate_residuals, get_free_age_bounds,
 )
 from kinetics.reactor.protocol import simulate_history
 
@@ -49,8 +49,9 @@ def _find_exact_age(sample: dict, built: dict, age_h: float, solver: dict) -> fl
     the composition changes within one step of those ages, the stored age is off by a part of that step; here
     the same χ² is minimised on the trajectory itself, inside the step on either side of the stored age.
     """
-    step = (FREE_AGE_BOUNDS_H[1] / FREE_AGE_BOUNDS_H[0]) ** (1.0 / (N_AGE_GRID - 1))
-    ages_h = np.unique(np.clip(np.geomspace(age_h / step, age_h * step, N_EXACT_AGES), *FREE_AGE_BOUNDS_H))
+    bounds_h = get_free_age_bounds()
+    step = (bounds_h[1] / bounds_h[0]) ** (1.0 / (N_AGE_GRID - 1))
+    ages_h = np.unique(np.clip(np.geomspace(age_h / step, age_h * step, N_EXACT_AGES), *bounds_h))
     t_spec = np.concatenate([block['t_spec_s'] for block in sample['blocks']])
     times = (3600.0 * ages_h[:, None] + t_spec[None, :]).ravel()
     sim = simulate_history(_initial_composition(sample, built['water_fraction'], built['added_M'].get(sample['name'])),

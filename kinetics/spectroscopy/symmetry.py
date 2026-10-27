@@ -4,7 +4,7 @@ Atoms are grouped into topological equivalence classes (covalent bond graph + 1-
 isotropic shieldings are averaged and referenced, δ = σ(reference) − σ(sample). Protons bonded to O or N
 are flagged as labile (fast exchange). A catalog maps {element: {species: [(δ_ppm, n_atoms, labile)]}}.
 
-Source: Y. Alcaraz Galván; adapted from P. Broqvist
+Source: Y. Alcaraz Galván; adapted from the reference model
 """
 
 import warnings

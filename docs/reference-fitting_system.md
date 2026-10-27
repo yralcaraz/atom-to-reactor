@@ -5,7 +5,7 @@
 | **Status** | Draft |
 | **Source** | Y. Alcaraz Galván |
 | **Scope** | The fit of the kinetic models to the lab NMR data as one system: what is compared with what, what is minimised, which files take part, the stages of the runner and the files they write. Read from the code; no fit was run to write it. |
-| **Applies to** | Branch `fit/first-fit`, revised 2026-10-22. Sections 1–7 describe the system as it stands; sections 8, 9 and 10 list what the third, fifth and sixth fits changed |
+| **Applies to** | Branch `fit/first-fit`, revised 2026-10-22 (section 11: branch `fit/near-zero-ages`). Sections 1–7 describe the system as it stands; sections 8 to 11 list what the third, fifth, sixth and seventh fits changed |
 | **See also** | [reference-models_summary.md](reference-models_summary.md) for the equations and free parameters of each model; [MODULES.md](../MODULES.md) §7 for every function with its input and output |
 
 The work on the data has two parts, and they share the same models and reactors:
@@ -76,6 +76,7 @@ Every result is computed under one scenario, because the ages are not known.
 | `middle` | 1 day |
 | `long` | 7 days |
 | `free` | Between 1 h and 30 days. The age of the heated 2 % water sample is a fit parameter (`log10 age 2 % H2O`). The age of each unheated sample is the value that favours the model, found inside every evaluation |
+| `0 min`, `5 min`, `10 min` | 0, 5 or 10 minutes: TMSPA added just before the first acquisition (seventh fit). Only a run whose `fit_config.json` lists them uses them; a folder without the file keeps the four above |
 
 ### 2.3 The error of a share
 
@@ -111,7 +112,7 @@ In this order, each with a declared search box:
 
 ### 2.5a Model names
 
-`MX-suffix`. X says which reaction energies are free: M0 and M1 none, M3 those of R1–R4, M5 those of every independent reaction (R1–R4, R8, R9). The suffix says how the barriers are grouped: none, one per family (M0: one for all); `-split`, R1 apart from R2 and R3; `-first`, the first step of TMSPA apart in every family (R1 with N15 in hydrolysis, R5 in transfer). `+W` adds the available-water fraction (M4 of notebook 03, hence no M4). The models are listed in [reference-models_summary.md](reference-models_summary.md) §2.
+`MX-suffix`. X says which reaction energies are free: M0 and M1 none, M3 those of R1–R4, M5 those of every independent reaction (R1–R4, R8, R9). The suffix says how the barriers are grouped: none, one per family (M0: one for all); `-split`, R1 apart from R2 and R3; `-first`, the first step of TMSPA apart in every family (R1 with N15 in hydrolysis, R5 in transfer). `+W` adds the available-water fraction (M4 of notebook 03, hence no M4). `+BEP` replaces Marcus by P. Broqvist's barrier rule (capped BEP with α = 1; seventh fit). The models are listed in [reference-models_summary.md](reference-models_summary.md) §2.
 
 ### 2.6 Rules fixed before any fit
 
@@ -165,7 +166,7 @@ flowchart LR
 
 | File | Role | Entry points |
 |---|---|---|
-| [candidates.py](../kinetics/fitting/candidates.py) | Declares the structures (eight, M0-BEP to M5-first) and their search boxes. Turns θ into a self-contained model: own network (when a family is split) and own species shifts (when energies are freed) | `get_structure`, `FitStructure.parameters`, `FitStructure.build`, `embed_parent_theta`, `build_fitted_model` |
+| [candidates.py](../kinetics/fitting/candidates.py) | Declares the structures (nine, M0-BEP to M5-first, each also with `+W` or `+BEP`) and their search boxes. Turns θ into a self-contained model: own network (when a family is split) and own species shifts (when energies are freed) | `get_structure`, `FitStructure.parameters`, `FitStructure.build`, `embed_parent_theta`, `build_fitted_model` |
 | [residuals.py](../kinetics/fitting/residuals.py) | Builds the sample set of a scenario, simulates each sample and whitens the difference with the error model | `build_sample_set`, `calculate_residuals`, `tabulate_residuals`, `find_free_age` |
 | [estimation.py](../kinetics/fitting/estimation.py) | Holds the problem (structure + samples), searches the box, and then asks what the data determine | `FitProblem`, `fit_structure`, `calculate_profile`, `find_confidence_interval`, `calculate_parameter_directions`, `fit_leave_one_out`, `compare_structures` |
 
@@ -200,7 +201,7 @@ flowchart LR
 | `throughput` | Measures evaluations per second, to size the long stages | — | `throughput.csv` |
 | `recovery` | Refits synthetic data generated from known parameters, with the design and error model of the lab set. The check of the pipeline | — | `recovery/<case>_seed<n>.json`, `recovery_summary.csv` |
 | `baselines` | Fits M0-BEP, M0-Marcus and M1 in the four scenarios | `lab_observables.json` | `fits/<structure>__<scenario>.json`, the four `fits_*.csv` tables |
-| `extended` | Fits the extended structures (default M1-split, M3, M3-split; sixth fit M1-split, M3-split, M3-first, M5-first), each in every reading or in those the setup lists (`structures.readings`), starting from the fits of the smaller structures and, if the setup names one, from the fits of an earlier run | `fits/` of `baselines` | The fit files of those structures, the `fits_*.csv` tables again |
+| `extended` | Fits the extended structures (default M1-split, M3, M3-split; sixth fit M1-split, M3-split, M3-first, M5-first; seventh fit M1, M5, M5-first and their `+BEP` forms), each in every reading or in those the setup lists (`structures.readings`), starting from the fits of the smaller structures and, if the setup names one, from the fits of an earlier run. `--structures` limits one call to some of them | `fits/` of `baselines` | The fit files of those structures, the `fits_*.csv` tables again |
 | `refit` | Re-checks M3 and M3-split at a tighter search tolerance. It repaired a solver setting of the first run; a new run can skip it | `fits/`, `profiles/` | Fits kept or replaced; a replaced one moves to `fits_first_pass/` |
 | `night` | Profiles and intervals, leave-one-sample-out, structures the data cannot tell apart, sensitivity to the declared errors and times, all on the main structure (default M3-split). Runs `recovery` first and stops if it fails. The setup can limit it (`night`: which structures and readings are profiled, only where they fit; indistinguishability, tolerance check, trace refits off) | `fits/` | `profiles/`, `loo/`, tagged fits in `fits/`, `intervals.csv`, `barrier_bands.csv`, `leave_one_out.csv`, `indistinguishability.csv`, `sensitivities.csv`, `tolerance_check.csv`. A fit replaced by a lower profile minimum moves to `fits_before_profiles/` |
 | `traces` | Tests a trace of TMSOH at mixing (0 to 1 mM) in the three tubes with TMSPA and no TMSOH: as fitted, and fitted again (the refit can be turned off) | `fits/` | `trace_sensitivity.csv`, `fits/<main structure>__<scenario>__TMSOH_<level>.json` |
@@ -318,3 +319,18 @@ Reasons, decisions and limits are in [reference-fit_results.md](reference-fit_re
 - **Earlier fits.** A results folder without the new keys runs as before.
 - **Speed.** One evaluation of the lab set takes 0.74 s at 1 day and 0.94 s with free ages for M5-first (twelve and thirteen parameters).
 - **The sixth fit's setup** (`notebooks/results/05_fit6/fit_config.json`): main structure M5-first in the readings 1 h, 1 day and free ages; M3-first and M3-split at 1 day and free ages; M3 left out; two recovery cases of M5-first (free ages, 1 day). Why each model is or is not fitted: [reference-fit_results.md](reference-fit_results.md) §6.3.12. `start_when_plugged.sh` in that folder waits for mains power, runs every stage on a tiny search in `/tmp/fit6_smoke` and starts `run_chain.sh` only if they all pass.
+
+## 11. Changes of the seventh fit (2026-10-22, not run yet)
+
+The decisions are in the meeting notes of 2026-10-22 ("Simple M1 fit at near-zero ages") and the `why` list of `notebooks/results/05_fit7/fit_config.json`; the list of changes is in [guide-commits.md](guide-commits.md). Everything is opt-in: a run that does not list the new readings or structures runs as before.
+
+| Where | Change |
+|---|---|
+| [residuals.py](../kinetics/fitting/residuals.py) | Readings `0 min`, `5 min`, `10 min` (§2.2). `DEFAULT_SCENARIOS`: the four readings of a folder without `fit_config.json` |
+| [config.py](../kinetics/fitting/config.py) | The default setup takes `DEFAULT_SCENARIOS`, so the new readings never enter a run by default |
+| [candidates.py](../kinetics/fitting/candidates.py) | Structure `M5` (the barriers of M1, the energies of M5-first): M1 ⊂ M5 ⊂ M5-first. Suffix `+BEP` (`with_peter_bep`): capped BEP with α = 1 in every class, exchange steps included; a structure can carry shape parameters (`shape_params`) |
+| [run_fit.py](../scripts/run_fit.py) | `M5` and the `+BEP` forms in the nesting (`PARENTS`); a `+BEP` fit also starts from its Marcus form. The near-zero readings run first (`SCENARIO_ORDER`) and count as a common age in the selection rule. The summary tables hold every structure of the run. The night, traces and predictions stages analyse every structure of `night.structures` (`ANALYSED`; default the main structure), with new `night` keys: `refined`, `loo_fitting_only`, `loo_effort`, `sensitivity_readings`, `tolerance_check` as `{structure: [reading, [two parameters]]}`, `recovery_required`. A recovery case can take the run's own fit as truth (`"truth": "fit"`, kept in `recovery/<case>_truth.json`). Covariance sensitivities are skipped for a structure without freed energies. `trace_sensitivity.csv`, `sensitivities.csv` and `tolerance_check.csv` gain a `structure` column; `sample_trajectories.csv` starts at 36 s and adds "TMSPa alone" and tube A. `--structures` limits one call of extended, recovery, night, traces and predictions to some structures |
+
+- **Earlier fits.** With none of the new keys, every stage does what it did; the readings a run does not have are skipped instead of raising (the sixth fit's smoke run stopped on that, `KeyError: ('M5-first', 'free')`).
+- **Speed.** One evaluation of the lab set at 0 min takes about 0.2 s for M1 and M1+BEP (search solver, one process).
+- **The seventh fit's setup** (`notebooks/results/05_fit7/fit_config.json`): M1, M5 and M5-first, each with Marcus and `+BEP`, in the readings 0, 5 and 10 min (18 fits); the rest of the setup as in the sixth fit. Every structure is analysed: recovery with its own fit as truth, profiles, leave-one-out and ten sensitivities in every reading, solver tolerance at 0 min, traces and predictions. `run_chain.sh` runs every stage for M1 and M1+BEP first (phase 1; `run_chain.sh M1` stops there), then for the rest (phase 2), from the worktree of branch `fit/near-zero-ages`.

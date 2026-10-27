@@ -7,8 +7,12 @@ are read off one simulation. The time from mixing to a sample's first spectrum (
 recorded, so every result is computed under a scenario:
 
     'short', 'middle', 'long'   every unknown age is 1 h, 1 day or 7 days
-    'free'                      each unknown age lies between 1 h and 30 days and takes the value that favours
+    'free'                      each unknown age lies between 1 h and 30 days (a run can set its own range,
+                                set_free_age_bounds; eighth fit 10 min to 7 days) and takes the value that favours
                                 the model (the reading notebook 03 uses when an observation picks its best time)
+    '0 min', '5 min', '10 min'  every unknown age is 0, 5 or 10 minutes: TMSPA added just before the first
+                                acquisition (seventh fit; '0 min' is the reference model's t = 0 at the first NMR). Only
+                                the runs that list them in fit_config.json use them (DEFAULT_SCENARIOS)
 
 A recipe can hold a species whose amount at mixing is not known (the water of the tube mixed without water):
 the sample lists it under 'unknown_M' with its range, a fit takes it as a parameter, and every function that
@@ -28,6 +32,8 @@ The K shares of a spectrum sum to one, so their K residuals are scaled by sqrt((
     calculate_predicted_shares  the shares a model predicts for one sample
     calculate_residuals         whitened residual vector of a model over a sample set (χ² = Σ r²)
     find_free_age               the age of the heated sample that a given model prefers (free scenario)
+    set_free_age_bounds         the range of the free ages for a whole fit run (fit_config.json)
+    get_free_age_bounds         the active range
     tabulate_residuals          the standardised residuals, one row per measured quantity
     summarize_residuals         χ², number of values and the largest standardised residual
 
@@ -46,11 +52,13 @@ from kinetics.data.experimental import load_experimental_data
 from kinetics.data.observables import DEFAULT_ERROR_FLOOR, RT_MAX_C, calculate_replicate_scatter, list_spectrum_sets
 from kinetics.reactor.protocol import simulate_history
 
-SCENARIO_AGES_H = {'short': 1.0, 'middle': 24.0, 'long': 168.0}
+SCENARIO_AGES_H = {'short': 1.0, 'middle': 24.0, 'long': 168.0, '0 min': 0.0, '5 min': 5.0 / 60.0, '10 min': 10.0 / 60.0}
 # Range of an unknown age in the free scenario: 1 h to 30 days. DECLARED. The upper limit was 7 days in the
 # first fit, where the 2 % water sample sat on it in every free-age fit
-FREE_AGE_BOUNDS_H = (1.0, 720.0)
-SCENARIOS = ('short', 'middle', 'long', 'free')
+FREE_AGE_BOUNDS_H = DEFAULT_FREE_AGE_BOUNDS_H = (1.0, 720.0)
+SCENARIOS = ('short', 'middle', 'long', 'free', '0 min', '5 min', '10 min')
+# The readings of a run without fit_config.json (first three fits); the near-zero ages are opt-in (seventh fit)
+DEFAULT_SCENARIOS = ('short', 'middle', 'long', 'free')
 # In the free scenario: samples whose age is found inside each evaluation (one spectrum set, no heating), the
 # sample whose age is a fit parameter (heated after its first spectrum), and the rest (age at the lower bound)
 FREE_AGE_PARAMETER_SAMPLE = '2 % H2O'
@@ -272,6 +280,18 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
         samples.append(sample)
     samples += [_paper_sample(obs_id) for obs_id in paper if obs_id not in exclude]
     return samples
+
+
+def set_free_age_bounds(bounds_h=None) -> None:
+    """Range [h] of the unknown ages in the free scenario for a whole fit run (fit_config.json 'free_age_bounds_h';
+    None: 1 h to 30 days). Eighth fit: 10 min, the earliest the first acquisition can follow the addition of TMSPA,
+    to 7 days. The heated samples whose age is not fitted sit on the lower bound."""
+    global FREE_AGE_BOUNDS_H
+    FREE_AGE_BOUNDS_H = DEFAULT_FREE_AGE_BOUNDS_H if bounds_h is None else (float(bounds_h[0]), float(bounds_h[1]))
+
+
+def get_free_age_bounds() -> tuple:
+    return FREE_AGE_BOUNDS_H
 
 
 def build_sample_history(sample: dict, age_h: float = None) -> tuple:
