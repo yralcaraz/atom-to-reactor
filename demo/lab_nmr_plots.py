@@ -60,29 +60,55 @@ def plot_acquisition_timeline(inventory, *, heated_above_C: float = 25.0):
     return fig
 
 
+# Ways to draw a stack of measured spectra
+#   paper      FID transformed without line broadening, each trace scaled to its own maximum (noise floor visible)
+#   smooth     the default line broadening of the nucleus, each trace scaled to its own maximum
+#   intensity  the default line broadening, one common intensity scale and offset (as the predicted spectra of NB02)
+VIEWS = ('paper', 'smooth', 'intensity')
+
+
+def line_broadening_for(view: str):
+    """Line broadening [Hz] to pass to load_spectrum for a view; None keeps the default of the nucleus."""
+    if view not in VIEWS:
+        raise ValueError(f'view must be one of {VIEWS}, not {view!r}')
+    return 0.0 if view == 'paper' else None
+
+
 def plot_spectra_stack(traces, *, window_ppm, nucleus: str, experimental=None, title: str = None,
-                       ordered: bool = False, gap: float = 1.1, ax=None):
-    """Spectra stacked bottom-up (first trace lowest), each scaled to its own maximum inside window_ppm.
+                       ordered: bool = False, gap: float = 1.1, ax=None, view: str = 'paper'):
+    """Spectra stacked bottom-up (first trace lowest) inside window_ppm; view selects the drawing (see VIEWS).
 
     traces: list of (label, ppm, intensity). ordered=True colours them along a sequential ramp (a time or
     temperature series); otherwise all traces are drawn in ink. experimental: measured shifts drawn dashed.
+    The view also fixes how the traces were processed: load them with line_broadening_for(view).
     """
+    line_broadening_for(view)
     lo, hi = sorted(window_ppm)
     if ax is None:
         _, ax = plt.subplots(figsize=(9, 0.9 + 0.75 * len(traces)))
     ramp = np.linspace(0, len(BLUE_RAMP) - 1, len(traces)).round().astype(int) if ordered else None
-    for i, (label, ppm, intensity) in enumerate(traces):
-        mask = (ppm >= lo) & (ppm <= hi)
-        y = intensity[mask]
-        scale = np.max(y) if np.max(y) > 0 else 1.0
+    windows = [((ppm >= lo) & (ppm <= hi)) for _, ppm, _ in traces]
+    peaks = [np.max(y[m]) for (_, _, y), m in zip(traces, windows)]
+    if view == 'intensity':
+        top = max(peaks)
+        step = 0.35 * top
+    for i, ((label, ppm, intensity), mask, peak) in enumerate(zip(traces, windows, peaks)):
         color = BLUE_RAMP[ramp[i]] if ordered else INK
-        ax.plot(ppm[mask], y / scale + gap * i, color=color, lw=1.0)
-        ax.annotate(label, xy=(1.005, gap * i + 0.15), xycoords=('axes fraction', 'data'), fontsize=8,
-                    color=INK_SOFT, va='bottom', annotation_clip=False)
+        if view == 'intensity':
+            y, offset = intensity[mask], step * i
+        else:
+            y, offset = intensity[mask] / (peak if peak > 0 else 1.0), gap * i
+        ax.plot(ppm[mask], y + offset, color=color, lw=1.0)
+        ax.annotate(label, xy=(1.005, offset + (0.15 * gap if view != 'intensity' else 0.05 * step)),
+                    xycoords=('axes fraction', 'data'), fontsize=8, color=INK_SOFT, va='bottom',
+                    annotation_clip=False)
     if experimental is not None and nucleus in _ELEMENT:
         _draw_measured(ax, experimental, _ELEMENT[nucleus], lo, hi, vertical=True)
     ax.set_xlim(hi, lo)
-    ax.set_yticks([])
+    if view == 'intensity':
+        ax.set_ylabel('Intensity (a.u., offset)')
+    else:
+        ax.set_yticks([])
     ax.grid(axis='y', visible=False)
     ax.set_xlabel(f'δ {nucleus} (ppm, as acquired)')
     if title:
