@@ -9,6 +9,11 @@ recorded, so every result is computed under a scenario:
     'short', 'middle', 'long'   every unknown age is 1 h, 1 day or 7 days
     'free'                      each unknown age lies between 1 h and 30 days and takes the value that favours
                                 the model (the reading notebook 03 uses when an observation picks its best time)
+    '0 min', '5 min', '10 min'  every unknown age is 0, 5 or 10 minutes: TMSPA added just before the first
+                                acquisition (seventh fit; '0 min' is the reference model's t = 0 at the first NMR). Only
+                                the runs that list them in fit_config.json use them (DEFAULT_SCENARIOS)
+    '1 h', '8 h'                every unknown age is 1 or 8 hours (eighth fit, M1 tube by tube, with '10 min');
+                                '1 h' is the age of 'short' under the name of its reading
 
 A recipe can hold a species whose amount at mixing is not known (the water of the tube mixed without water):
 the sample lists it under 'unknown_M' with its range, a fit takes it as a parameter, and every function that
@@ -46,11 +51,14 @@ from kinetics.data.experimental import load_experimental_data
 from kinetics.data.observables import DEFAULT_ERROR_FLOOR, RT_MAX_C, calculate_replicate_scatter, list_spectrum_sets
 from kinetics.reactor.protocol import simulate_history
 
-SCENARIO_AGES_H = {'short': 1.0, 'middle': 24.0, 'long': 168.0}
+SCENARIO_AGES_H = {'short': 1.0, 'middle': 24.0, 'long': 168.0, '0 min': 0.0, '5 min': 5.0 / 60.0, '10 min': 10.0 / 60.0,
+                   '1 h': 1.0, '8 h': 8.0}
 # Range of an unknown age in the free scenario: 1 h to 30 days. DECLARED. The upper limit was 7 days in the
 # first fit, where the 2 % water sample sat on it in every free-age fit
 FREE_AGE_BOUNDS_H = (1.0, 720.0)
-SCENARIOS = ('short', 'middle', 'long', 'free')
+SCENARIOS = ('short', 'middle', 'long', 'free', '0 min', '5 min', '10 min', '1 h', '8 h')
+# The readings of a run without fit_config.json (first three fits); the near-zero ages are opt-in (seventh fit)
+DEFAULT_SCENARIOS = ('short', 'middle', 'long', 'free')
 # In the free scenario: samples whose age is found inside each evaluation (one spectrum set, no heating), the
 # sample whose age is a fit parameter (heated after its first spectrum), and the rest (age at the lower bound)
 FREE_AGE_PARAMETER_SAMPLE = '2 % H2O'
@@ -106,6 +114,7 @@ def _lab_block(name: str, nucleus: str, role: str, spectra: list, observables: d
         'nucleus': nucleus, 'role': role,
         't_spec_s': 3600.0 * np.array([sp['t_since_first_h'] for sp in spectra]),
         'windows': windows, 'measured': Y, 'sigma_ind': sigma_ind, 'sigma_common': sigma_common,
+        'sigma_nmr': np.hypot(noise, baseline),               # what the spectrum itself gives: noise and baseline, no floor
         'replicate': replicate, 'birge': birge,
         'cholesky': [cholesky(np.diag(sigma_ind[:, k] ** 2) + sigma_common[k] ** 2, lower=True)
                      for k in range(len(windows))] if replicate else None,

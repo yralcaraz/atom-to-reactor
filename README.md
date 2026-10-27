@@ -155,7 +155,7 @@ The most used functions are re-exported from `kinetics` (see [kinetics/\_\_init\
 | File | Content | Origin |
 |---|---|---|
 | `data/experimental_gogoi2024.json` | Measured ³¹P/²⁹Si/¹³C/¹H shifts, barrier windows, control experiments, water series | Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654 |
-| `tank_api_snapshot_2026-09-24.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) for 24 species, MACE-OMol MD solvation energies in EC for 12, computed NMR shieldings and geometries. The default | Computed; offline snapshot of P. Broqvist's Tank dataset API (2026-09-24) |
+| `tank_api_snapshot_2026-09-24.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) for 24 species, MACE-OMol MD solvation energies in EC for 12, computed NMR shieldings and geometries. The default | Computed; offline snapshot of the Tank dataset API (2026-09-24) |
 | `tank_api_snapshot_2026-10-08.json` | The same for 27 species, with MD solvation in EC at 338 K and in DEC, and an openCOSMO-RS table | Computed; later capture of the same API (2026-10-08) |
 | `lab_observables.json` | Area shares, uncertainties and sample histories of the NMR spectra | NMR data from experiments; built by `scripts/build_observables.py` |
 | NMR spectra | JEOL Delta `.jdf` files | NMR data from experiments |

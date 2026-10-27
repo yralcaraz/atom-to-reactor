@@ -10,7 +10,7 @@ Axioms (TFM KIN - DRAFT - Level 1 formulation, §2):
     A3 bounds               max(0, x) <= F(x)
     A4 anchoring            F(0) = g
     A6 Leffler bounds       0 <= α(x) <= 1
-'bep_cap' is the legacy reference form (P. Broqvist) and violates A2, A3 and A5; it is kept only to reproduce
+'bep_cap' is the legacy form of the reference model and violates A2, A3 and A5; it is kept only to reproduce
 earlier results.
 
 Source: Y. Alcaraz Galván
@@ -40,7 +40,7 @@ def _check_g(g: float) -> None:
 # Legacy: Bell-Evans-Polanyi with floor at E0
 # ------------------------------------------------------------------------------
 def bep_cap(x: float, g: float, alpha: float = 0.5, **_) -> tuple:
-    """ΔG‡ = max(g, g + α·x). Legacy form (tank_model.ipynb); direction-dependent."""
+    """ΔG‡ = max(g, g + α·x). Legacy form of the reference model; direction-dependent."""
     linear = g + alpha * x
     if linear >= g:
         return linear, alpha

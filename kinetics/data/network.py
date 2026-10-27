@@ -8,14 +8,14 @@ The fits take one of three variants of the network (the active one, set per fit 
 kinetics.fitting.config, like the solvation medium):
 
     'R1-R9'                          the nine steps (NETWORK); fits 1–4
-    'R1-R9+N10-N15'                  with the six further steps of P. Broqvist's generated network (fifth fit)
-    'R1-R9+N10-N15, Peter barriers'  the same, the six all in the fixed-barrier class 'exchange'
+    'R1-R9+N10-N15'                  with the six further steps of the generated network of the reference model (fifth fit)
+    'R1-R9+N10-N15, fixed 1.15 eV'   the same, the six all in the fixed-barrier class 'exchange'
 
     build_network                the network of a variant
     get_active_network           the network of the active variant
     set_active_network_variant   change it (None: back to 'R1-R9')
 
-Source: Y. Alcaraz Galván; N10–N15 from P. Broqvist's tmspa_reaction_network_model notebook (2026-10-08)
+Source: Y. Alcaraz Galván; N10–N15 from the generated network of the reference model (2026-10-08)
 """
 
 import numpy as np
@@ -38,7 +38,7 @@ NETWORK_SPECIES = [
     'TMSPA', 'BMSPA', 'MMSPA', 'H3PO4', 'H2O', 'TMSOH', 'HMDSO', 'EC', 'TMSOEG', 'TMSOdiEG', 'CO2'
 ]
 
-# The six steps between the same species that P. Broqvist's generated network adds. Each is a combination of
+# The six steps between the same species that the generated network of the reference model adds. Each is a combination of
 # R1–R9 (N10 = R2 − R1, N11 = R9 − R8, N12 = R2 + R7, N13 = R2 − R3, N14 = R3 − R1, N15 = R1 + R6), so its ΔG
 # follows from the species energies: they add routes, not end points. 'follows': the reaction whose barrier the
 # step takes (N12 and N15 are hydrolyses that release HMDSO instead of TMSOH). 'exchange': a silyl group moving
@@ -51,7 +51,7 @@ EXTRA_REACTIONS = {
     'N14': {'reactants': {'BMSPA': 1, 'MMSPA': 1}, 'products': {'H3PO4': 1, 'TMSPA': 1},   'class': 'exchange'},
     'N15': {'reactants': {'TMSPA': 1, 'H2O': 1},  'products': {'MMSPA': 1, 'HMDSO': 1},    'class': 'hydrolysis', 'follows': 'R1'},
 }
-NETWORK_VARIANTS = ('R1-R9', 'R1-R9+N10-N15', 'R1-R9+N10-N15, Peter barriers')
+NETWORK_VARIANTS = ('R1-R9', 'R1-R9+N10-N15', 'R1-R9+N10-N15, fixed 1.15 eV')
 DEFAULT_NETWORK_VARIANT = 'R1-R9'
 _NETWORKS = {}
 _ACTIVE_VARIANT = [DEFAULT_NETWORK_VARIANT]
@@ -66,7 +66,7 @@ def build_network(variant: str = DEFAULT_NETWORK_VARIANT) -> dict:
         if variant != DEFAULT_NETWORK_VARIANT:
             for rxn_id, rxn in EXTRA_REACTIONS.items():
                 net[rxn_id] = dict(rxn)
-                if variant.endswith('Peter barriers'):          # as in his notebook: one barrier for all six
+                if variant.endswith('fixed 1.15 eV'):           # one declared barrier for all six
                     net[rxn_id]['class'] = 'exchange'
                     net[rxn_id].pop('follows', None)
         _NETWORKS[variant] = net

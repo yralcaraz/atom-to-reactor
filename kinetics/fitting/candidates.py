@@ -17,9 +17,11 @@ It turns a parameter vector into a self-contained ModelSpec (own network, own sp
     M3-split    M1-split with the same freed energies
     M3-first    M3 with the first step of TMSPA (no P–OH yet) apart in every family: R1 (with N15) in
                 hydrolysis and R5 in transfer; R2–R3 and R6–R7 share one class each (sixth fit)
-    M5-first    the same barriers, with the reaction energies of every independent reaction free: R1–R4, R8 and
-                R9 (sixth fit)
+    M5          M1 with the reaction energies of every independent reaction free: R1–R4, R8 and R9 (seventh fit)
+    M5-first    the same barriers as M3-first, with the reaction energies of every independent reaction free:
+                R1–R4, R8 and R9 (sixth fit)
     '+W'        any of them with a common available fraction of the added water (M4 of notebook 03)
+    '+BEP'      any of them with the barrier rule of the reference model instead of Marcus (seventh fit, see with_bep_rule)
 
 Two kinds of parameter come from the sample set and not from the structure: the age of the sample heated after
 its first spectrum (free scenario), and the amount at mixing of a species a recipe does not fix ('c0 H2O TMSPa
@@ -38,6 +40,11 @@ and is not fitted. Their ΔG come from the species energies, freed shifts includ
 
 Sixth fit: the box of a freed energy can be set for a whole run to ±k standard errors of its computed value
 (set_energy_box_sigma, fit_config.json 'energy_box_sigma'); the Gaussian constraint stays inside it.
+
+Seventh fit: the barrier rule of the reference model, ΔG‡ = E₀ for a downhill step and E₀ + |ΔG_rxn| for an
+uphill one, is the capped BEP of `reference_bep` with α = 1 in place of 0.5. With α = 1 it no longer depends on
+the direction a step is written (the reverse barrier is E₀ when the forward one is E₀ + ΔG_rxn), so M0-BEP
+(α = 0.5) is not its special case. Any structure takes it through the suffix '+BEP'.
 
 The search box of each barrier is DECLARED: it is narrower than the 0.60–1.70 eV scanned in notebook 03 where
 no observation allows the excluded part and the solver crawls there (solvent attack below 1.10 eV).
@@ -76,9 +83,11 @@ SPLIT_FIRST_STEP = {**SPLIT_HYDROLYSIS, 'transfer_R5': ('R5',), 'transfer_R67': 
 FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'transfer', 'transfer_R5', 'transfer_R67',
                 'condensation', 'solvent_attack')
 # Barriers that are declared, not fitted. 'exchange': a silyl group moving between two phosphates or two glycols
-# (N10, N11, N13, N14). DECLARED: the value P. Broqvist gives every step he has no data for (class "other" of his
-# tmspa_reaction_network_model notebook); at room temperature it takes about a year in our tubes
+# (N10, N11, N13, N14). DECLARED: the value the reference model gives every step it has no data for (its class
+# "other"); at room temperature it takes about a year in our tubes
 FIXED_BARRIERS_EV = {'exchange': 1.15}
+BEP_SUFFIX = '+BEP'                # structure name suffix of the barrier rule of the reference model (with_bep_rule)
+BEP_ALPHA = 1.0                    # its slope: an uphill step costs E₀ plus all of its ΔG_rxn
 
 
 @dataclass(frozen=True)
@@ -100,7 +109,8 @@ class FitStructure:
     split: dict = field(default_factory=dict)    # {new class: reactions} taken out of their family
     freed: tuple = ()                            # reactions whose ΔG_rxn is free
     water: bool = False                          # a common available fraction of the added water
-    shape: str = None                            # barrier shape that replaces the base model's (smooth models only)
+    shape: str = None                            # barrier shape that replaces the base model's
+    shape_params: dict = field(default_factory=dict)   # parameters of that shape ('+BEP': {'alpha': 1.0})
     parent: str = None                           # the structure this one extends (nesting)
 
     # --- parameters -------------------------------------------------------------------------------
@@ -164,6 +174,7 @@ class FitStructure:
         if self.shape is not None:
             for entry in params.values():
                 entry['shape'] = self.shape
+                entry.update(self.shape_params)
         if self.shared_barrier:
             for entry in params.values():
                 entry.pop('E0_eV', None)
@@ -183,6 +194,7 @@ class FitStructure:
             entry['g_eV'] = FIXED_BARRIERS_EV[c]
             if self.shape is not None:
                 entry['shape'] = self.shape
+                entry.update(self.shape_params)
         shifts, prior, prior_rows = {}, np.zeros(0), []
         if self.freed:
             d = np.array([float(theta[f'dG {r}']) for r in self.freed])
@@ -212,6 +224,15 @@ class FitStructure:
     def with_shape(self, shape: str) -> 'FitStructure':
         """The same structure with another smooth barrier shape (e.g. 'agmon_levine')."""
         return replace(self, name=f'{self.name} ({shape})', label=f'{self.label}; barrier shape {shape}', shape=shape)
+
+    def with_bep_rule(self) -> 'FitStructure':
+        """The same structure with the barrier rule of the reference model in every class, the declared exchange steps included:
+        capped BEP with α = 1, ΔG‡ = max(E₀, E₀ + ΔG_rxn). Its barriers are fitted as E₀ under the same names
+        ('g <class>'). It extends the '+BEP' version of this structure's parent."""
+        return replace(self, name=f'{self.name}{BEP_SUFFIX}',
+                       label=f"{self.label}; capped BEP barriers (α = 1) instead of Marcus",
+                       shape='bep_cap', shape_params={'alpha': BEP_ALPHA},
+                       parent=f'{self.parent}{BEP_SUFFIX}' if self.parent else None)
 
 
 _ENERGY_TOOLS = {}
@@ -322,6 +343,9 @@ FIT_STRUCTURES = {
     'M3-first': replace(_M1, name='M3-first', split=SPLIT_FIRST_STEP, freed=FREED_REACTIONS, parent='M3-split',
                        label='first step of TMSPA apart in hydrolysis (R1) and transfer (R5); ΔG_rxn of R1–R4 free '
                              'within their covariance'),
+    'M5': replace(_M1, name='M5', freed=FREED_INDEPENDENT, parent='M1',
+                  label='one Marcus barrier per family; ΔG_rxn of every independent reaction (R1–R4, R8, R9) free '
+                        'within their covariance'),
     'M5-first': replace(_M1, name='M5-first', split=SPLIT_FIRST_STEP, freed=FREED_INDEPENDENT, parent='M3-first',
                           label='first step of TMSPA apart in hydrolysis (R1) and transfer (R5); ΔG_rxn of every '
                                 'independent reaction (R1–R4, R8, R9) free within their covariance'),
@@ -355,9 +379,12 @@ def embed_parent_theta(structure, parent_theta: dict) -> dict:
 
 
 def get_structure(structure) -> FitStructure:
-    """FitStructure from a registry name; 'NAME+W' adds the available-water fraction; a FitStructure passes through."""
+    """FitStructure from a registry name; 'NAME+W' adds the available-water fraction, 'NAME+BEP' the capped
+    BEP rule (α = 1); a FitStructure passes through."""
     if isinstance(structure, FitStructure):
         return structure
+    if structure.endswith(BEP_SUFFIX):
+        return get_structure(structure[:-len(BEP_SUFFIX)]).with_bep_rule()
     if structure.endswith('+W'):
         return get_structure(structure[:-2]).with_water()
     try:

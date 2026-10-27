@@ -4,7 +4,7 @@ Every resolved site contributes a Lorentzian of area ∝ n_atoms · C. Labile OH
 than the NMR time scale and coalesce into one population-weighted peak. The solvent (EC) is not summed
 into the spectra. Intensities are in mM of nuclei.
 
-Source: Y. Alcaraz Galván; adapted from P. Broqvist
+Source: Y. Alcaraz Galván; adapted from the reference model
 """
 
 import numpy as np

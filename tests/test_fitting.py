@@ -1,6 +1,6 @@
 """Tests for Block 14: feasibility bounds from the control experiments, the water-series checks and experiment design.
 
-Source: Y. Alcaraz Galván; expected bounds computed from the Tank dataset snapshot (P. Broqvist) and Gogoi et al., J. Phys. Chem. C 2024, 128, 1654
+Source: Y. Alcaraz Galván; expected bounds computed from the Tank dataset snapshot and Gogoi et al., J. Phys. Chem. C 2024, 128, 1654
 """
 
 import os

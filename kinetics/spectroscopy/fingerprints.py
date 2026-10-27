@@ -5,7 +5,7 @@ concatenated over the nuclei. Each nucleus block is scaled to unit norm. A greed
 the identifiable (lumped) reactions; the Net Analyte Signal (NAS) gives, per nucleus, the share of each
 fingerprint no other reaction can mimic; the pseudoinverse recovers per-step extents Δξ from spectra.
 
-Source: Y. Alcaraz Galván; adapted from P. Broqvist
+Source: Y. Alcaraz Galván; adapted from the reference model
 """
 
 from dataclasses import dataclass

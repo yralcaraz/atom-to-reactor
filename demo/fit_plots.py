@@ -27,13 +27,20 @@ from kinetics.fitting.residuals import SHARE_SPECIES
 from kinetics.reactor.protocol import build_protocol_schedule
 
 SCENARIO_ORDER = ('short', 'middle', 'long', 'free')
+# Readings of one fixed age for every tube: seventh fit (TMSPA added minutes before the first acquisition) and
+# eighth fit (10 min, 1 h, 8 h)
+NEAR_ZERO_ORDER = ('0 min', '5 min', '10 min', '1 h', '8 h')
 TMSPA_VOL_FRACTION = 0.05               # TMSPA is added as 5 vol% and dilutes the water of the stock (calculate_recipe_molarities)
 TRACE_MM = 1e-3                          # below 1 µM a simulated concentration is drawn as 0 (integrator noise)
-SCENARIO_LABELS = {'short': 'short (1 h)', 'middle': 'middle (1 d)', 'long': 'long (7 d)', 'free': 'free ages'}
-AGE_LABELS = {'short': '1 h', 'middle': '1 day', 'long': '7 days', 'free': 'free ages'}     # a scenario named by its age
+SCENARIO_LABELS = {'short': 'short (1 h)', 'middle': 'middle (1 d)', 'long': 'long (7 d)', 'free': 'free ages',
+                   **{s: s for s in NEAR_ZERO_ORDER}}
+AGE_LABELS = {'short': '1 h', 'middle': '1 day', 'long': '7 days', 'free': 'free ages',
+              **{s: s for s in NEAR_ZERO_ORDER}}     # a scenario named by its age
 REACTION_LABELS = {'R1': 'R1 · first hydrolysis', 'R2': 'R2 · second hydrolysis', 'R3': 'R3 · third hydrolysis',
                    'R5': 'R5 · first transfer', 'R4': 'R4 · condensation', 'R8': 'R8 · solvent attack'}
-SCENARIO_COLORS = dict(zip(SCENARIO_ORDER, SERIES[:4]))
+# The fixed-age readings take the hues again, skipping yellow (the measured spectrum): no run fits both sets, so no
+# figure draws them together
+SCENARIO_COLORS = {**dict(zip(SCENARIO_ORDER, SERIES[:4])), **dict(zip(NEAR_ZERO_ORDER, SERIES[:3] + SERIES[4:6]))}
 _NEUTRAL = '#f0efec'
 DIVERGING = LinearSegmentedColormap.from_list('blue_grey_red', [SERIES[0], _NEUTRAL, SERIES[7]])
 OVERLAY_COLORS = [SERIES[1], SERIES[2], SERIES[4], SERIES[6]]    # fits drawn over one spectrum: not blue (the main fit), not yellow (measured)
@@ -646,6 +653,8 @@ WINDOW_COLORS = {'TMSPA': SERIES[0], 'BMSPA': SERIES[1], 'MMSPA': SERIES[2], 'H3
                  'TMSOH': SERIES[4], 'HMDSO': SERIES[5], 'TMSOEG': SERIES[6], 'P-silyl': INK_MUTED}
 WINDOW_LABELS = {'P-silyl': 'silyl on phosphate', 'TMSOEG': 'TMSOEG (opened EC)'}
 SMOOTH_FWHM_PPM = {'31P': 0.4, '13C': 0.06}     # display broadening: far below the distance between two lines
+RAW_FWHM_PPM = {'31P': 0.02, '13C': 0.004}      # the same for the 'paper' view: about the resolution of the spectra
+SPECTRUM_VIEWS = ('paper', 'smooth', 'intensity')
 NUCLEUS_LABELS = {'31P': '³¹P', '13C': '¹³C'}
 _GAUSS = 2.0 * np.sqrt(2.0 * np.log(2.0))       # FWHM of a Gaussian in units of its standard deviation
 
@@ -685,7 +694,8 @@ def _line(x, centre: float, fwhm_gauss: float, fwhm_total: float):
 
 
 def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, x_range=None, title: str = None,
-                            clear_height: float = 6.0, overlay: bool = False, fit_label: str = 'Simulated from the fit'):
+                            clear_height: float = 6.0, overlay: bool = False, fit_label: str = 'Simulated from the fit',
+                            view: str = 'paper'):
     """Measured spectra with the spectrum a fit predicts drawn over them, one row per spectrum.
 
     spectra: kinetics.fitting.reporting.load_measured_spectra. shares: tabulate_fit_shares of the fit, or
@@ -694,11 +704,16 @@ def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, 
     Both curves are broadened for display (SMOOTH_FWHM_PPM) and scaled so that a line holding the whole area has
     height 1: the height of a line is close to its share. The model predicts areas only, so each simulated line
     takes the position and the width of the measured line (the centre of the window and the display width where
-    the measured window shows no line higher than clear_height times the noise). The numbers over a window are
+    the measured window shows no line higher than clear_height times the noise). view: 'paper' draws the spectra at
+    their own resolution (RAW_FWHM_PPM, noise visible, as in a paper), each one scaled to its tallest point, 'smooth' broadens both curves for display
+    (SMOOTH_FWHM_PPM), 'intensity' broadens as 'smooth' and draws every row of a column on one intensity scale
+    (the area each spectrum had before it was divided by its windows), so the rows compare in height. The numbers over a window are
     its share: measured / simulated, the simulated one in the colour of the fit (measured only with overlay). Tubes whose axis is offset are moved onto a
     common axis.
     """
-    width = SMOOTH_FWHM_PPM[nucleus]
+    if view not in SPECTRUM_VIEWS:
+        raise ValueError(f'view must be one of {SPECTRUM_VIEWS}, not {view!r}')
+    width = (RAW_FWHM_PPM if view == 'paper' else SMOOTH_FWHM_PPM)[nucleus]
     unit = 1.0645 * width                        # 1 / height of a unit-area Gaussian of that width
     cases = shares if isinstance(shares, dict) else {None: shares}
     groups = [list(cases.items())] if overlay else [[case] for case in cases.items()]
@@ -708,8 +723,15 @@ def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, 
     lows, highs = [], []
     for position, (column, group) in enumerate(zip(axes.T, groups)):
         tables = [table[table['nucleus'] == nucleus].set_index(['sample', 'spectrum', 'window']) for _, table in group]
+        if view == 'intensity':                  # one scale for the column: the tallest measured line reaches 1
+            tallest = max(unit * spectra[(sample, nucleus, number)]['area'] * _smooth(
+                spectra[(sample, nucleus, number)]['ppm'], spectra[(sample, nucleus, number)]['intensity'], width).max()
+                for sample, number, _ in rows)
         for ax, (sample, number, note) in zip(column, rows):
             spectrum = spectra[(sample, nucleus, number)]
+            scale = 1.0
+            if view == 'intensity':
+                scale = spectrum['area'] / tallest
             x = spectrum['ppm'] - spectrum['axis_offset_ppm']
             measured = _smooth(x, spectrum['intensity'], width)
             simulated = [np.zeros_like(x) for _ in tables]
@@ -734,9 +756,13 @@ def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, 
                     ax.text(0.5 * (low + high), 1.5, WINDOW_LABELS.get(window, window), ha='center', va='bottom', fontsize=8.5, color=INK)
                 lows.append(low)
                 highs.append(high)
-            ax.fill_between(x, 0.0, unit * measured, color=SERIES[3], alpha=0.6, linewidth=0)
+            if view == 'paper':                  # the tallest point of the measured spectrum reaches 1, as each spectrum is shown alone
+                scale = 1.0 / (unit * measured.max())
+                ax.plot(x, scale * unit * measured, color=SERIES[7], linewidth=0.7, zorder=3)     # red NMR over the blue fit, which follows it closely
+            else:
+                ax.fill_between(x, 0.0, scale * unit * measured, color=SERIES[3], alpha=0.6, linewidth=0)
             for curve, color in zip(simulated, colors):
-                ax.plot(x, unit * curve, color=color, linewidth=1.3 if overlay else 1.5)
+                ax.plot(x, scale * unit * curve, color=color, linewidth=1.3 if overlay else 1.5)
             ax.set_ylim(-0.08, 1.42)
             ax.set_yticks([])
             ax.grid(False)
@@ -756,7 +782,9 @@ def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, 
     # Three sections, filled column by column: measured | the fits, two per column | window and numbers.
     blank = Line2D([], [], linestyle='none', label=' ')
     fits = [lines[i:i + 2] + [blank] * (2 - len(lines[i:i + 2])) for i in range(0, len(lines), 2)]
-    handles = [plt.Rectangle((0, 0), 1, 1, color=SERIES[3], alpha=0.6, linewidth=0, label='Measured spectrum'), blank,
+    measured_key = (Line2D([], [], color=SERIES[7], linewidth=0.7, label='Measured spectrum') if view == 'paper'
+                    else plt.Rectangle((0, 0), 1, 1, color=SERIES[3], alpha=0.6, linewidth=0, label='Measured spectrum'))
+    handles = [measured_key, blank,
                *sum(fits, []),
                plt.Rectangle((0, 0), 1, 1, color=GRID, alpha=0.45, linewidth=0, label='Window of each species'),
                Line2D([], [], linestyle='none', label=numbers)]
@@ -770,7 +798,7 @@ def tabulate_tube_comparison(shares: pd.DataFrame, sample: str) -> pd.DataFrame:
 
     shares: kinetics.fitting.reporting.tabulate_fit_shares; 'spectrum at' is the time since TMSPA (or TMSOH) addition,
     the clock of the figures. A concentration is share × total_M (the amount the windows
-    of that spectrum count together). 'difference' is model − NMR; 'in errors' divides it by the error of the share.
+    of that spectrum count together). 'Δy' is model − NMR; 'σ' is the error of the NMR share in mM; 'z (SD)' is Δy divided by σ.
     """
     rows = shares[shares['sample'] == sample].copy()
     scale = 1000.0 * rows['total_M']
@@ -778,33 +806,20 @@ def tabulate_tube_comparison(shares: pd.DataFrame, sample: str) -> pd.DataFrame:
         'spectrum at (h)': rows['t_h'].round(2), 'nucleus': rows['nucleus'].map(NUCLEUS_LABELS),
         'species': rows['window'].map(lambda w: WINDOW_LABELS.get(w, w)),
         'NMR (mM)': scale * rows['measured'], 'model (mM)': scale * rows['predicted'],
-        'difference (mM)': scale * (rows['predicted'] - rows['measured']),
-        'in errors': (rows['predicted'] - rows['measured']) / rows['sigma']})
+        'Δy (mM)': scale * (rows['predicted'] - rows['measured']),
+        'σ (mM)': scale * rows['sigma'],
+        'z (SD)': (rows['predicted'] - rows['measured']) / rows['sigma']})
     return table.sort_values(['spectrum at (h)', 'nucleus'], kind='stable').reset_index(drop=True)
 
 
 def show_tube_comparison(shares: pd.DataFrame, sample: str):
-    """Displays tabulate_tube_comparison, the 'in errors' column coloured: blue where the model is above the NMR, red below."""
+    """Displays tabulate_tube_comparison, the 'z (SD)' column coloured by its size: blue at 0, red from |z| = 1 on (above 1 or below −1)."""
     from IPython.display import display
     table = tabulate_tube_comparison(shares, sample)
     display(table.style.hide(axis='index')
-            .format({'spectrum at (h)': '{:.1f}', 'NMR (mM)': '{:.1f}', 'model (mM)': '{:.1f}', 'difference (mM)': '{:+.1f}', 'in errors': '{:+.1f}'})
-            .background_gradient(subset=['in errors'], cmap='RdBu_r', vmin=-3, vmax=3)
+            .format({'spectrum at (h)': '{:.1f}', 'NMR (mM)': '{:.1f}', 'model (mM)': '{:.1f}', 'Δy (mM)': '{:+.1f}', 'σ (mM)': '{:.2f}', 'z (SD)': '{:+.1f}'})
+            .background_gradient(subset=['z (SD)'], cmap='coolwarm', gmap=table['z (SD)'].abs(), vmin=0, vmax=1)
             .set_caption(f'Tube {sample}: model against NMR at each spectrum'))
-
-
-def _temperature_note(curve, t0: float) -> str:
-    """The temperature the model gives a tube, from its trajectory: room temperature, and any heating episodes (time on the plotted axis)."""
-    T, t = curve['T_C'].round().to_numpy(), curve['t_h'].to_numpy() - t0
-    room = T.min()
-    if (T <= room).all():
-        return f'Temperature: {room:.0f} °C (room) throughout; no heating recorded.'
-    hot = T > room
-    changes = np.flatnonzero(np.r_[hot[0], hot[1:] & ((T[1:] != T[:-1]) | ~hot[:-1])] & hot)      # where a hot stretch of one temperature begins
-    stops = [next((j for j in range(i + 1, len(T)) if T[j] != T[i]), len(T) - 1) for i in changes]
-    episodes = [f'{T[i]:.0f} °C for ' + (f'{t[j] - t[i]:.0f} h' if t[j] - t[i] >= 2.0 else f'{60 * (t[j] - t[i]):.0f} min')
-                + f' from {t[i]:.0f} h' for i, j in zip(changes, stops)]
-    return f'Temperature: {room:.0f} °C (room) except ' + '; '.join(episodes) + '.'
 
 
 def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model: str, beyond: float = 1.15,
@@ -818,7 +833,8 @@ def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model
     of the fit (all samples; the tube is picked out here). A point is the measured amount (share × total_M) at its
     spectrum time, in molecules: a silyl window counts silyl groups, so HMDSO (two per molecule) is halved. A window
     of two species (TMSOEG with TMSOdiEG) is their sum and is drawn grey; the P-silyl window has no curve and is not
-    drawn, nor are the points of a panel that says 'none in this tube'. No error bar is drawn; a negative point lowers the axis to show it.
+    drawn, nor are the points of a panel that says 'none in this tube'. The error bar of a point is ± the error the spectrum
+    itself gives (noise and baseline, 'sigma_nmr'), without the declared floor the fit adds; a point or bar below 0 lowers the axis to show it.
     The clock is the experimental one: t = 0 is the addition of TMSPA (the tubes with TMSPA) or of TMSOH (mixing).
     Each NMR event is a mark on the time axis, like solvent and TMSPA: the ³¹P and ¹³C scans taken within 1 h of each other
     are one event (their mean time). Nothing is greyed out.
@@ -826,7 +842,7 @@ def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model
     EC/DEC with water only, stirred and left to equilibrate before t = 0, with the water of the stock (before the 5 vol%
     TMSPA dilutes it). At t = 0 TMSPA jumps from 0 to its concentration and the water steps down. The fit does not
     simulate this stage; it is drawn as the constant it is (no TMSPA, nothing to react).
-    before: text under the panels on what is known of the age. margin_h (or 15 % of the measured span if longer) is
+    before: whether the age is a reading (drawn with the model running on after the last spectrum); the only text under the panels is that. margin_h (or 15 % of the measured span if longer) is
     drawn after the last spectrum; where before is None, the curve runs to beyond × the last spectrum instead.
     Concentrations below 1 µM are drawn as 0 (what is left there is the integrator's noise, with either sign), every
     axis starts at 0 unless a measured point is below 0 (then the axis reaches it), and a panel with nothing above 1 µM says so.
@@ -840,12 +856,14 @@ def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model
     species = [c for c in curve.columns if c not in ('sample', 't_h', 'T_C')]
     t, T_C, C_mM = curve['t_h'].to_numpy(), curve['T_C'].to_numpy(), 1000.0 * curve[species].to_numpy().T
     with_tmspa = C_mM[species.index('TMSPA')][0] > 0
-    pre_h = 0.0
+    pre_h = stir_h = 0.0
     if solvent_stage:
         stages, _ = build_protocol_schedule()
-        pre_h = sum(stage.duration_h for stage in stages[:2])                 # stirred, then equilibrated
-        stock = np.zeros((len(species), 1))
-        stock[species.index('H2O')] = C_mM[species.index('H2O')][0] / (1.0 - TMSPA_VOL_FRACTION)
+        stir_h = stages[0].duration_h                                         # stirred, then equilibrated
+        pre_h = sum(stage.duration_h for stage in stages[:2])
+        stock = np.zeros((len(species), 1))                                   # TMSPA and TMSOH are added at t = 0, so they are absent here
+        dilution = 1.0 - TMSPA_VOL_FRACTION if with_tmspa else 1.0           # only TMSPA dilutes the water of the stock
+        stock[species.index('H2O')] = C_mM[species.index('H2O')][0] / dilution
         for solvent in ('EC', 'DEC'):                                         # the solvent is there before and after
             if solvent in species:
                 stock[species.index(solvent)] = C_mM[species.index(solvent)][0]
@@ -877,15 +895,17 @@ def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model
                 for nucleus, seen in points[points['window'] == window].groupby('nucleus'):
                     owners = SHARE_SPECIES[nucleus][window]                 # the species of the window, with their silyl groups
                     single = len(owners) == 1
-                    drawn.setdefault(ax, set()).add('NMR (measured)' if single else
+                    drawn.setdefault(ax, set()).add('NMR (measured, ± noise and baseline)' if single else
                                                     f"NMR (measured): {' + '.join(owners)}, one {NUCLEUS_LABELS[nucleus]} window")
                     per_molecule = 1.0 / owners[next(iter(owners))] if single else 1.0
                     colour = next((line.get_color() for line in ax.get_lines() if line.get_label() in owners and single), INK_MUTED)
                     y = 1000.0 * seen['measured'] * seen['total_M'] * per_molecule
+                    error = 1000.0 * seen['sigma_nmr'] * seen['total_M'] * per_molecule
+                    ax.errorbar(seen['t_h'], y, yerr=error, fmt='none', ecolor=colour, elinewidth=1.0, capsize=3, clip_on=False, zorder=3)
                     ax.plot(seen['t_h'], y, 'o', color=colour, markersize=5, markeredgecolor=SURFACE, markeredgewidth=0.8,
                             clip_on=False, zorder=4)
                     bottom, top = ax.get_ylim()
-                    ax.set_ylim(min(bottom, 1.08 * float(y.min())), max(top, 1.08 * float(y.max())))
+                    ax.set_ylim(min(bottom, 1.08 * float((y - error).min())), max(top, 1.08 * float((y + error).max())))
 
     def label_x(ax, marks):
         """Adds named ticks {time: (name, time text)} to the x axis; the numbered ticks and the marks that would collide are dropped or joined."""
@@ -916,7 +936,8 @@ def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model
         ax.set_xlim(start, end)
     marks = {0.0: ('TMSPA' if with_tmspa else 'mixing', '(0 h)')}
     if solvent_stage:
-        marks[start] = ('solvent', f'({start:.0f} h)')
+        marks[start] = ('mixing', f'({start:.0f} h)')
+        marks[start + stir_h] = ('equilibrate', f'({start + stir_h:.0f} h)')
     for t_nmr in nmr_times:
         marks[t_nmr] = ('NMR', f'({t_nmr:.0f} h)')
     for ax, (_, members) in zip(fig.axes[:4], CONCENTRATION_PANELS):
@@ -926,16 +947,7 @@ def plot_tube_concentrations(trajectories, sample: str, spectrum_times, *, model
             for label in sorted(drawn.get(ax, ())):                     # the plain label first, then those of the summed windows
                 handles.append(Line2D([], [], color=INK_MUTED, marker='o', linestyle='none', markersize=5, label=label))
             ax.legend(handles=handles, loc='center left' if len(handles) > 2 else 'best')
-    if len(nmr_times) == 1:
-        note = f'NMR: the spectrum, marked on the time axis, at {nmr_times[0]:.0f} h.'
-    else:
-        note = (f'NMR: the {len(nmr_times)} spectra, marked on the time axis, at ' + ', '.join(f'{x:.0f}' for x in nmr_times)
-                + ' h (the ³¹P and ¹³C scans of one round count as one).')
-    note += f'\n{before or ""}\nThe model runs on after the last spectrum.'
-    if solvent_stage:
-        note += (f'\nFrom {start:.0f} h to 0 h: EC/DEC with water only (stirred, then left to equilibrate), no TMSPA; '
-                 'drawn from the bench protocol, not simulated by the fit.')
-    note += '\n' + _temperature_note(curve, 0.0)
+    note = 'The model runs on after the last spectrum.'
     fig.text(0.01, -0.005, note, ha='left', va='top', fontsize=9, color=INK_SOFT)
     return fig
 
@@ -1241,7 +1253,7 @@ def plot_reading_trajectories(curves: dict, points: dict, *, samples: list, wind
     points: {scenario: tabulate_fit_shares of that fit}; a marker is a measured share at the age the scenario gives
     its tube. traced: the same as curves for the same parameters with something added at mixing, drawn dashed.
     """
-    scenarios = [s for s in SCENARIO_ORDER if s in curves]
+    scenarios = [s for s in SCENARIO_ORDER + NEAR_ZERO_ORDER if s in curves]
     colors = dict(zip(samples, SERIES))
     fig, axes = plt.subplots(1, len(scenarios), figsize=(3.7 * len(scenarios), 3.5), layout='constrained', sharey=True, squeeze=False)
     for ax, scenario in zip(axes.flat, scenarios):

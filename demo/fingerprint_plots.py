@@ -1,6 +1,6 @@
 """Figures for Block 13: nucleus selectivity and recovery of reaction extents.
 
-Source: Y. Alcaraz Galván; adapted from P. Broqvist
+Source: Y. Alcaraz Galván; adapted from the reference model
 """
 
 import matplotlib.pyplot as plt

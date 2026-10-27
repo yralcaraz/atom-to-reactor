@@ -10,6 +10,7 @@
     python scripts/run_fit.py night          profiles, leave-one-sample-out, indistinguishability, sensitivities
     python scripts/run_fit.py traces         the main structure with a trace of TMSOH at mixing: as fitted, and fitted again
     python scripts/run_fit.py predictions    hold-out and checks, storage at 25 °C, the bench protocol with its ΔS‡ band
+    python scripts/run_fit.py steps          the main structure fitted one tube at a time, each step scoring every tube
 
 Every job writes one file under the results directory (notebooks/results/05/, the first fit, unless --results
 names another) and is skipped when that file exists, so a stage can be interrupted and started again. A new fit
@@ -39,7 +40,7 @@ tube (8 h at room temperature before the first spectrum, with or without an 8 h 
 
 Fifth fit (notebooks/results/05_fit5/fit_config.json; docs/reference-fit_improvements.md §2): the 2 % water tube
 heated 8 h at each step of its ramp, the six steps placed on the file clock and written as explicit episodes
-('sample_overrides'); the network with N10–N15 of P. Broqvist's generated network ('network'), N12 and N15 in the
+('sample_overrides'); the network with N10–N15 of the generated network of the reference model ('network'), N12 and N15 in the
 barrier class of R2 and R1, the four silyl exchanges at a fixed 1.15 eV. Every fit records its network, the
 run-wide changes to the samples and the overrides of its variant. Sensitivities chosen in the setup
 ('sensitivities'): the fourth fit's minus its three readings of the article, plus the heating as recorded, an
@@ -57,6 +58,22 @@ for the two new structures, a reduced one elsewhere, started also from the fifth
 'start_from'); a reduced night ('night': profiles of the main structure where it fits and of M3-first at 1 day, no
 indistinguishability, no tolerance check, no refits with a trace) and two recovery cases of the main structure
 (1 day and free ages).
+
+Seventh fit (notebooks/results/05_fit7/fit_config.json; MET 2026-10-22, simple M1 fit at near-zero ages): the
+ages taken as 0, 5 and 10 minutes (readings '0 min', '5 min', '10 min'); the chain M1 ⊂ M5 ⊂ M5-first (M5: the
+barriers of M1, the energies of M5-first), each with Marcus and with the barrier rule of the reference model (suffix '+BEP':
+capped BEP with α = 1); everything else as in the sixth fit. The night, traces and predictions stages analyse
+every structure the setup lists ('night': 'structures'; before, the main structure only), in the readings it
+allows, also where a structure fails; a recovery case can take the run's own fit as its truth ('truth': 'fit').
+`--structures` limits one call of extended, recovery, night, traces and predictions to some structures of the
+setup, so that M1 is fitted and analysed before the larger structures start; the stages called again without it
+read those results back.
+
+Eighth fit, M1 tube by tube (notebooks/results/fit8_M1-steps/fit_config.json; MET 2026-10-23: one
+experiment at a time): the steps stage fits M1 to one tube at a time ('steps': the tubes, the free barriers and the
+step the others come from; a barrier no earlier step set is held off), at the ages 10 min, 1 h and 8 h, and after
+every step scores every tube with that step's parameters, so the tubes not used yet are predicted ('step_variants':
+the 2 % tube also under the reference model's reading of its history).
 
 Source: Y. Alcaraz Galván
 """
@@ -92,7 +109,7 @@ from kinetics.fitting import (
     calculate_prediction_band, refine_profile_edges, simulate_synthetic_shares, summarize_residuals,
     tabulate_reaction_barriers, tabulate_residuals, write_fit_result,
 )
-from kinetics.fitting.candidates import get_energy_box_sigma
+from kinetics.fitting.candidates import BEP_SUFFIX, get_energy_box_sigma
 from kinetics.fitting.estimation import RECIPE_FACTORS
 from kinetics.fitting.residuals import PAPER_OBSERVATIONS, get_sample_overrides
 from kinetics.thermo.reaction import calculate_network_thermo
@@ -109,7 +126,8 @@ PAPER = PAPER_OBSERVATIONS               # paper observations added to every sam
 # M0, M1 and M1-split did not fit in the first run (chi2 above 280) and get a light search; the first run missed
 # the minimum of the freed-energy structures twice, so M3 and M3-split get four times the screen and twice the starts
 EFFORT = {'M0-BEP': (32, 2, 20), 'M0-Marcus': (32, 2, 20), 'M1': (128, 4, 30), 'M1-split': (128, 4, 30),
-          'M3': (8192, 32, 40), 'M3-split': (8192, 32, 40), 'M3-first': (8192, 32, 40), 'M5-first': (8192, 32, 40)}
+          'M3': (8192, 32, 40), 'M3-split': (8192, 32, 40), 'M3-first': (8192, 32, 40), 'M5': (8192, 32, 40),
+          'M5-first': (8192, 32, 40)}
 # Check fits of the main structure on changed data (trace of TMSOH, full search of a sensitivity variant): they
 # start from the main fit, so they keep the search of the first run
 CHECK_EFFORT = (2048, 16, 40)
@@ -216,13 +234,20 @@ def recovery_cases() -> dict:
     """RECOVERY_TRUTHS with the run's changes: 'cases' {case: {structure, scenario, truth, seeds, profiled, effort}}
     replaces the cases of RECOVERY_TRUTHS (sixth fit), 'truths' {case: {name: value}} replaces the truth of a case,
     and 'effort': 'fits' gives every case at least the search of the fits of its structure (EFFORT), so the check
-    tests the search the fits actually ran with."""
+    tests the search the fits actually ran with. A truth 'fit' (seventh fit) is the run's own fit of that structure
+    and reading, as it was the first time the case ran (kept in recovery/<case>_truth.json, so a fit replaced later
+    by a profile minimum does not change it). With --structures, only the cases of those structures."""
     base = RECOVERY_TRUTHS
     if RECOVERY.get('cases'):
         base = {label: (c['structure'], c['scenario'], c['truth'], tuple(c['seeds']), list(c['profiled']),
                         tuple(c['effort'])) for label, c in RECOVERY['cases'].items()}
+    if ONLY:
+        base = {label: case for label, case in base.items() if case[0] in ONLY}
     cases = {}
     for label, (structure, scenario, truth, seeds, profiled, effort) in base.items():
+        if truth == 'fit':
+            truth = cached(RESULTS / 'recovery' / f'{label}_truth.json',
+                           lambda: load_fit_result(str(fit_path(structure, scenario)))['theta'])
         truth = {**truth, **RECOVERY.get('truths', {}).get(label, {})}
         if RECOVERY.get('effort') == 'fits':
             effort = tuple(max(a, b) for a, b in zip(effort, EFFORT[structure]))
@@ -285,14 +310,22 @@ def stage_recovery(args) -> None:
 # ------------------------------------------------------------------------------
 FIRST_PASS_SOLVER = {'method': 'BDF', 'rtol': 1e-6, 'atol': 1e-10, 'max_rhs_calls': 30000}   # search tolerance of the first pass
 PARENTS = {'M1': ('M0-Marcus',), 'M1-split': ('M1',), 'M3': ('M1',), 'M3-split': ('M1-split', 'M3'),
-           'M3-first': ('M3-split',), 'M5-first': ('M3-first',)}
-SCENARIO_ORDER = ('middle', 'short', 'long', 'free')
-SIZE_ORDER = ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split', 'M3-first', 'M5-first')
+           'M3-first': ('M3-split',), 'M5': ('M1',), 'M5-first': ('M3-first', 'M5')}
+# The capped BEP rule (seventh fit): a '+BEP' structure extends the '+BEP' versions of the parents of its Marcus form
+PARENTS.update({f'{child}{BEP_SUFFIX}': tuple(f'{p}{BEP_SUFFIX}' for p in parents)
+                for child, parents in list(PARENTS.items())})
+# The near-zero ages first: the fits at 5 and 10 min start from those at 0 min (seventh fit)
+SCENARIO_ORDER = ('0 min', '5 min', '10 min', '1 h', '8 h', 'middle', 'short', 'long', 'free')
+SIZE_ORDER = ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split', 'M3-first', 'M5', 'M5-first')   # + the run's own (main)
 MAIN_STRUCTURE = 'M3-split'          # the largest structure: every other one is a special case of it; set in main
 EXTENDED_STRUCTURES = ('M1-split', 'M3', 'M3-split')     # the structures of the extended stage; set in main
 READINGS = {}                        # {structure: readings} of the extended stage when not all (sixth fit); set in main
 START_FROM = None                    # an earlier results directory whose fits also start the search; set in main
 NIGHT = {}                           # the parts of the night and traces stages that run (fit_config.json 'night')
+# The structures the night, traces and predictions stages analyse (fit_config.json 'night': 'structures'; default
+# the main structure), and those one call is limited to (--structures; None: every structure of the setup)
+ANALYSED = ()
+ONLY = None
 
 
 def base_name(structure: str) -> str:
@@ -397,10 +430,12 @@ def earlier_run_starts(structure: str, scenario: str) -> list:
 
 
 def run_structure(structure: str, scenario: str, args, extra_starts=()) -> dict:
-    """Fit of a registered structure, started also from its parents in this scenario, from its own other scenarios
-    and from the fits of an earlier run (START_FROM)."""
+    """Fit of a registered structure, started also from its parents in this scenario, from its own other scenarios,
+    from the fits of an earlier run (START_FROM) and, with the capped BEP rule, from its Marcus form (same parameter
+    names, so only a starting point)."""
     starts = list(extra_starts) + earlier_run_starts(structure, scenario)
-    for parent in PARENTS.get(structure, ()):
+    marcus = structure[:-len(BEP_SUFFIX)] if structure.endswith(BEP_SUFFIX) else None
+    for parent in PARENTS.get(structure, ()) + ((marcus,) if marcus else ()):
         if fit_path(parent, scenario).exists():
             parent_fit = load_fit_result(str(fit_path(parent, scenario)))
             starts.append(embed_parent_theta(structure, parent_fit['theta']))
@@ -426,7 +461,7 @@ def select_consistent(fits: dict, verdicts: dict = None):
     free ages; failing that, the smallest that fits a common-age scenario. A fit that the trace rule rejects
     (verdicts: {(structure, scenario): passes}) is not eligible; one without a verdict is."""
     rejected = {key for key, passes in (verdicts or {}).items() if not passes}
-    for kind, scenarios in (('free ages', ('free',)), ('common age', ('short', 'middle', 'long'))):
+    for kind, scenarios in (('free ages', ('free',)), ('common age', ('short', 'middle', 'long', '0 min', '5 min', '10 min'))):
         for structure in SIZE_ORDER:
             fitting = [sc for sc in scenarios if (structure, sc) in fits and fits[(structure, sc)]['fits']
                        and (structure, sc) not in rejected]
@@ -722,8 +757,10 @@ def run_leave_one_out(structure: str, scenario: str, args) -> dict:
     def compute():
         fit = load_fit_result(str(fit_path(structure, scenario)))
         sets = {name: sample_set(scenario, exclude=(name,)) for name in FITTED_SAMPLES}
-        results = fit_leave_one_out(structure, sets, fit, n_screen=max(int(128 * args.scale), 0), n_starts=2, max_nfev=30,
-                                    seed=args.seed, workers=args.workers)
+        # search of each refit: (screen points, starts, iterations); the setup can raise it ('night': 'loo_effort')
+        n_screen, n_starts, max_nfev = NIGHT.get('loo_effort', (128, 2, 30))
+        results = fit_leave_one_out(structure, sets, fit, n_screen=max(int(n_screen * args.scale), 0), n_starts=n_starts,
+                                    max_nfev=max_nfev, seed=args.seed, workers=args.workers)
         rows = []
         for name, r in results.items():
             barriers = tabulate_reaction_barriers(get_structure(structure), {**fit['theta'], **r['theta']})
@@ -762,11 +799,11 @@ SENSITIVITIES = {
     'glovebox 16 h': ({'overrides': {'TMSOH, glovebox': {'hold_h': 16.0}}}, 1.0),
     # Fifth fit, whose base heats the 2 % tube 8 h per step (fit_config.json): the heating the files record (the
     # base of fits 1-4); the other reading of NMR 1 "after 30 °C", an 8 h step at 30 °C ending 1 h before it (cut at
-    # mixing when the age is shorter); and N10-N15 all at P. Broqvist's 1.15 eV ('network': a variant of
+    # mixing when the age is shorter); and N10-N15 all at the declared 1.15 eV ('network': a variant of
     # kinetics.data.network for the fits of this variant)
     'heating as recorded': ({'overrides': {'2 % H2O': {'heated_episodes': None}}}, 1.0),
     '30 C before NMR 1': ({'overrides': {'2 % H2O': {'added_episodes': [[-9.0, 30.0, 8.0]]}}}, 1.0),
-    'Peter barriers': ({'network': 'R1-R9+N10-N15, Peter barriers'}, 1.0),
+    'N10-N15 at 1.15 eV': ({'network': 'R1-R9+N10-N15, fixed 1.15 eV'}, 1.0),
     # Fifth fit: the 1 h at room temperature declared before each room-temperature round of the 2 % tube is not
     # neutral (the ³¹P shares relax for about 2 h after a fast cool-down): every step ends at least 3 h before
     'cooling 3 h': ({'overrides': {'2 % H2O': {'cooling_h': 3.0}}}, 1.0),
@@ -792,11 +829,13 @@ def network_variant(variant: str = None):
 
 def run_sensitivities(structure: str, scenario: str, args) -> pd.DataFrame:
     main = load_fit_result(str(fit_path(structure, scenario)))
-    rows = [{'variant': 'as fitted', 'scenario': scenario, 'search': 'full', 'chi2': main['chi2'], 'max |z|': main['max_abs_z'],
-             'worst': main['worst'], 'fits': main['fits'], **main['theta'],
+    rows = [{'structure': structure, 'variant': 'as fitted', 'scenario': scenario, 'search': 'full', 'chi2': main['chi2'],
+             'max |z|': main['max_abs_z'], 'worst': main['worst'], 'fits': main['fits'], **main['theta'],
              **{f'dG‡ {rxn}': b['dG_barrier_eV'] for rxn, b in main['barriers'].items()}}]
     for variant in SENSITIVITY_NAMES:
         options, prior_scale = SENSITIVITIES[variant]
+        if prior_scale != 1.0 and not get_structure(structure).freed:
+            continue                                         # no freed energy: the covariance changes nothing
         options = dict(options)
         network = options.pop('network', None)
         tag = f'__{variant}'.replace(' ', '_')
@@ -809,7 +848,7 @@ def run_sensitivities(structure: str, scenario: str, args) -> pd.DataFrame:
                 full = run_one(structure, scenario, args, tag=tag + '__full_search', starts=[main['theta'], fit['theta']],
                                sample_options=options, prior_scale=prior_scale, effort=CHECK_EFFORT)
                 fit, search = (full, 'full') if full['chi2'] < fit['chi2'] else (fit, 'full, no better')
-        rows.append({'variant': variant, 'scenario': scenario, 'search': search, 'chi2': fit['chi2'],
+        rows.append({'structure': structure, 'variant': variant, 'scenario': scenario, 'search': search, 'chi2': fit['chi2'],
                      'max |z|': fit['max_abs_z'], 'worst': fit['worst'], 'fits': fit['fits'], **fit['theta'],
                      **{f'dG‡ {rxn}': b['dG_barrier_eV'] for rxn, b in fit['barriers'].items()}})
     return pd.DataFrame(rows)
@@ -872,33 +911,49 @@ def run_water_profile(scenario: str, args) -> dict:
 
 
 def stage_night(args) -> None:
+    """Every part acts on the analysed structures (ANALYSED: the main structure unless the setup lists others,
+    seventh fit) in the readings the setup allows. Keys of 'night' in fit_config.json, with their defaults (the
+    behaviour of fits 1-6): 'profiled' ([main, 'M1']), 'profile_fitting_only' (False), 'refined' (['middle',
+    'free']: readings whose profiles get extra points at the interval edges), 'loo_fitting_only' (True), 'loo_effort'
+    ([128, 2, 30]), 'sensitivity_readings' (['middle', 'free']), 'indistinguishability' (True), 'tolerance_check'
+    (True: the main structure at 1 day; or {structure: [reading, [two parameters]]}), 'recovery_required' (True: a
+    failed recovery stops the night)."""
     # 0. The recovery check once more, with the code as it now stands (the first run is kept in recovery_first_run/)
     if not stage_recovery(args):
-        raise SystemExit('the synthetic recovery failed: the night run stops here')
+        if NIGHT.get('recovery_required', True):
+            raise SystemExit('the synthetic recovery failed: the night run stops here')
+        log('the synthetic recovery failed; the night goes on (setup: recovery_required false)')
     fits = load_main_fits()
     selected = select_consistent(fits, load_trace_verdicts(fits))
+    refined = NIGHT.get('refined', ['middle', 'free'])
     # The structures profiled, each in every reading or ({structure: [readings]}, sixth fit) in the listed ones
     profiled = NIGHT.get('profiled', [MAIN_STRUCTURE, 'M1'])
     profiled = dict(profiled) if isinstance(profiled, dict) else {name: list(SCENARIO_ORDER) for name in profiled}
     if selected and selected[0] not in profiled:
         profiled[selected[0]] = list(SCENARIO_ORDER)
-    log(f'night: profiles of {profiled}; leave-one-out, sensitivities and indistinguishability on {MAIN_STRUCTURE}')
+    if ONLY:
+        profiled = {name: readings for name, readings in profiled.items() if name in ONLY}
+    log(f"night: profiles of {profiled}; leave-one-out and sensitivities on {', '.join(ANALYSED)}")
     # 1. Profiles of the main structure, then of the baseline structure (sixth fit: only where the structure fits)
     walked = [(structure, scenario) for structure, readings in profiled.items() for scenario in SCENARIO_ORDER
-              if scenario in readings and (not NIGHT.get('profile_fitting_only') or fits[(structure, scenario)]['fits'])]
+              if scenario in readings and (structure, scenario) in fits
+              and (not NIGHT.get('profile_fitting_only') or fits[(structure, scenario)]['fits'])]
     for structure, scenario in walked:
-        run_profiles(structure, scenario, args, refine=scenario in ('middle', 'free'))
-    replaced = [adopt_profile_minimum(structure, scenario, args, refine=scenario in ('middle', 'free'))
+        run_profiles(structure, scenario, args, refine=scenario in refined)
+    replaced = [adopt_profile_minimum(structure, scenario, args, refine=scenario in refined)
                 for structure, scenario in walked]
     if any(replaced):
         summarize_fits()
         fits = load_main_fits()
-    # 2. Which sample drives what, in the scenarios the structure fits
-    for scenario in SCENARIO_ORDER:
-        if fits[(MAIN_STRUCTURE, scenario)]['fits']:
-            run_leave_one_out(MAIN_STRUCTURE, scenario, args)
-        else:
-            log(f'leave-one-out {MAIN_STRUCTURE} {scenario}: skipped, the structure does not fit this scenario')
+    # 2. Which sample drives what, in the scenarios the structure fits (seventh fit: in every reading)
+    for structure in ANALYSED:
+        for scenario in SCENARIO_ORDER:
+            if (structure, scenario) not in fits:
+                continue
+            if fits[(structure, scenario)]['fits'] or not NIGHT.get('loo_fitting_only', True):
+                run_leave_one_out(structure, scenario, args)
+            else:
+                log(f'leave-one-out {structure} {scenario}: skipped, the structure does not fit this scenario')
     # 3. Structures the data cannot tell apart
     if NIGHT.get('indistinguishability', True):
         rows = []
@@ -907,25 +962,35 @@ def stage_night(args) -> None:
             run_water_profile(scenario, args)
         pd.DataFrame(rows).to_csv(RESULTS / 'indistinguishability.csv', index=False)
     # 4. Sensitivity to the declared error floor, the covariance and the times the files do not fix
-    pd.concat([run_sensitivities(MAIN_STRUCTURE, scenario, args) for scenario in ('middle', 'free')
-               if not NIGHT.get('profile_fitting_only') or fits[(MAIN_STRUCTURE, scenario)]['fits']],
-              ignore_index=True).to_csv(RESULTS / 'sensitivities.csv', index=False)
-    if not NIGHT.get('tolerance_check', True):
-        summarize_night()
-        return
+    readings = NIGHT.get('sensitivity_readings', ['middle', 'free'])
+    tables = [run_sensitivities(structure, scenario, args) for structure in ANALYSED for scenario in SCENARIO_ORDER
+              if scenario in readings and (structure, scenario) in fits
+              and (not NIGHT.get('profile_fitting_only') or fits[(structure, scenario)]['fits'])]
+    if tables:
+        pd.concat(tables, ignore_index=True).to_csv(RESULTS / 'sensitivities.csv', index=False)
     # 5. Solver tolerance: two profiles repeated at rtol 1e-8
-    names = ['g solvent_attack', 'g hydrolysis_R23']
-    loose = run_profiles(MAIN_STRUCTURE, 'middle', args, refine=True)['intervals'].set_index('parameter')
-    tight = run_profiles(MAIN_STRUCTURE, 'middle', args, refine=True, names=names, tag='__rtol1e-8',
-                         solver=REPORT_SOLVER)['intervals'].set_index('parameter')
-    check = pd.DataFrame({'low, rtol 1e-6': loose.loc[names, 'low'], 'low, rtol 1e-8': tight.loc[names, 'low'],
-                          'high, rtol 1e-6': loose.loc[names, 'high'], 'high, rtol 1e-8': tight.loc[names, 'high'],
-                          'status, rtol 1e-6': loose.loc[names, 'status'], 'status, rtol 1e-8': tight.loc[names, 'status']})
-    check.to_csv(RESULTS / 'tolerance_check.csv')
-    worst = np.nanmax(np.abs(np.concatenate([check['low, rtol 1e-6'] - check['low, rtol 1e-8'],
-                                             check['high, rtol 1e-6'] - check['high, rtol 1e-8'], [0.0]])))
-    same = bool((check['status, rtol 1e-6'] == check['status, rtol 1e-8']).all())
-    log(f"tolerance check: interval edges move by at most {worst:.4f} eV from rtol 1e-6 to 1e-8; same status: {same}")
+    checks = NIGHT.get('tolerance_check', True)
+    if checks is True:
+        checks = {MAIN_STRUCTURE: ['middle', ['g solvent_attack', 'g hydrolysis_R23']]}
+    rows = []
+    for structure, (scenario, names) in (checks or {}).items():
+        if structure not in ANALYSED or (structure, scenario) not in fits:
+            continue
+        loose = run_profiles(structure, scenario, args, refine=True)['intervals'].set_index('parameter')
+        tight = run_profiles(structure, scenario, args, refine=True, names=names, tag='__rtol1e-8',
+                             solver=REPORT_SOLVER)['intervals'].set_index('parameter')
+        check = pd.DataFrame({'structure': structure, 'scenario': scenario,
+                              'low, rtol 1e-6': loose.loc[names, 'low'], 'low, rtol 1e-8': tight.loc[names, 'low'],
+                              'high, rtol 1e-6': loose.loc[names, 'high'], 'high, rtol 1e-8': tight.loc[names, 'high'],
+                              'status, rtol 1e-6': loose.loc[names, 'status'], 'status, rtol 1e-8': tight.loc[names, 'status']})
+        worst = np.nanmax(np.abs(np.concatenate([check['low, rtol 1e-6'] - check['low, rtol 1e-8'],
+                                                 check['high, rtol 1e-6'] - check['high, rtol 1e-8'], [0.0]])))
+        same = bool((check['status, rtol 1e-6'] == check['status, rtol 1e-8']).all())
+        log(f"tolerance check {structure} {scenario}: interval edges move by at most {worst:.4f} eV from rtol 1e-6 "
+            f"to 1e-8; same status: {same}")
+        rows.append(check)
+    if rows:
+        pd.concat(rows).to_csv(RESULTS / 'tolerance_check.csv')
     summarize_night()
 
 
@@ -964,7 +1029,10 @@ def summarize_night() -> None:
 # ------------------------------------------------------------------------------
 # traces: does a fit survive a trace of TMSOH at mixing?
 # ------------------------------------------------------------------------------
-WATER_SAMPLES = ('0.5 % H2O', '2 % H2O')                      # the samples mixed with water (trajectory table)
+WATER_SAMPLES = ('0.5 % H2O', '2 % H2O')                      # the samples mixed with water
+# the tubes of the trajectory table: those mixed with water, and (seventh fit) the two whose first spectrum comes
+# minutes after mixing at the near-zero ages
+TRAJECTORY_SAMPLES = WATER_SAMPLES + ('TMSPa alone', 'TMSPa + TMSOH (A)')
 TRACE_SCAN_M = (0.0, 1e-9, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3)
 TRACE_REFIT_M = {'1uM': 1e-6, '1mM': 1e-3}
 
@@ -978,37 +1046,40 @@ def stage_traces(args) -> None:
     parameters; it does not enter the rule."""
     rows = []
 
-    def record(scenario, level, how, problem, theta, **extra):
+    def record(structure, scenario, level, how, problem, theta, **extra):
         x = problem.vector(theta)
         table = problem.table(x)
         worst = table.loc[table['z'].abs().idxmax()]
-        barriers = tabulate_reaction_barriers(get_structure(MAIN_STRUCTURE), theta)
-        rows.append({'scenario': scenario, 'TMSOH at mixing (M)': level, 'parameters': how, 'chi2': problem.chi2(x),
-                     'max |z|': float(abs(worst['z'])), 'worst': f"{worst['sample']}: {worst['quantity']}",
+        barriers = tabulate_reaction_barriers(get_structure(structure), theta)
+        rows.append({'structure': structure, 'scenario': scenario, 'TMSOH at mixing (M)': level, 'parameters': how,
+                     'chi2': problem.chi2(x), 'max |z|': float(abs(worst['z'])),
+                     'worst': f"{worst['sample']}: {worst['quantity']}",
                      'fits': bool(abs(worst['z']) <= 3.0), **extra, **theta,
                      **{f'dG‡ {rxn}': b['dG_barrier_eV'] for rxn, b in barriers.items()}})
         pd.DataFrame(rows).to_csv(RESULTS / 'trace_sensitivity.csv', index=False)
 
-    fits = {scenario: load_fit_result(str(fit_path(MAIN_STRUCTURE, scenario)))
-            for scenario in SCENARIO_ORDER if fit_path(MAIN_STRUCTURE, scenario).exists()}
-    for scenario, fit in fits.items():
-        for level in TRACE_SCAN_M:
-            problem = FitProblem(MAIN_STRUCTURE, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
-            record(scenario, level, 'as fitted without it', problem, fit['theta'])
-        scan = [r for r in rows if r['scenario'] == scenario]
-        log(f'trace scan {MAIN_STRUCTURE} {scenario}: chi2 ' + ', '.join(
-            f"{r['chi2']:.1f} at {r['TMSOH at mixing (M)']:.0e} M" for r in scan))
-    if not NIGHT.get('trace_refits', True):
-        return
-    starts = [{k: v for k, v in fit['theta'].items() if not k.startswith('log10 age')} for fit in fits.values()]
-    for label, level in TRACE_REFIT_M.items():
+    # every analysed structure (the main one unless the setup lists others, seventh fit)
+    for structure in ANALYSED:
+        fits = {scenario: load_fit_result(str(fit_path(structure, scenario)))
+                for scenario in SCENARIO_ORDER if fit_path(structure, scenario).exists()}
         for scenario, fit in fits.items():
-            if not fit['fits']:
-                continue
-            new = run_one(MAIN_STRUCTURE, scenario, args, tag=f'__TMSOH_{label}', starts=[fit['theta']] + starts,
-                          sample_options=trace_options(level), effort=CHECK_EFFORT)
-            problem = FitProblem(MAIN_STRUCTURE, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
-            record(scenario, level, 'fitted again', problem, new['theta'], evaluations=new['n_evaluations'])
+            for level in TRACE_SCAN_M:
+                problem = FitProblem(structure, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
+                record(structure, scenario, level, 'as fitted without it', problem, fit['theta'])
+            scan = [r for r in rows if r['structure'] == structure and r['scenario'] == scenario]
+            log(f'trace scan {structure} {scenario}: chi2 ' + ', '.join(
+                f"{r['chi2']:.1f} at {r['TMSOH at mixing (M)']:.0e} M" for r in scan))
+        if not NIGHT.get('trace_refits', True):
+            continue
+        starts = [{k: v for k, v in fit['theta'].items() if not k.startswith('log10 age')} for fit in fits.values()]
+        for label, level in TRACE_REFIT_M.items():
+            for scenario, fit in fits.items():
+                if not fit['fits']:
+                    continue
+                new = run_one(structure, scenario, args, tag=f'__TMSOH_{label}', starts=[fit['theta']] + starts,
+                              sample_options=trace_options(level), effort=CHECK_EFFORT)
+                problem = FitProblem(structure, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
+                record(structure, scenario, level, 'fitted again', problem, new['theta'], evaluations=new['n_evaluations'])
 
 
 # ------------------------------------------------------------------------------
@@ -1153,15 +1224,16 @@ def check_paper_observations(structure: str, theta: dict) -> list:
 
 
 def tabulate_sample_trajectories(structure: str, scenario: str, fit: dict, trace_M: float = 1e-6) -> pd.DataFrame:
-    """Phosphate shares of the two water samples against the time since mixing, at room temperature, for one fit:
-    from the recipe alone and with trace_M of TMSOH at mixing. Rows of kind 'measured' place the measured shares
-    at the age this fit gives the sample."""
+    """Phosphate shares of the TMSPA tubes (TRAJECTORY_SAMPLES) against the time since mixing, at room temperature,
+    for one fit: from the recipe alone and with trace_M of TMSOH at mixing. Rows of kind 'measured' place the
+    measured shares at the age this fit gives the sample. The clock starts at 36 s, so the first minutes of the
+    near-zero ages (seventh fit) are drawn."""
     from kinetics.fitting.residuals import SHARE_SPECIES, _shares_from_state
     model = get_structure(structure).build(fit['theta'])['model']
-    times = 3600.0 * np.geomspace(0.1, 2000.0, 240)
+    times = 3600.0 * np.geomspace(0.01, 2000.0, 300)
     windows, rows = list(SHARE_SPECIES['31P']), []
     for sample in sample_set(scenario):
-        if sample['name'] not in WATER_SAMPLES:
+        if sample['name'] not in TRAJECTORY_SAMPLES:
             continue
         for level in (0.0, trace_M):
             c0 = {**sample['c0_M'], 'TMSOH': sample['c0_M'].get('TMSOH', 0.0) + level}
@@ -1184,7 +1256,10 @@ def stage_predictions(args) -> None:
     selected = select_consistent(fits, load_trace_verdicts(fits))
     log('selection rule: ' + ('no structure fits any scenario and passes the trace rule' if selected is None else
                               f'{selected[0]} in the {selected[1]} scenario ({selected[2]})'))
-    structures = [MAIN_STRUCTURE, 'M1'] + ([selected[0]] if selected and selected[0] not in (MAIN_STRUCTURE, 'M1') else [])
+    # the analysed structures (the main one unless the setup lists others), M1 and the selected one
+    structures = list(dict.fromkeys(list(ANALYSED) + ['M1'] + ([selected[0]] if selected else [])))
+    if ONLY:
+        structures = [name for name in structures if name in ONLY]
     hold_out, alone, paper, storage, protocol, traces, trajectories, later = [], [], [], [], [], [], [], []
     stages, _ = build_protocol_schedule()
     recipe = calculate_recipe_molarities()
@@ -1198,7 +1273,7 @@ def stage_predictions(args) -> None:
             later.append(check_later_spectra(structure, scenario, fits[(structure, scenario)])
                          .assign(structure=structure, scenario=scenario))
             checked = {'the fit': theta}
-            for label in TRACE_REFIT_M if structure == MAIN_STRUCTURE else ():
+            for label in TRACE_REFIT_M if structure in ANALYSED else ():
                 if fit_path(structure, scenario, f'__TMSOH_{label}').exists():
                     checked[f'fitted with TMSOH {label} at mixing'] = load_fit_result(
                         str(fit_path(structure, scenario, f'__TMSOH_{label}')))['theta']
@@ -1217,10 +1292,10 @@ def stage_predictions(args) -> None:
                             'TMSPA left after 1 year, best fit': best['tmspa_left_1y']})
             log(f"storage {structure} {scenario}: 90 % of the water gone after {best['t90_water_h']:.3g} h "
                 f"(accepted sets: {band['low']:.3g} to {band['high']:.3g} h, n = {len(thetas)})")
-            if structure == MAIN_STRUCTURE:
+            if structure in ANALYSED:
                 trajectories.append(tabulate_sample_trajectories(structure, scenario, fits[(structure, scenario)]))
             # The same prediction with a trace of TMSOH at mixing: the fit as it is, and the fit made with that trace
-            for label, level in TRACE_REFIT_M.items() if structure == MAIN_STRUCTURE else ():
+            for label, level in TRACE_REFIT_M.items() if structure in ANALYSED else ():
                 seeded = calculate_storage_times(built['model'], level)
                 row = {'structure': structure, 'scenario': scenario, 'TMSOH at mixing (M)': level,
                        't90 water (h), no trace': best['t90_water_h'], 't90 water (h), fit as it is': seeded['t90_water_h']}
@@ -1248,9 +1323,113 @@ def stage_predictions(args) -> None:
     log('hold-out tube B, largest |z| per fit: ' + '; '.join(f'{st} {sc} {v:.2f}' for (st, sc), v in worst.items()))
 
 
+# ------------------------------------------------------------------------------
+# steps: the main structure fitted one tube at a time (eighth fit, M1 tube by tube)
+# ------------------------------------------------------------------------------
+STEPS = ()                               # the steps of the run (fit_config.json 'steps'); set in main
+STEP_VARIANTS = {}                       # other readings of a tube's history, scored after every step ('step_variants')
+
+
+def step_path(step: str, scenario: str, folder: str = 'steps') -> Path:
+    return RESULTS / folder / f'{MAIN_STRUCTURE}__{step}__{scenario}.json'.replace(' ', '_')
+
+
+def score_step(problem: FitProblem, theta: dict) -> dict:
+    """A step without free parameters: its tubes scored with the parameters it takes over, reported as
+    fit_structure reports a fit (report solver)."""
+    final = problem.replace(solver=REPORT_SOLVER)
+    x = final.vector(theta)
+    table, residuals = final.table(x), final.residuals(x)
+    worst = table.loc[table['z'].abs().idxmax()]
+    return {'structure': problem.structure.name, 'parameters': [], 'fixed': dict(problem.fixed), 'theta': final.theta(x),
+            'x': [], 'chi2': float(residuals @ residuals), 'n_residuals': int(residuals.size), 'n_parameters': 0,
+            'max_abs_z': float(abs(worst['z'])), 'worst': f"{worst['sample']}: {worst['quantity']}",
+            'fits': bool(abs(worst['z']) <= 3.0), 'table': table, 'ages': {}, 'local_optima': [], 'at_bounds': [],
+            'n_evaluations': 1, 'seconds': 0.0}
+
+
+def score_tubes(theta: dict, scenario: str, tubes, overrides: dict = None) -> list:
+    """χ² (whitened as in the fit, so the tubes add up to the χ² of all of them) and worst miss of each tube under
+    one parameter set; nothing is fitted."""
+    rows = []
+    for sample in sample_set(scenario, overrides=overrides or {}):
+        if sample['name'] not in tubes:
+            continue
+        problem = FitProblem(MAIN_STRUCTURE, [sample], fixed=theta, solver=REPORT_SOLVER)
+        table = problem.table(np.zeros(0))
+        worst = table.loc[table['z'].abs().idxmax()]
+        rows.append({'tube': sample['name'], 'chi2': problem.chi2(np.zeros(0)), 'max |z|': float(abs(worst['z'])),
+                     'worst': worst['quantity'], 'fits': bool(abs(worst['z']) <= 3.0)})
+    return rows
+
+
+def stage_steps(args) -> None:
+    """The main structure fitted one tube at a time, in the order of the setup's steps (eighth fit). A step fits
+    the parameters of 'free' to the tubes of 'fit' alone; every other parameter comes from the step named in 'from'
+    (same reading), or is held off when no earlier step set it (the top of its box: the reaction does not run in
+    these tubes). A step without free parameters scores its tubes with the parameters it takes over. After every
+    step each lab tube is scored with the step's parameters, and the tubes of 'step_variants' also under their
+    other history: the tubes not used yet are predicted, so each step tests the ones before it."""
+    structure = get_structure(MAIN_STRUCTURE)
+    off = {p.name: p.upper for p in structure.parameters(sample_set(SCENARIO_ORDER[0]))}
+    n_screen, n_starts, max_nfev = EFFORT[base_name(MAIN_STRUCTURE)]
+    by_id = {step['id']: step for step in STEPS}
+    summary, scores, intervals = [], [], []
+    for scenario in SCENARIO_ORDER:
+        thetas = {}
+        for step in STEPS:
+            name, free = step['id'], list(step['free'])
+            base = thetas[step['from']] if step.get('from') else off
+            data = sample_set(scenario, exclude=tuple(s for s in LAB_FITTED_SAMPLES if s not in step['fit']))
+            problem = FitProblem(structure, data, fixed={k: v for k, v in base.items() if k not in free})
+
+            def compute():
+                if free:
+                    fit = fit_structure(problem, n_screen=max(int(n_screen * args.scale), 0), n_starts=n_starts,
+                                        max_nfev=max_nfev, seed=args.seed, workers=args.workers, start_points=[base])
+                else:
+                    fit = score_step(problem, base)
+                fit.update(scenario=scenario, tag=f'__{name}', step=name, step_fit=list(step['fit']), step_free=free,
+                           step_from=step.get('from'), label=structure.label, energy_box_sigma=get_energy_box_sigma(),
+                           barriers=tabulate_reaction_barriers(structure, fit['theta']), medium=get_active_medium().to_dict(),
+                           paper=[], network=get_active_network_variant(), sample_overrides=get_sample_overrides(),
+                           variant_overrides={})
+                return fit
+
+            fresh = not step_path(name, scenario).exists()
+            fit = cached(step_path(name, scenario), compute)
+            thetas[name] = fit['theta']
+            log(f"step {name:4s} {scenario:6s} {', '.join(step['fit']):20s} chi2 {fit['chi2']:9.2f}  max |z| {fit['max_abs_z']:6.2f}  "
+                f"{'FITS' if fit['fits'] else 'fails'}  [{short({k: fit['theta'][k] for k in free}) or 'nothing free'}]"
+                + (f"  ({fit['n_evaluations']} evaluations, {fit['seconds']:.0f} s)" if fresh else '  (cached)'))
+            summary.append({'step': name, 'scenario': scenario, 'tubes fitted': ', '.join(step['fit']), 'free': ', '.join(free),
+                            'from': step.get('from') or 'off', 'chi2': fit['chi2'], 'max |z|': fit['max_abs_z'],
+                            'worst': fit['worst'], 'fits': fit['fits'], 'at bounds': ', '.join(fit['at_bounds']), **fit['theta']})
+            if free:
+                bundle = cached(step_path(name, scenario, 'step_profiles'), lambda: {
+                    'profile': calculate_profile(problem, fit, free, max_nfev=args.profile_nfev, workers=args.workers)})
+                intervals += [{**find_confidence_interval(bundle['profile'], p), 'step': name, 'scenario': scenario} for p in free]
+            # the tubes this step's parameters rest on: its own and those of the steps it takes them from
+            used, link = set(step['fit']), step.get('from')
+            while link:
+                used |= set(by_id[link]['fit'])
+                link = by_id[link].get('from')
+            for variant, overrides in {'as fitted': {}, **STEP_VARIANTS}.items():
+                tubes = LAB_FITTED_SAMPLES if not overrides else tuple(overrides)
+                for row in score_tubes(fit['theta'], scenario, tubes, overrides):
+                    role = 'fitted here' if row['tube'] in step['fit'] else 'fitted before' if row['tube'] in used else 'not used'
+                    scores.append({'step': name, 'scenario': scenario, 'variant': variant, 'role': role, **row})
+    pd.DataFrame(summary).to_csv(RESULTS / 'steps_summary.csv', index=False)
+    pd.DataFrame(scores).to_csv(RESULTS / 'steps_scores.csv', index=False)
+    pd.DataFrame(intervals).to_csv(RESULTS / 'steps_intervals.csv', index=False)
+    predicted = pd.DataFrame(scores).query("role == 'not used' and variant == 'as fitted'")
+    log('predicted tubes, largest |z| per step and reading: ' + '; '.join(
+        f"{st} {sc} {g['max |z|'].max():.1f}" for (st, sc), g in predicted.groupby(['step', 'scenario'], sort=False)))
+
+
 STAGES = {'registered': stage_registered, 'throughput': stage_throughput, 'recovery': stage_recovery,
           'baselines': stage_baselines, 'extended': stage_extended, 'refit': stage_refit, 'night': stage_night,
-          'traces': stage_traces, 'predictions': stage_predictions}
+          'traces': stage_traces, 'predictions': stage_predictions, 'steps': stage_steps}
 
 
 def main():
@@ -1262,9 +1441,12 @@ def main():
     parser.add_argument('--profile-nfev', type=int, default=15, help='least-squares iterations per profile point')
     parser.add_argument('--results', default=None, help='results directory (default notebooks/results/05)')
     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
+    parser.add_argument('--structures', default=None,
+                        help='extended, recovery, night, traces and predictions: only these structures of the setup, '
+                             'comma-separated (e.g. "M1,M1+BEP")')
     args = parser.parse_args()
     global RESULTS, CHECK_EFFORT, SCENARIOS, SCENARIO_ORDER, PAPER, FITTED_SAMPLES, RECOVERY, SENSITIVITY_NAMES, \
-        MAIN_STRUCTURE, EXTENDED_STRUCTURES, START_FROM, NIGHT, READINGS
+        MAIN_STRUCTURE, EXTENDED_STRUCTURES, START_FROM, NIGHT, READINGS, SIZE_ORDER, ANALYSED, ONLY, STEPS, STEP_VARIANTS
     if args.results:
         RESULTS = Path(args.results).resolve()
     config = apply_fit_config(RESULTS)
@@ -1281,9 +1463,27 @@ def main():
         MAIN_STRUCTURE = config['structures']['main']
         EXTENDED_STRUCTURES = tuple(config['structures']['extended'])
         READINGS = {name: tuple(readings) for name, readings in config['structures'].get('readings', {}).items()}
+    # the summaries read the fits of every structure of the run, '+BEP' ones included (seventh fit)
+    SIZE_ORDER += tuple(name for name in (MAIN_STRUCTURE,) + EXTENDED_STRUCTURES if name not in SIZE_ORDER)
     EFFORT.update({name: tuple(effort) for name, effort in config['effort'].items()})
     START_FROM = (REPO / config['start_from']).resolve() if config['start_from'] else None
     NIGHT = dict(config['night'])
+    STEPS, STEP_VARIANTS = tuple(config['steps']), dict(config['step_variants'])
+    for i, step in enumerate(STEPS):                 # a step takes its parameters from an earlier one (eighth fit)
+        if step.get('from') and step['from'] not in [earlier['id'] for earlier in STEPS[:i]]:
+            raise SystemExit(f"{config['source']}: step {step['id']} takes its parameters from '{step['from']}', not an earlier step")
+        unknown = set(step['fit']) - set(LAB_FITTED_SAMPLES)
+        if unknown:
+            raise SystemExit(f"{config['source']}: step {step['id']} fits unknown tubes {sorted(unknown)}")
+    ANALYSED = tuple(NIGHT.get('structures', [MAIN_STRUCTURE]))
+    if args.structures:
+        ONLY = tuple(name.strip() for name in args.structures.split(','))
+        known = EXTENDED_STRUCTURES + ANALYSED
+        unknown = [name for name in ONLY if name not in known]
+        if unknown:
+            raise SystemExit(f'--structures: {unknown} are not structures of the setup ({list(dict.fromkeys(known))})')
+        EXTENDED_STRUCTURES = tuple(name for name in EXTENDED_STRUCTURES if name in ONLY)
+        ANALYSED = tuple(name for name in ANALYSED if name in ONLY)
     if args.quick:
         args.scale, args.profile_nfev = 0.05, 3
         for name in EFFORT:
@@ -1297,6 +1497,8 @@ def main():
         f"{MAIN_STRUCTURE}; readings "
         f"{', '.join(SCENARIOS)}; paper observations {', '.join(PAPER) or 'none'}; samples changed for the run: "
         f"{', '.join(config['sample_overrides']) or 'none'}")
+    if ONLY:
+        log(f"this call is limited to {', '.join(ONLY)}")
     t0 = time.perf_counter()
     STAGES[args.stage](args)
     log(f'--- stage {args.stage} done in {(time.perf_counter() - t0) / 60:.1f} min ---')

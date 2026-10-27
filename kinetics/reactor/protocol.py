@@ -7,7 +7,7 @@ of the injection stage, which defines t = 0. Temperature changes are instantaneo
 simulate_history is the general form without the recipe: any composition, any sequence of isothermal
 segments, the state returned at chosen times. It is what a fit calls for a sample with a known history.
 
-Source: Y. Alcaraz Galván; bench protocol (recipe and temperature steps) from P. Broqvist
+Source: Y. Alcaraz Galván; bench protocol (recipe and temperature steps) of the reference model
 """
 
 from typing import NamedTuple, Optional

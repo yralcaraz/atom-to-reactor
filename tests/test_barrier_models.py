@@ -7,7 +7,7 @@ Covers:
 4. Network reversal: identical dynamics when a reaction is written backwards (legacy BEP fails).
 5. Temperature-dependent intrinsic barrier, Level 1 calibration and the diffusion ceiling.
 
-Source: Y. Alcaraz Galván; expected barriers computed from the Tank dataset snapshot (P. Broqvist)
+Source: Y. Alcaraz Galván; expected barriers computed from the Tank dataset snapshot
 """
 
 import json
@@ -96,14 +96,15 @@ def test_legacy_bit_identity():
         print(f"  - skipped: {path} not found (set ATOM_DATA_DIR, see .env.example)")
         return
     records = json.load(open(path))['records']
-    # Keys as stored in the baseline file, which predates the rename of the reference model
-    params = {'family_default': FAMILY_BEP_PARAMETERS, 'peter_reference': REFERENCE_BEP_PARAMETERS}
+    # The baseline file predates the rename of the reference model: its records other than 'family_default' are
+    # the reference set under the old key
+    params = lambda key: FAMILY_BEP_PARAMETERS if key == 'family_default' else REFERENCE_BEP_PARAMETERS
     worst = 0.0
     for r in records:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')   # qRRHO records fall back to the stored G (no frequencies)
             res = calculate_rate_constants(
-                r['rxn'], r['T_K'], kinetic_model=r['model'], family_params=params[r['params']],
+                r['rxn'], r['T_K'], kinetic_model=r['model'], family_params=params(r['params']),
                 network=NETWORK, species_db=SPECIES_DB, thermo_mode=r['mode']
             )
         for key in ['k_f', 'k_r', 'dG_barrier_f_eV']:

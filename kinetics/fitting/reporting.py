@@ -92,7 +92,8 @@ def tabulate_fit_shares(evaluation: dict) -> pd.DataFrame:
     """Measured and predicted share of every window of every spectrum of the lab samples, one row each.
 
     Unlike tabulate_residuals, repeated spectra are not folded into a mean and its drifts. 'sigma' is the error
-    of a single spectrum (independent and common parts in quadrature), 't_h' the time since mixing and 'total_M'
+    of a single spectrum (independent and common parts in quadrature), 'sigma_nmr' its part measured on the spectrum
+    (noise and baseline, without the declared floor), 't_h' the time since mixing and 'total_M'
     the nuclei the windows of that spectrum count together, so share × total_M is an amount in mol/L.
     """
     rows = []
@@ -111,7 +112,7 @@ def tabulate_fit_shares(evaluation: dict) -> pd.DataFrame:
                 for k, window in enumerate(block['windows']):
                     rows.append({'sample': name, 'nucleus': block['nucleus'], 'spectrum': i, 't_h': t_s[i] / 3600.0,
                                  'age_h': age_h if age_h is not None else np.nan, 'window': window,
-                                 'measured': block['measured'][i, k], 'sigma': sigma[i, k],
+                                 'measured': block['measured'][i, k], 'sigma': sigma[i, k], 'sigma_nmr': block['sigma_nmr'][i, k],
                                  'predicted': shares[i, k], 'total_M': total})
     return pd.DataFrame(rows)
 
@@ -161,7 +162,7 @@ def tabulate_window_amounts(trajectories: pd.DataFrame, nucleus: str, windows=No
 def load_measured_spectra(observables: dict, root=None, *, baseline_order: int = 3, exclusion_pad_ppm: float = 0.3) -> dict:
     """The raw spectra behind the shares, ready to be drawn against a model.
 
-    {(sample, nucleus, spectrum number): {'ppm', 'intensity', 'windows_ppm', 'axis_offset_ppm', 'noise',
+    {(sample, nucleus, spectrum number): {'ppm', 'intensity', 'area' (the divisor), 'windows_ppm', 'axis_offset_ppm', 'noise',
     'temperature_C', 't_since_first_h'}}. Each spectrum is cut to the region its shares were taken from, a
     polynomial baseline fitted outside the windows is removed (one of the three baselines of
     calculate_area_shares) and the intensity is divided by the summed area of the windows, so the area of a
@@ -192,7 +193,7 @@ def load_measured_spectra(observables: dict, root=None, *, baseline_order: int =
                 step = abs(x[1] - x[0])
                 area = sum(float(y[(x >= lo) & (x <= hi)].sum() * step) for lo, hi in windows.values())
                 out[(name, nucleus, number)] = {
-                    'ppm': x, 'intensity': y / area, 'windows_ppm': {w: tuple(v) for w, v in windows.items()},
+                    'ppm': x, 'intensity': y / area, 'area': area, 'windows_ppm': {w: tuple(v) for w, v in windows.items()},
                     'axis_offset_ppm': offset, 'noise': float(np.std(y[signal_free]) / area),
                     'temperature_C': spectrum['temperature_C'], 't_since_first_h': spectrum['t_since_first_h']}
     return out
