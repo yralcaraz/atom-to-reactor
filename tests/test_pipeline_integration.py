@@ -2,8 +2,6 @@
 
 1. Solution thermochemistry and rate constants with detailed balance.
 2. Multi-stage protocol reactor (Radau IIA) with Si/P conservation.
-3. NMR catalog from DFT shieldings and the OH mass balance for water.
-4. Reaction fingerprints, identifiability and extent recovery.
 
 Source: Y. Alcaraz Galván
 """
@@ -11,16 +9,13 @@ Source: Y. Alcaraz Galván
 import os
 import sys
 
-import numpy as np
-
 repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
 from kinetics import (
-    NETWORK, build_nmr_catalog, build_protocol_schedule, calculate_rate_constants,
-    calculate_recipe_molarities, calculate_solution_gibbs, calculate_water_mass_balance,
-    recover_reaction_extents, run_fingerprint_analysis, simulate_acquisition_spectra, simulate_protocol,
+    build_protocol_schedule, calculate_rate_constants, calculate_recipe_molarities, calculate_solution_gibbs,
+    simulate_protocol,
 )
 
 
@@ -48,35 +43,7 @@ def test_protocol_reactor():
     return sim
 
 
-def test_nmr_catalog_and_water_balance(sim):
-    print("\n--- 3. NMR catalog and water mass balance ---")
-    catalog = build_nmr_catalog()
-    assert set(catalog) == {"Si", "P", "C", "H"}, "Catalog must cover the four nuclei"
-    assert "TMSPA" in catalog["Si"], "TMSPA missing in the Si catalog"
-    wb = calculate_water_mass_balance(sim["C_M"], sim["idx"], sim["recipe"]["after"]["H2O"], catalog)
-    post = slice(sim["injection_idx"], None)
-    diff = np.max(np.abs(wb["h2o_mass_balance_M"][post] - wb["h2o_direct_M"][post]))
-    assert diff < 1e-6, f"Water mass balance failed: max diff = {diff:.2e} M"
-    print(f"✓ Water from the OH mass balance matches the ODE state (max diff {diff:.1e} M)")
-
-
-def test_fingerprints_and_extent_recovery(sim):
-    print("\n--- 4. Reaction fingerprints and extent recovery ---")
-    fp = run_fingerprint_analysis(NETWORK)
-    assert fp["effective_rank"] == 6, f"Rank should be 6 (found {fp['effective_rank']})"
-    print(f"✓ Rank {fp['effective_rank']} of {len(NETWORK)}: {'; '.join(fp['lumped_labels'])}")
-
-    dD = np.diff(simulate_acquisition_spectra(sim, fp), axis=0)
-    xi = recover_reaction_extents(dD, fp["F_basis_norm"], fp["weights"])
-    assert xi.shape == (7, 6), f"xi shape mismatch: {xi.shape}"
-    err = np.max(np.abs(xi @ fp["F_basis_raw"] - dD))
-    assert err < 1e-6, f"Extent reconstruction error too large: {err:.2e}"
-    print(f"✓ Noise-free spectra reconstructed from recovered extents (max error {err:.1e})")
-
-
 if __name__ == "__main__":
     test_thermodynamics_and_rates()
-    sim = test_protocol_reactor()
-    test_nmr_catalog_and_water_balance(sim)
-    test_fingerprints_and_extent_recovery(sim)
+    test_protocol_reactor()
     print("\nALL PIPELINE TESTS PASSED")

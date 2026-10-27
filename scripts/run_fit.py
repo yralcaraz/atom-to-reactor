@@ -11,9 +11,9 @@
     python scripts/run_fit.py traces         the main structure with a trace of TMSOH at mixing: as fitted, and fitted again
     python scripts/run_fit.py predictions    hold-out and checks, storage at 25 °C, the bench protocol with its ΔS‡ band
 
-Every job writes one file under the results directory (notebooks/results/05/, the first fit, unless --results
-names another) and is skipped when that file exists, so a stage can be interrupted and started again. A new fit
-needs a new directory: in one that holds results the old fits are returned as they are.
+Every job writes one file under the results directory (--results, required) and is skipped when that file
+exists, so a stage can be interrupted and started again. A new fit needs a new directory: in one that holds
+results the old fits are returned as they are.
 
 Rules fixed before any fit: scenarios 'short' (1 h), 'middle' (1 d), 'long' (7 d)
 and 'free' (each unknown age between 1 h and 30 d; 7 d in the first fit); a structure fits a scenario if no
@@ -121,7 +121,7 @@ from kinetics.reactor import (
     simulate_history, simulate_protocol,
 )
 
-RESULTS = REPO / 'notebooks' / 'results' / '05'
+RESULTS = None                           # the results directory (--results); set in main
 PAPER = PAPER_OBSERVATIONS               # paper observations added to every sample set; set from the run's setup
 
 # Search effort per structure: (Sobol screen points, starts polished, least-squares iterations per start).
@@ -1343,7 +1343,7 @@ def main():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--scale', type=float, default=1.0, help='multiplies every Sobol screen (smoke tests: 0.1)')
     parser.add_argument('--profile-nfev', type=int, default=15, help='least-squares iterations per profile point')
-    parser.add_argument('--results', default=None, help='results directory (default notebooks/results/05)')
+    parser.add_argument('--results', required=True, help='results directory, with its fit_config.json')
     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
     parser.add_argument('--structures', default=None,
                         help='extended, recovery, night, traces and predictions: only these structures of the setup, '
@@ -1353,8 +1353,7 @@ def main():
     args = parser.parse_args()
     global RESULTS, CHECK_EFFORT, SCENARIOS, SCENARIO_ORDER, PAPER, FITTED_SAMPLES, RECOVERY, SENSITIVITY_NAMES, \
         MAIN_STRUCTURE, EXTENDED_STRUCTURES, START_FROM, NIGHT, READINGS, SIZE_ORDER, ANALYSED, ONLY, ONLY_READINGS
-    if args.results:
-        RESULTS = Path(args.results).resolve()
+    RESULTS = Path(args.results).resolve()
     config = apply_fit_config(RESULTS)
     SCENARIOS = tuple(sc for sc in SCENARIOS if sc in config['scenarios'])
     SCENARIO_ORDER = tuple(sc for sc in SCENARIO_ORDER if sc in config['scenarios'])

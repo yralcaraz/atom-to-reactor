@@ -1,205 +1,89 @@
-# atom-to-reactor
+# atom-to-reactor · branch `M5-full`
 
-Multiscale kinetics of the TMSPA water scavenger in ethylene carbonate: from DFT energies to reactor concentrations, operando NMR spectra and the experiments needed to fit them.
+Multiscale kinetics of the TMSPA water scavenger in ethylene carbonate: from DFT energies to reactor concentrations, fitted to the lab NMR spectra.
 
-Master's thesis project, 
-Department of Chemistry – Ångström Laboratory, Uppsala University.
+Master's thesis project, Department of Chemistry – Ångström Laboratory, Uppsala University.
 
 > [!WARNING]
-> **Research code, under active development.** The pipeline runs end to end and is covered by tests. A first, diagnostic fit against lab NMR snapshots exists (notebook 05), but there are no time-resolved data and no model is calibrated: `level1` is partly derived from published observations and several of its barriers are still placeholders (see [Status and limitations](#status-and-limitations)). APIs may change without notice.
+> **Research code, under active development.** No model is calibrated yet; APIs may change without notice.
 
----
+## The branches
+
+| Branch | What it holds |
+|---|---|
+| `M1-steps` (the default) | The model M1 fitted to one lab tube at a time, each step tested on the tubes not used yet (eighth fit). Notebook `05_fitting_rev08_(M1_steps)` |
+| **`M5-full`** (this one) | The fit of every tube at once: M1 ⊂ M5 ⊂ M5-first, each with Marcus barriers and with the capped BEP rule (`+BEP`), at ages of 0, 5 and 10 min (seventh fit). Notebook `05_fitting_rev07_(M1_all fitted)`. Also the setup of a run at 10 min and free ages, prepared and not run |
+| `main` | The history up to the sixth fit: notebooks 01–05 rev05, the spectroscopy and experiment-design modules. Closed at the tag `historico-261027` |
+
+This branch drops the files the full fit does not use; the files it keeps are whole. Anything removed is in `main`.
 
 ## What it does
 
-TMSPA (tris(trimethylsilyl) phosphate) reacts with water and with the EC solvent through a cascade of silyl transfers. The repository models that cascade as a 9-reaction network and follows it through six stages:
-
 ```mermaid
 flowchart LR
-    DATA["Data<br/>DFT · MD solvation · NMR shieldings<br/>"] --> THERMO["Thermochemistry<br/>G in EC, ΔG_rxn, K_eq"]
-    THERMO --> RATES["Rate constants<br/>barrier models + Eyring<br/>(named model registry)"]
-    RATES --> REACTOR["Reactors<br/>isothermal batch,<br/>multi-stage bench protocol"]
-    REACTOR --> NMR["Spectroscopy<br/>synthetic ²⁹Si/³¹P/¹³C/¹H spectra,<br/>reaction fingerprints"]
-    REACTOR --> FIT["Fitting & design<br/>barrier bounds,<br/>experiment precision"]
-    DATA -. "measured windows" .-> FIT
+    DATA["Data<br/>DFT · MD solvation<br/>lab NMR observables"] --> THERMO["Thermochemistry<br/>G in EC/DEC, ΔG_rxn"]
+    THERMO --> RATES["Rate constants<br/>barrier models + Eyring"]
+    RATES --> REACTOR["Reactor<br/>each tube's history"]
+    REACTOR --> FIT["Fit<br/>every tube at once"]
+    DATA -. "³¹P and ¹³C shares" .-> FIT
 ```
 
-| ID | Reaction | Family |
-|---|---|---|
-| R1–R3 | TMSPA → BMSPA → MMSPA → H₃PO₄, each step + H₂O → + TMSOH | hydrolysis |
-| R4 | 2 TMSOH → HMDSO + H₂O | condensation |
-| R5–R7 | the same phosphate ladder, each step + TMSOH → + HMDSO | transfer |
-| R8 | EC + TMSOH → TMSOEG + CO₂ | solvent attack |
-| R9 | EC + TMSOEG → TMSOdiEG + CO₂ | solvent attack |
-
-Every reaction is reversible. Reverse rates follow from detailed balance, and the reactor integrates the mass-action ODEs with an implicit (Radau) solver.
-
-## The multiscale model
-
-The model is a chain of scales. Each one answers a single question and hands one quantity to the next, so a number measured in an NMR tube can be traced back to the energy of a molecule:
-
-| Scale | Question | Method | Code | Hands on |
-|---|---|---|---|---|
-| **Electrons** (one molecule in vacuum) | What is the energy of each species? | DFT, ωB97M-V/def2-TZVPD | `data/` | G°_gas per species |
-| **Molecule in the solvent** | What does it cost to put it in EC? | Molecular dynamics with MACE-OMol | `thermo/` | G_sol = G°_gas + ΔE_solv |
-| **One reaction** | Is it downhill, and how fast? | ΔG_rxn from the species; a barrier relation (Marcus or BEP) with one intrinsic barrier `g` per reaction family; Eyring; detailed balance | `thermo/`, `microkinetics/` | k_f(T), k_r(T) |
-| **Reactor** (the tube, hours to years) | How do the concentrations evolve? | Mass-action ODEs for 9 reactions and 11 species | `reactor/` | C_i(t) |
-| **Instrument** | What does NMR show? | Computed shieldings → shifts → spectra and area shares | `spectroscopy/` | spectra |
-| **Back to the data** | Which parameters do the measurements allow? | Bounds from windowed observations, experiment design, least squares with profile intervals | `fitting/` | `g` per family, with intervals |
-
-Two properties hold across the chain. Energies are assigned to species, never to reactions, so every thermodynamic cycle closes (Wegscheider). Every rate constant obeys detailed balance, so the kinetics relax to the equilibrium the thermochemistry predicts.
-
-One link is not computed from first principles: **the barriers**. No transition states are calculated. Each reaction family has an intrinsic barrier `g`, and that is the quantity the experiments have to determine. The fitting stage exists to close this link.
-
-The equations of each scale are in the [theory document](docs/theory-multiscale_microkinetics.md), and every module with its inputs and outputs in [MODULES.md](MODULES.md).
-
-## Models
-
-Rate constants come from a named model, so that different barrier assumptions can be run side by side and compared against the same data (`kinetics.describe_models()` prints this table with the full assumptions).
-
-| Name | Barrier relation | Status | Basis |
-|---|---|---|---|
-| `reference_bep` | capped BEP, E₀ = 1.15 eV for all reactions | reference | Reproduces a reference protocol model; a design choice, not a fit |
-| `family_bep` | capped BEP per family | sensitivity | Solvent attack from Gogoi 2024; other families 0.80 eV placeholders |
-| `family_marcus` | Marcus, same intrinsic barriers | sensitivity | As `family_bep` |
-| `level1` | Marcus, recalibrated per family | provisional | Condensation and solvent attack derived from Gogoi 2024; hydrolysis and transfer still placeholders |
+TMSPA (tris(trimethylsilyl) phosphate) reacts with water and with the solvent through a cascade of silyl transfers: R1–R9 and the six steps N10–N15 between the same species. Energies belong to species, so every cycle closes; every rate obeys detailed balance. The barriers are not computed: each class of reaction has an intrinsic barrier, and the fit determines it from the spectra.
 
 ## Quick start
 
 Requires Python 3.10+ (developed on 3.11).
 
 ```bash
-git clone https://github.com/yralcaraz/atom-to-reactor.git
+git clone -b M5-full https://github.com/yralcaraz/atom-to-reactor.git
 cd atom-to-reactor
-python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env              # then set the two data folders (see Data)
 ```
 
-**Tests.** Each test file runs as a script. The files also follow pytest naming.
+| Task | Command |
+|---|---|
+| Tests | `python tests/run_all.py` |
+| Check that the code still reproduces a stored fit (reads only) | `python scripts/check_stored_fits.py notebooks/results/05_fit7` |
+| A stage of the fit (registered, throughput, recovery, baselines, extended, refit, night, traces, predictions) | `python scripts/run_fit.py STAGE --results DIR` |
+| The notebook | `jupyter lab notebooks/` |
 
-```bash
-for f in tests/test_*.py; do python "$f"; done
-```
+`--results` is required: every job is written there, and a folder that already holds results returns its fits as they are. The setup of the run is `DIR/fit_config.json`; [docs/reference-fitting_system.md](docs/reference-fitting_system.md) describes the stages.
 
-**Notebooks.**
-
-```bash
-jupyter lab notebooks/
-```
-
-**From Python.**
-
-```python
-from kinetics import (NETWORK_SPECIES, calculate_recipe_molarities, describe_models,
-                      simulate_batch_reactor, simulate_protocol, summarize_batch_runs)
-
-describe_models()                                   # registry: barriers, status, assumptions
-
-# Bench recipe: 2 vol% water in EC, then 5 vol% TMSPA
-c0 = {sp: 0.0 for sp in NETWORK_SPECIES} | calculate_recipe_molarities()['after']
-
-# Isothermal batch run at 40 °C for one week, two models side by side
-runs = {name: simulate_batch_reactor(c0, T_K=313.15, t_end_s=7 * 86400, model=name)
-        for name in ('family_bep', 'level1')}
-summarize_batch_runs(runs)                          # half-life, water use, final CO2 and HMDSO
-
-sim = simulate_protocol(model='level1')             # full multi-stage temperature protocol
-```
-
-## Notebooks
-
-The notebooks are demonstrations. The science lives in `kinetics/`, and the figures and display tables in `demo/`.
-
-Notebooks are named `0X_topic_rev0Y`: the number is the stage of the work (two notebooks of the same stage share it), the topic is a short name, and `rev0Y` counts the revisions of that notebook, kept side by side. In `05_fitting`, revision Y presents fit Y and its name ends, in brackets, with what that fit adds (`(31P)`, `(31P_13C)`, `(TMSPa_alone)`, `(EC_DEC)`). Inside a notebook, sections are numbered 1, 2, 3; "Block" numbers refer to the engine only (see [MODULES.md](MODULES.md)).
-
-| Notebook | Content | Guide |
-|---|---|---|
-| [01_theory_rev01](notebooks/01_theory_rev01.ipynb) | Sections 1–11: input data, free energies in EC, reaction thermodynamics and Wegscheider cycles, barrier models, model selection against experiment, k(T), batch reactor, sensitivity, virtual ²⁹Si NMR | [theory](docs/theory-multiscale_microkinetics.md) |
-| [02_experimental_protocol_rev01](notebooks/02_experimental_protocol_rev01.ipynb) | Bench protocol simulation, model comparison, predicted multinuclear NMR, water from ¹H, which reactions the spectra can tell apart | [guide](docs/guide-operando_experimental_protocol.md) |
-| [03_experiment_plan_rev01](notebooks/03_experiment_plan_rev01.ipynb) | What the data constrain today (barrier bounds), where the model fails (water series), NMR readouts and timing, which experiment determines which parameter, tentative plan. Written before the lab spectra existed | — |
-| [03_feasible_region_rev01](notebooks/03_feasible_region_rev01.ipynb) | Every observation (lab spectra and Gogoi 2024) as a constraint: barrier intervals for a ladder of model structures, tests no barrier can pass. Stored without outputs | — |
-| [04_NMR_data_rev01](notebooks/04_NMR_data_rev01.ipynb) | The raw lab NMR spectra: samples, acquisition settings, what changes in time, what is unclear in the files | — |
-| [05_fitting_rev01_(31P)](notebooks/05_fitting_rev01_%2831P%29.ipynb) | First fit of the candidate structures to the lab observables under four scenarios of the unknown mixing times: misfit per observation, profile intervals, what the data cannot determine. Shows results computed by `scripts/run_fit.py`; stored without outputs | — |
-| [05_fitting_rev02_(31P_13C)](notebooks/05_fitting_rev02_%2831P_13C%29.ipynb) | **Draft.** The second fit in step-by-step order, one model structure added at a time. Shows results computed by `scripts/run_fit.py`; nothing is fitted in the notebook | — |
-| [05_fitting_rev03_(TMSPa_alone)](notebooks/05_fitting_rev03_%28TMSPa_alone%29.ipynb) | **Draft.** The third fit against the measurements: measured and simulated NMR spectra, concentrations in time, the fitted values with their intervals and correlations, the unknown ages, the error of a share. Reads the fits computed by `scripts/run_fit.py` and runs them forward; nothing is fitted in the notebook | — |
-| [05_fitting_rev04_(EC_DEC)](notebooks/05_fitting_rev04_%28EC_DEC%29.ipynb) | **Draft, in revision.** Copy of rev03, to be trimmed and pointed at the fourth fit (8 Oct snapshot, EC and DEC solvation) | — |
-
-## Repository layout
+## Layout
 
 ```text
 atom-to-reactor/
-├── kinetics/                 the package, one folder per pipeline stage
-│   ├── constants.py          physical constants and unit conversions
-│   ├── paths.py              location of the data files (environment variables)
-│   ├── data/                 Block 1      snapshot, species database, network, experimental data
-│   ├── thermo/               Blocks 2–4   G in solution, standard-state shift, solvation σ, ΔG_rxn
-│   ├── microkinetics/        Blocks 5–6   barrier models, family parameters, rates, model registry, Arrhenius
-│   ├── reactor/              Blocks 7,10  mass-action engine, batch and protocol reactors, validation
-│   ├── spectroscopy/         Blocks 8,11–13  shifts from shieldings, spectra, fingerprints
-│   └── fitting/              Block 14     barrier bounds, NMR readouts, experiment design, residuals, fits and profiles
-├── demo/                     figures and display tables for the notebooks (no science)
-├── notebooks/                01 theory · 02 operando protocol · 03 experiment plan, feasible region · 04 lab data · 05 first fit, third fit
-├── data/                     reference data and the data inventory (see data/README.md)
-├── docs/                     theory, the guide to notebook 02, references
-├── tests/                    test scripts (run_all.py runs them)
-├── scripts/                  build_observables.py (lab observables file) · run_fit.py (staged first fit)
-├── MODULES.md                module reference: diagrams, files and functions with inputs and outputs
-├── .env.example              the two variables that point to the data folders
-└── requirements.txt
+├── kinetics/            the package
+│   ├── data/            snapshot, species, network, lab observables, solvation medium
+│   ├── thermo/          G in solution, solvation σ, ΔG_rxn
+│   ├── microkinetics/   barrier models, rate constants, model registry
+│   ├── reactor/         mass-action engine, batch and protocol reactors, sample histories
+│   └── fitting/         residuals, candidate structures, fits and profiles, stored fits run forward, run setup
+├── demo/                figures and display tables of the fit notebooks
+├── notebooks/           05_fitting_rev07_(M1_all fitted)
+├── scripts/             run_fit.py (the staged runner) · check_stored_fits.py · build_observables.py
+├── tests/               test scripts (run_all.py runs them)
+├── data/                reference data and the data inventory (data/README.md)
+├── docs/                theory and references
+└── MODULES.md           module reference, written for main: it also describes modules that are only there
 ```
-
-The most used functions are re-exported from `kinetics` (see [kinetics/\_\_init\_\_.py](kinetics/__init__.py)). Function names follow fixed verbs: `load_` reads from disk, `build_` assembles a structure, `calculate_` evaluates a physical quantity, `simulate_` integrates in time, and `find_` searches. Units are part of argument names (`T_K`, `t_end_s`, `C_mM`). The full conventions are in [reference-api_migration.md](docs/reference-api_migration.md).
 
 ## Data
 
 | File | Content | Origin |
 |---|---|---|
-| `data/experimental_gogoi2024.json` | Measured ³¹P/²⁹Si/¹³C/¹H shifts, barrier windows, control experiments, water series | Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654 |
-| `tank_api_snapshot_2026-09-24.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) for 24 species, MACE-OMol MD solvation energies in EC for 12, computed NMR shieldings and geometries. The default | Computed; offline snapshot of the Tank dataset API (2026-09-24) |
-| `tank_api_snapshot_2026-10-08.json` | The same for 27 species, with MD solvation in EC at 338 K and in DEC, and an openCOSMO-RS table | Computed; later capture of the same API (2026-10-08) |
-| `lab_observables.json` | Area shares, uncertainties and sample histories of the NMR spectra | NMR data from experiments; built by `scripts/build_observables.py` |
+| `data/experimental_gogoi2024.json` | Measured shifts, barrier windows, control experiments | Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654 |
+| `tank_api_snapshot_2026-09-24.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) and MACE-OMol MD solvation in EC; the default, used by the tests | Computed; offline snapshot of the Tank dataset API |
+| `tank_api_snapshot_2026-10-08.json` | The same for 27 species, with MD solvation in DEC; chosen by the fits in their `fit_config.json` | Computed; later capture of the same API |
+| `lab_observables.json` | Area shares, uncertainties and histories of the NMR tubes | NMR data from experiments; built by `scripts/build_observables.py` |
 | NMR spectra | JEOL Delta `.jdf` files | NMR data from experiments |
 
-The last three are read from two folders set with the environment variables `ATOM_DATA_DIR` and `LAB_NMR_DIR`
-(copy [.env.example](.env.example) to `.env`; see [kinetics/paths.py](kinetics/paths.py)).
-[data/README.md](data/README.md) documents every file and the limitations of the data.
-
-## Documentation
-
-| Document | Type | Status |
-|---|---|---|
-| [MODULES.md](MODULES.md) | Module reference: one diagram of the project, one per block, and every function with its input and output | Current (2026-10-07) |
-| [theory-multiscale_microkinetics](docs/theory-multiscale_microkinetics.md) | Theory: statistical mechanics, solvation cycle, barrier models, reactor equations | Rev 1; data facts corrected 2026-10-07 |
-| [reference-models_summary](docs/reference-models_summary.md) | The model structures the fit compares: equations, variables, free parameters (was `reference-fit_models`) | Draft |
-| [reference-fitting_system](docs/reference-fitting_system.md) | How a fit runs: what is minimised, the files, the stages of the runner and their outputs | Draft |
-| [reference-fitting_improvements](docs/reference-fitting_improvements.md) | The fourth fit and the plan of the fifth (was `reference-fit_improvements`) | Current (2026-10-20) |
-| [reference-fit_results](docs/reference-fit_results.md) | Review of the fifth fit, and the questions, decisions and limitations of the sixth (§6.3) | Current (2026-10-22) |
-| [guide-commits](docs/guide-commits.md) | What each change set modifies against the commit before it | Living document |
-| [guide-operando_experimental_protocol](docs/guide-operando_experimental_protocol.md) | Guide to notebook 02 | Under review |
-| [reference-api_migration](docs/reference-api_migration.md) | Function and module names before and after the 2026-09-29 layout | Under review |
-
-## Status and limitations
-
-**In place**
-- Full pipeline from snapshot data to reactor trajectories, synthetic spectra and experiment design, covered by the test scripts in `tests/`.
-- A named-model registry, so that every result states which barrier assumptions produced it.
-- Re-simulation of the Gogoi 2024 control experiments and water series for any model.
-- A first, diagnostic fit of six candidate structures to the lab NMR observables (notebook 05, `scripts/run_fit.py`): best fit and misfit per observation under four scenarios of the unknown mixing times, profile intervals, leave-one-sample-out, sensitivity to the declared errors and times, checks against samples the fit did not use.
-
-**Open**
-- **No kinetic time series.** The lab spectra are snapshots at unknown times after mixing; no sample was followed while it reacted. Rates are therefore tied to assumed ages, and every barrier of hydrolysis and transfer is seen at room temperature only.
-- **No fitted model is registered.** The four registered models are unchanged and none describes the lab data. The first fit finds parameter sets consistent with the data, but which one depends on the assumed ages and on what the samples held at mixing (notebook 05). A fitted set can be built from a result file with `kinetics.fitting.build_fitted_model`; it is not written into the registry.
-- **Hydrolysis and transfer barriers are placeholders** in every registered model. With them, `level1` consumes TMSPA within the first 20 °C hold.
-- **The lab observables were built from exported share tables**, not from the raw spectra; the audit that needs the raw spectra is listed in the file.
-- **No vibrational frequencies** in the snapshot. Free energies use the stored DFT values, and the quasi-RRHO mode cannot yet run on real data.
-- **Solvation is an energy, not a free energy** (MD ΔE_solv, no solvation entropy).
-- **No fluorine chemistry.** LiPF₆, HF and TMSF are outside the network and the snapshot.
-- **Computed ²⁹Si shifts** are systematically 3–6 ppm above the measured ones and are used for comparison only.
+The last four are not in the repository. They are read from the folders set by `ATOM_DATA_DIR` and `LAB_NMR_DIR` (see [.env.example](.env.example) and [kinetics/paths.py](kinetics/paths.py)). The fit results under `notebooks/results/` are derived from the lab data and are not in the repository either, except the early ones kept in `notebooks/results/01`, `03` and `05`.
 
 ## Context
 
-- **Project:** Multiscale Modelling of EMC Transesterification as a Degradation Pathway in Li-ion
-Battery Electrolytes, Master's thesis
+- **Project:** Multiscale Modelling of EMC Transesterification as a Degradation Pathway in Li-ion Battery Electrolytes, Master's thesis
 - **Author:** Yeray Alcaraz Galván
 - **Supervision:** Prof. Peter Broqvist
 - **Affiliation:** Department of Chemistry - Ångström Laboratory, Uppsala University, Sweden
