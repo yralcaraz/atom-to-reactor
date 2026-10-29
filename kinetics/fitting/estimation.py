@@ -1,4 +1,4 @@
-"""Block 14F — Estimation: best fit of a candidate structure, profile intervals and what the data cannot determine.
+"""Block 14F — Estimation: best fit of a candidate structure and profile intervals.
 
 The objective is the χ² of kinetics.fitting.residuals (measured shares, one-sided paper limits) plus, for
 freed reaction energies, their distance from the computed values in the metric of the computed covariance.
@@ -8,15 +8,7 @@ parameter with a declared range (kinetics.fitting.candidates).
     FitProblem                     a structure and a sample set: parameters, box, residual vector
     fit_structure                  Sobol screen of the box, then bounded least squares from the best points
     calculate_profile              χ² re-minimised over the other parameters along a grid of one parameter
-    refine_profile_edges           more profile points inside the grid steps where an interval ends
-    extend_profile                 the profile re-minimised from other local optima as well (several basins)
-    add_profile_points             accepted local optima of the fit added to the profile
     find_confidence_interval       where a profile rises by Δχ² (3.84 = 95 % for one parameter); open sides stay open
-    calculate_parameter_directions combinations of parameters the data determine, and those they do not
-    fit_leave_one_out              the fit repeated without each sample in turn
-    compare_structures             χ², largest standardised residual, the fit rule and AICc of several fits
-    simulate_synthetic_shares      a sample set whose shares are a model's prediction plus noise of the error model
-    calculate_prediction_band      range of a predicted quantity over a set of accepted parameter sets
     write_fit_result, load_fit_result  a fit result as JSON (the residual table as records)
 
 Fit rule (fixed before fitting): a structure fits a scenario if no standardised residual exceeds 3 in absolute
@@ -39,10 +31,8 @@ import pandas as pd
 from scipy.optimize import least_squares
 from scipy.stats import qmc
 
-from kinetics.fitting.candidates import FitStructure, get_structure, scale_energy_prior
-from kinetics.fitting.residuals import (
-    PENALTY, REPORT_SOLVER, SEARCH_SOLVER, calculate_residuals, copy_sample_set, tabulate_residuals,
-)
+from kinetics.fitting.candidates import get_structure, scale_energy_prior
+from kinetics.fitting.residuals import REPORT_SOLVER, SEARCH_SOLVER, calculate_residuals, tabulate_residuals
 
 FIT_RULE_MAX_Z = 3.0
 DELTA_CHI2_95 = 3.84
@@ -298,39 +288,6 @@ def calculate_profile(problem: FitProblem, fit: dict, names=None, *, grids: dict
     return profile
 
 
-def get_profile_theta(row) -> dict:
-    """{parameter: value} stored in one profile row (its 'θ name' columns)."""
-    return {k[2:]: float(v) for k, v in row.items() if isinstance(k, str) and k.startswith('θ ') and pd.notna(v)}
-
-
-def refine_profile_edges(problem: FitProblem, profile: pd.DataFrame, names=None, *, delta: float = DELTA_CHI2_95,
-                         n_extra: int = 2, max_nfev: int = 20, workers: int = 1) -> pd.DataFrame:
-    """The profile with n_extra more points inside each grid step in which an interval ends.
-
-    The step is the one between the outermost value within `delta` and its rejected neighbour (as in
-    find_confidence_interval). Each new sub-fit starts from the solution at the accepted end of its step.
-    Open sides get no points.
-    """
-    names = list(names) if names is not None else list(profile['parameter'].unique())
-    chains = []
-    for name in names:
-        p = profile[profile['parameter'] == name]
-        p = p.loc[p.groupby('value')['chi2'].idxmin()].sort_values('value').reset_index(drop=True)
-        accepted = np.flatnonzero((p['chi2'] - p['chi2'].min()).to_numpy() <= delta)
-        for inner, outer in ((accepted[0], accepted[0] - 1), (accepted[-1], accepted[-1] + 1)):
-            if 0 <= outer < len(p):
-                v_in, v_out = p.loc[inner, 'value'], p.loc[outer, 'value']
-                values = v_in + (v_out - v_in) * np.arange(1, n_extra + 1) / (n_extra + 1.0)
-                chains.append((name, values, get_profile_theta(p.loc[inner]), max_nfev))
-    rows = [row for chain in _map(_profile_chain, chains, problem, workers) for row in chain]
-    if not rows:
-        return profile
-    reference = float((profile['chi2'] - profile['delta']).iloc[0])
-    extra = pd.DataFrame(rows)
-    extra['delta'] = extra['chi2'] - reference
-    return pd.concat([profile, extra], ignore_index=True).sort_values(['parameter', 'value']).reset_index(drop=True)
-
-
 def find_confidence_interval(profile: pd.DataFrame, name: str, delta: float = DELTA_CHI2_95) -> dict:
     """Interval of one parameter over which its profile stays within `delta` of its lowest χ².
 
@@ -361,160 +318,6 @@ def find_confidence_interval(profile: pd.DataFrame, name: str, delta: float = DE
             'grid_low': float(value[0]), 'grid_high': float(value[-1]),
             'separate ranges': bool((rise[i_low:i_high + 1] > delta).any()),
             'lower than fit': bool(rows['delta'].min() < -0.5)}
-
-
-def extend_profile(problem: FitProblem, profile: pd.DataFrame, starts: list, names=None, *, max_nfev: int = 12,
-                   workers: int = 1) -> pd.DataFrame:
-    """The profile re-minimised from other solutions as well; at every (parameter, value) the lower χ² is kept.
-
-    starts: parameter sets {name: value}, e.g. other local optima of the fit. A chain that only follows the
-    best fit can stay in its basin and overstate the profile where another basin is lower; each start here
-    walks the grid outward from its own value of the parameter.
-    """
-    names = list(names) if names is not None else list(profile['parameter'].unique())
-    chains = []
-    for name in names:
-        values = np.sort(profile.loc[profile['parameter'] == name, 'value'].unique())
-        for theta in starts:
-            below, above = values[values < theta[name]][::-1], values[values >= theta[name]]
-            chains += [(name, part, dict(theta), max_nfev) for part in (below, above) if len(part)]
-    rows = [row for chain in _map(_profile_chain, chains, problem, workers) for row in chain]
-    if not rows:
-        return profile
-    reference = float((profile['chi2'] - profile['delta']).iloc[0])
-    merged = pd.concat([profile, pd.DataFrame(rows)], ignore_index=True)
-    merged['nfev'] = merged.groupby(['parameter', 'value'])['nfev'].transform('sum')
-    merged = merged.loc[merged.groupby(['parameter', 'value'])['chi2'].idxmin()]
-    merged['delta'] = merged['chi2'] - reference
-    return merged.sort_values(['parameter', 'value']).reset_index(drop=True)
-
-
-def add_profile_points(profile: pd.DataFrame, optima: list, names=None, delta: float = DELTA_CHI2_95) -> pd.DataFrame:
-    """The profile with the fit's other local optima added where they lie within `delta` of its lowest χ².
-
-    optima: [{'theta': {...}, 'chi2': ...}] at the solver tolerance of the profile. A local optimum is an upper
-    bound of every profile at its own parameter values, so an accepted one widens an interval the chains missed.
-    """
-    names = list(names) if names is not None else list(profile['parameter'].unique())
-    reference = float((profile['chi2'] - profile['delta']).iloc[0])
-    lowest = profile['chi2'].min()
-    rows = [{'parameter': name, 'value': float(opt['theta'][name]), 'chi2': float(opt['chi2']), 'nfev': 0,
-             'delta': float(opt['chi2']) - reference, **{f'θ {k}': v for k, v in opt['theta'].items()}}
-            for opt in optima if opt['chi2'] - lowest <= delta for name in names if name in opt['theta']]
-    if not rows:
-        return profile
-    return pd.concat([profile, pd.DataFrame(rows)], ignore_index=True).sort_values(['parameter', 'value']).reset_index(drop=True)
-
-
-# ------------------------------------------------------------------------------
-# What the data determine
-# ------------------------------------------------------------------------------
-def calculate_parameter_directions(problem: FitProblem, theta: dict, *, kinds=('barrier', 'energy'),
-                                   step: float = 2.0e-3) -> dict:
-    """Combinations of the parameters (those in eV) that the data determine, from the residual sensitivities.
-
-    J_ij = ∂r_i/∂θ_j by central differences at θ, with the other parameters fixed. Its singular vectors are the
-    combinations the fit sees independently; 1/singular value is the standard error along each (local, linear).
-    Returns 'directions' (one row per combination: 'sigma_eV' and its components), 'sigma_local' (per
-    parameter; infinite when the parameter takes part in a combination the data do not see) and 'J'.
-    """
-    names = [p.name for p in problem.parameters if p.kind in kinds]
-    x0 = problem.vector(theta)
-    index = [problem.names.index(name) for name in names]
-    J = np.zeros((problem.residuals(x0).size, len(names)))
-    for j, i in enumerate(index):
-        h = min(step, 0.25 * (problem.upper[i] - problem.lower[i]))
-        up, down = x0.copy(), x0.copy()
-        up[i], down[i] = min(x0[i] + h, problem.upper[i]), max(x0[i] - h, problem.lower[i])
-        J[:, j] = (problem.residuals(up) - problem.residuals(down)) / (up[i] - down[i])
-    _, s, Vt = np.linalg.svd(J, full_matrices=False)
-    seen = s > max(1e-6, 1e-10 * s.max())                      # below this the data do not see the combination
-    sigma = np.where(seen, 1.0 / np.where(seen, s, 1.0), np.inf)
-    directions = pd.DataFrame(Vt, columns=names)
-    directions.insert(0, 'sigma_eV', sigma)
-    # Standard error of each parameter: infinite as soon as it takes part in a combination the data do not see
-    local = np.sqrt(((Vt[seen] / s[seen][:, None]) ** 2).sum(axis=0))
-    local[(np.abs(Vt[~seen]) > 1e-6).any(axis=0)] = np.inf
-    return {'directions': directions, 'sigma_local': pd.Series(local, index=names), 'J': J, 'parameters': names}
-
-
-def fit_leave_one_out(structure, sample_sets: dict, fit: dict, *, solver: dict = None, prior_scale: float = 1.0,
-                      **fit_options) -> dict:
-    """{left-out sample: fit result} for sample sets built without each sample ({name: sample set}).
-
-    Every refit also starts from the full fit and its local optima, so a change of the best fit is a change
-    of the data, not of the search.
-    """
-    starts = [fit['theta']] + [opt['theta'] for opt in fit.get('local_optima', [])[:4]]
-    out = {}
-    for name, samples in sample_sets.items():
-        problem = FitProblem(structure, samples, solver=solver, prior_scale=prior_scale)
-        usable = [{k: v for k, v in s.items() if k in problem.names} for s in starts]
-        usable = [s for s in usable if len(s) == problem.n]
-        out[name] = fit_structure(problem, start_points=usable, **fit_options)
-    return out
-
-
-def compare_structures(fits: dict) -> pd.DataFrame:
-    """One row per fit {label: fit result}: χ², values, parameters, the fit rule and AICc.
-
-    AICc = χ² + 2k + 2k(k + 1)/(n − k − 1) with n the number of residuals; it is indicative only, because many
-    residuals are one-sided or repeats.
-    """
-    rows = {}
-    for label, fit in fits.items():
-        n, k = fit['n_residuals'], fit['n_parameters']
-        rows[label] = {'structure': fit['structure'], 'parameters': k, 'residuals': n, 'chi2': fit['chi2'],
-                       'max |z|': fit['max_abs_z'], 'worst': fit['worst'], 'fits': fit['fits'],
-                       'AICc': fit['chi2'] + 2 * k + (2 * k * (k + 1) / (n - k - 1) if n - k - 1 > 0 else np.inf),
-                       'at bounds': ', '.join(fit['at_bounds']) or '—'}
-    return pd.DataFrame.from_dict(rows, orient='index')
-
-
-# ------------------------------------------------------------------------------
-# Synthetic data and predictions
-# ------------------------------------------------------------------------------
-def simulate_synthetic_shares(structure, theta: dict, samples: list, *, seed: int = None, solver: dict = None) -> list:
-    """Copy of a sample set whose measured shares are the prediction of (structure, θ), plus noise when a seed is given.
-
-    The noise follows the error model of each block of a sample: an independent part per spectrum and window,
-    and for repeated spectra a part common to the spectra. It is drawn per window, so noisy shares need not sum to one;
-    forcing the sum would leak the error of a large window into the small ones.
-    One-sided paper observations are kept as they are. For a sample whose age is found inside an evaluation
-    (free scenario), the shares are generated at the age the generating model prefers.
-    """
-    built = get_structure(structure).build(theta)
-    _, details = calculate_residuals(built['model'], samples, ages=built['ages'], water_fraction=built['water_fraction'],
-                                     added_M=built.get('added_M'), solver=solver or REPORT_SOLVER, return_details=True)
-    rng = np.random.default_rng(seed) if seed is not None else None
-    out = copy_sample_set(samples)
-    for sample in out:
-        if sample['kind'] == 'paper':
-            continue
-        predicted = details[sample['name']]['predicted']
-        if predicted is None:
-            raise RuntimeError(f"the generating model cannot be simulated for {sample['name']}")
-        for block, block_shares in zip(sample['blocks'], predicted):
-            shares = np.array(block_shares, dtype=float)
-            if rng is not None:
-                shares += block['sigma_ind'] * rng.standard_normal(shares.shape)
-                shares += block['sigma_common'] * rng.standard_normal(shares.shape[1])
-            block['measured'] = shares
-    return out
-
-
-def calculate_prediction_band(function, thetas: list) -> dict:
-    """Range of a predicted quantity function(θ) over parameter sets (e.g. every set inside the profile intervals).
-
-    Returns 'low', 'high', 'values' and the parameter sets that give the two ends.
-    """
-    values = np.array([function(theta) for theta in thetas], dtype=float)
-    finite = np.flatnonzero(np.isfinite(values))
-    if finite.size == 0:
-        return {'low': np.nan, 'high': np.nan, 'values': values, 'theta_low': None, 'theta_high': None}
-    i_low, i_high = finite[np.argmin(values[finite])], finite[np.argmax(values[finite])]
-    return {'low': float(values[i_low]), 'high': float(values[i_high]), 'values': values,
-            'theta_low': thetas[i_low], 'theta_high': thetas[i_high]}
 
 
 # ------------------------------------------------------------------------------

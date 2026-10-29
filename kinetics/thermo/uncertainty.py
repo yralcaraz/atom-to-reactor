@@ -31,7 +31,6 @@ from functools import lru_cache
 import numpy as np
 import pandas as pd
 
-from kinetics.constants import KJ_MOL_TO_EV
 from kinetics.data.network import NETWORK, list_species
 from kinetics.data.medium import SolvationMedium, get_active_medium
 from kinetics.data.snapshot import get_solvation_records
@@ -106,20 +105,6 @@ def calculate_solvation_covariance(rxn_ids, network: dict = None, solvation_reco
             value += sum(nets[i].values()) * sum(nets[j].values()) * sigma_solvent ** 2
             cov.loc[i, j] = value
     return cov
-
-
-def calculate_solvation_sigma_naive(reactants, products, solvation_records: dict = None) -> float:
-    """σ from adding each species' snapshot `uncertainty_kjmol` in quadrature (overestimate). Without records:
-    the per-species standard errors of the active medium's database."""
-    if solvation_records is not None:
-        totals = {name: r['uncertainty_kjmol'] * KJ_MOL_TO_EV for name, r in solvation_records.items()}
-    else:
-        totals = {name: r['dE_solv_sigma_eV'] for name, r in resolve_species_database(None).items()
-                  if r['dE_solv_sigma_eV'] is not None}
-    var = 0.0
-    for name, nu in _net_stoichiometry(reactants, products).items():
-        var += (nu * totals[name]) ** 2
-    return math.sqrt(var)
 
 
 def _net_stoichiometry(reactants, products) -> dict:

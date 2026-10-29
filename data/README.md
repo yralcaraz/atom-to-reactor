@@ -14,7 +14,7 @@ The data files are read from folders set with two environment variables (see `.e
 
 | Variable | Folder |
 |---|---|
-| `ATOM_DATA_DIR` | `data/` (the snapshots, `lab_observables.json`, `lab_sample_folders.json`), `results/` (tables written by notebooks 01 and 03) and `tests/` (the regression baseline) |
+| `ATOM_DATA_DIR` | `data/` (the snapshots, `lab_observables.json`, `lab_sample_folders.json`) and `results/` (tables written by notebooks 01 and 03) |
 | `LAB_NMR_DIR` | the NMR spectra |
 
 The species database, the network thermochemistry and every test are built from the snapshot, so the numerical

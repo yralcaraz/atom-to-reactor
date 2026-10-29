@@ -201,3 +201,12 @@ def simulate_history(c0_M: dict, segments, sample_times_s, *, model, network: di
         t0 = end
     return {'model': spec.name, 't_s': times, 'C_M': C_M, 'species': species, 'idx': system.idx,
             'success': success, 'message': message}
+
+
+def tabulate_acquisitions(sim: dict, species: list = None) -> pd.DataFrame:
+    """Composition [mM] at each NMR acquisition of simulate_protocol, indexed by the preceding hold temperature (°C)."""
+    species = species or [sp for sp in sim['species'] if sp != 'EC']
+    return pd.DataFrame(
+        {sp: [a['C_M'][sim['idx'][sp]] * 1000.0 for a in sim['acquisitions']] for sp in species},
+        index=pd.Index([a['T_C'] for a in sim['acquisitions']], name='hold T (°C)'),
+    )

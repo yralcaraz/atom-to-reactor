@@ -13,12 +13,10 @@ from dataclasses import dataclass, field, replace
 
 import pandas as pd
 
-from kinetics.microkinetics.barriers import REVERSAL_INVARIANT
 from kinetics.microkinetics.parameters import (
-    FAMILY_BEP_PARAMETERS, LEVEL1_PARAMETERS, REFERENCE_BEP_PARAMETERS, resolve_family_params,
+    FAMILY_BEP_PARAMETERS, LEVEL1_PARAMETERS, REFERENCE_BEP_PARAMETERS,
 )
 from kinetics.microkinetics.rates import KINETIC_MODELS, calculate_network_rates
-from kinetics.data.network import NETWORK
 from kinetics.thermo.uncertainty import build_shifted_species_database
 
 MODEL_STATUSES = ('reference', 'sensitivity', 'provisional', 'fitted')
@@ -154,40 +152,3 @@ def get_model(model) -> ModelSpec:
         raise KeyError(f"Unknown model '{model}'. Registered: {list(MODELS)}") from None
 
 
-def describe_models(models=None) -> pd.DataFrame:
-    """Overview table: kinetics, intrinsic barriers, reversal invariance, status and assumptions."""
-    rows = {}
-    for m in (models or list(MODELS)):
-        spec = get_model(m)
-        barriers = ', '.join(f"{fam} {p.get('g_eV', p.get('E0_eV')):.2f}" for fam, p in spec.family_params.items())
-        rows[spec.name] = {
-            'label': spec.label,
-            'thermo_mode': spec.thermo_mode,
-            'barrier shape': ', '.join(spec.barrier_shapes),
-            'g (eV)': barriers,
-            'reversal invariant': all(REVERSAL_INVARIANT[s] for s in spec.barrier_shapes),
-            'status': spec.status,
-            'assumptions': '; '.join(spec.assumptions),
-        }
-    return pd.DataFrame.from_dict(rows, orient='index')
-
-
-def tabulate_family_barriers(models=None, network: dict = None) -> pd.DataFrame:
-    """Intrinsic barrier g [eV] (E0 of the capped BEP) that each model applies to each reaction family.
-
-    Rows are families in network order with their member reactions; the barrier shape and α are listed
-    per model in describe_models.
-    """
-    net = network or NETWORK
-    families = {}
-    for rxn_id, rxn in net.items():
-        families.setdefault(rxn['class'], []).append(rxn_id)
-    rows = {}
-    for family, members in families.items():
-        row = {'reactions': ', '.join(members)}
-        for m in (models or list(MODELS)):
-            spec = get_model(m)
-            fallback = KINETIC_MODELS[spec.kinetic_model][1]
-            row[spec.name] = resolve_family_params(family, spec.family_params, fallback)['g_eV']
-        rows[family] = row
-    return pd.DataFrame.from_dict(rows, orient='index')

@@ -11,11 +11,11 @@ Master's thesis project, Department of Chemistry – Ångström Laboratory, Upps
 
 | Branch | What it holds |
 |---|---|
-| **`M1-steps`** (this one, the default) | The model M1 fitted to one lab tube at a time, each step tested on the tubes not used yet (eighth fit). Notebook `05_fitting_rev08_(M1_steps)` |
+| **`M1-steps`** (this one, the default) | The model M1 fitted to one lab tube at a time, each step tested on the tubes not used yet (eighth fit). Notebooks `05_fitting_rev08_(M1_steps)` and `06_fitting_thermo_rev01` |
 | `M5-full` | The fit of every tube at once: M1 ⊂ M5 ⊂ M5-first, each with Marcus barriers and with the capped BEP rule (seventh fit). Notebook `05_fitting_rev07_(M1_all fitted)` |
 | `main` | The history up to the sixth fit: notebooks 01–05 rev05, the spectroscopy and experiment-design modules, the earlier stages of the runner. Closed at the tag `historico-261027` |
 
-This branch keeps only what the M1 steps need. Anything removed is in `main`.
+This branch keeps only what the M1 steps and notebooks 05 and 06 need. Anything removed is in `main` (and most of it in `M5-full`).
 
 ## What it does
 
@@ -43,11 +43,9 @@ cp .env.example .env              # then set the two data folders (see Data)
 
 | Task | Command |
 |---|---|
-| Tests | `python tests/run_all.py` |
 | Check that the code still reproduces a stored fit (reads only) | `python scripts/check_stored_fits.py notebooks/results/fit8_M1-steps` |
-| The registered models as they are | `python scripts/run_fit.py registered --results DIR` |
 | The steps of the setup in `DIR/fit_config.json` | `python scripts/run_fit.py steps --results DIR` |
-| The notebook | `jupyter lab notebooks/` |
+| The notebooks | `jupyter lab notebooks/` |
 
 `--results` is required: every job is written there, and a folder that already holds results returns its fits as they are.
 
@@ -59,28 +57,26 @@ atom-to-reactor/
 │   ├── data/            snapshot, species, network, lab observables, solvation medium
 │   ├── thermo/          G in solution, solvation σ, ΔG_rxn
 │   ├── microkinetics/   barrier models, rate constants, model registry
-│   ├── reactor/         mass-action engine, batch and protocol reactors, sample histories
+│   ├── reactor/         mass-action engine, protocol reactor, sample histories
 │   └── fitting/         residuals, candidate structures, fits and profiles, stored fits run forward, run setup
-├── demo/                figures and display tables of notebook rev08
-├── notebooks/           05_fitting_rev08_(M1_steps)
-├── scripts/             run_fit.py (registered, steps) · check_stored_fits.py · build_observables.py
-├── tests/               test scripts (run_all.py runs them)
+├── demo/                figures and display tables of the notebooks
+├── notebooks/           05_fitting_rev08_(M1_steps) · 06_fitting_thermo_rev01
+├── scripts/             run_fit.py (steps) · check_stored_fits.py · build_observables.py
 ├── data/                reference data and the data inventory (data/README.md)
-├── docs/                theory and references
-└── MODULES.md           module reference, written for main: it also describes modules that are only there
+└── docs/                theory and references
 ```
 
 ## Data
 
 | File | Content | Origin |
 |---|---|---|
-| `data/experimental_gogoi2024.json` | Measured shifts, barrier windows, control experiments | Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654 |
-| `tank_api_snapshot_2026-09-24.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) and MACE-OMol MD solvation in EC; the default, used by the tests | Computed; offline snapshot of the Tank dataset API |
+| `data/experimental_gogoi2024.json` | Measured shifts, barrier windows, control experiments, water series | Gogoi et al., *J. Phys. Chem. C* 2024, 128, 1654 |
+| `tank_api_snapshot_2026-09-24.json` | Gas-phase DFT (ωB97M-V/def2-TZVPD) and MACE-OMol MD solvation in EC; the default when a run names none | Computed; offline snapshot of the Tank dataset API |
 | `tank_api_snapshot_2026-10-08.json` | The same for 27 species, with MD solvation in DEC; chosen by the fits in their `fit_config.json` | Computed; later capture of the same API |
 | `lab_observables.json` | Area shares, uncertainties and histories of the NMR tubes | NMR data from experiments; built by `scripts/build_observables.py` |
 | NMR spectra | JEOL Delta `.jdf` files | NMR data from experiments |
 
-The last four are not in the repository. They are read from the folders set by `ATOM_DATA_DIR` and `LAB_NMR_DIR` (see [.env.example](.env.example) and [kinetics/paths.py](kinetics/paths.py)). The fit results under `notebooks/results/` are derived from the lab data and are not in the repository either, except the early ones kept in `notebooks/results/01`, `03` and `05`.
+The last four are not in the repository. They are read from the folders set by `ATOM_DATA_DIR` and `LAB_NMR_DIR` (see [.env.example](.env.example) and [kinetics/paths.py](kinetics/paths.py)). The fit results under `notebooks/results/` are derived from the lab data and are not in the repository either; the early ones (`01`, `03`, `05`) are in `main`.
 
 ## Context
 

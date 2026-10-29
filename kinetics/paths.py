@@ -7,14 +7,11 @@ at the repository root (copy `.env.example`):
     ATOM_DATA_DIR   data folder, laid out as in the repository:
                       data/       tank_api_snapshot_<date>.json, lab_observables.json, lab_sample_folders.json
                       results/    tables written by notebooks 01 and 03
-                      tests/      regression baseline
     LAB_NMR_DIR     folder with the NMR spectra (JEOL .jdf files)
 
-Without the variables the code still imports: a loader that needs a data file raises FileNotFoundError, and
-the tests skip.
+Without the variables the code still imports: a loader that needs a data file raises FileNotFoundError.
 
     data_dir          the data folder, or None when ATOM_DATA_DIR is not set
-    require_data_dir  the same, but raises when it is not set (before writing a file there)
     data_path         a path inside it (a placeholder path when it is not set, so the error message is clear)
     lab_nmr_dir       the NMR spectra folder, or None when LAB_NMR_DIR is not set
 
@@ -58,24 +55,9 @@ def data_path(*parts: str) -> str:
     return os.path.join(str(base) if base else _PLACEHOLDER, *parts)
 
 
-def require_data_dir() -> Path:
-    """The data folder; raises when ATOM_DATA_DIR is not set (use before writing a file there)."""
-    folder = data_dir()
-    if folder is None:
-        raise FileNotFoundError(f'{DATA_DIR_VAR} is not set: it is the folder with the data files (see .env.example)')
-    return folder
-
-
 def lab_nmr_dir() -> 'Path | None':
     """The NMR spectra folder, or None when LAB_NMR_DIR is not set."""
     value = os.environ.get(LAB_NMR_DIR_VAR)
     return Path(value).expanduser() if value else None
 
 
-def require_lab_nmr_dir() -> Path:
-    """The NMR spectra folder; raises when LAB_NMR_DIR is not set or the folder is missing."""
-    folder = lab_nmr_dir()
-    if folder is None or not folder.is_dir():
-        raise FileNotFoundError(f'NMR spectra not found: set {LAB_NMR_DIR_VAR} to the folder that holds them '
-                                f'(see .env.example)')
-    return folder

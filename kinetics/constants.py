@@ -11,7 +11,6 @@ import math
 # Fundamental constants
 R_SI = 8.314462618              # gas constant [J/(mol·K)]
 KB_SI = 1.380649e-23            # Boltzmann constant [J/K]
-KB_EV = 8.617333262e-5          # Boltzmann constant [eV/K]
 H_SI = 6.62607015e-34           # Planck constant [J·s]
 HBAR_SI = H_SI / (2.0 * math.pi)
 C_CM_S = 2.99792458e10          # speed of light [cm/s]
@@ -27,7 +26,6 @@ ZERO_CELSIUS_K = 273.15
 EV_TO_J = 1.602176634e-19
 EV_TO_KJ_MOL = EV_TO_J * NA / 1000.0        # ≈ 96.4853
 KJ_MOL_TO_EV = 1.0 / EV_TO_KJ_MOL
-EV_TO_KCAL_MOL = 23.060547830619
 HARTREE_TO_EV = 27.211386245988
 AMU_TO_KG = 1.66053906660e-27
 ANGSTROM_TO_M = 1.0e-10

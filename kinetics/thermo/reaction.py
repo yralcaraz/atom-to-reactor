@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from kinetics.constants import EV_TO_KJ_MOL, R_SI, T_STD_K
-from kinetics.data.network import NETWORK, find_reaction_cycles, format_equation
+from kinetics.data.network import NETWORK, format_equation
 from kinetics.thermo.gas import calculate_gas_thermo
 from kinetics.thermo.solution import calculate_solution_gibbs
 from kinetics.data.species import resolve_species_database
@@ -81,20 +81,3 @@ def calculate_network_thermo(T_K: float = T_STD_K, *, network: dict = None, spec
     return pd.DataFrame.from_dict(rows, orient='index')
 
 
-def calculate_cycle_residuals(dG_rxn: dict, network: dict = None) -> list[tuple[str, float]]:
-    """Wegscheider check: [(cycle label, Σ c_j ΔG_j)] for every independent cycle of the network.
-
-    dG_rxn maps rxn_id → ΔG_rxn (any unit; the residual has the same unit).
-    """
-    net = network or NETWORK
-    ids = list(net)
-    out = []
-    for cycle in find_reaction_cycles(net):
-        terms = [(c, ids[j]) for j, c in enumerate(cycle) if c != 0]
-        label = ''
-        for k, (c, rxn_id) in enumerate(terms):
-            coef = '' if abs(c) == 1 else f'{abs(c):g} '
-            sign = ('' if c > 0 else '−') if k == 0 else (' + ' if c > 0 else ' − ')
-            label += f'{sign}{coef}{rxn_id}'
-        out.append((label, float(sum(c * dG_rxn[rxn_id] for c, rxn_id in terms))))
-    return out

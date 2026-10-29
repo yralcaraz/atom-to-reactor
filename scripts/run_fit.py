@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Staged, resumable runner of M1 fitted to the lab NMR observables one tube at a time.
 
-    python scripts/run_fit.py registered --results DIR   the registered models as they are, at the readings of the setup
-    python scripts/run_fit.py steps --results DIR        the main structure fitted one tube at a time, each step scoring every tube
+    python scripts/run_fit.py steps --results DIR   the main structure fitted one tube at a time, each step scoring every tube
 
 Every job writes one file under the results directory (--results, required) and is skipped when that file exists,
 so a stage can be interrupted and started again. A new fit needs a new directory: in one that holds results the old
@@ -47,14 +46,12 @@ from kinetics.data import load_lab_observables
 from kinetics.data.medium import get_active_medium
 from kinetics.data.network import get_active_network_variant
 from kinetics.fitting import (
-    REPORT_SOLVER, SCENARIOS, FitProblem, apply_fit_config, build_sample_set, calculate_profile, calculate_residuals,
-    find_confidence_interval, find_free_age, fit_structure, get_structure, load_fit_result, summarize_residuals,
-    tabulate_reaction_barriers, tabulate_residuals, write_fit_result,
+    REPORT_SOLVER, SCENARIOS, FitProblem, apply_fit_config, build_sample_set, calculate_profile,
+    find_confidence_interval, fit_structure, get_structure, load_fit_result, tabulate_reaction_barriers,
+    write_fit_result,
 )
 from kinetics.fitting.candidates import get_energy_box_sigma
 from kinetics.fitting.residuals import get_sample_overrides
-from kinetics.thermo.reaction import calculate_network_thermo
-from kinetics.microkinetics.models import MODELS, get_model
 
 RESULTS = None                           # the results directory (--results); set in main
 PAPER = ()                               # paper observations added to every sample set; set from the run's setup
@@ -87,31 +84,6 @@ def sample_set(scenario: str, **options) -> list:
 
 def short(theta: dict) -> str:
     return ', '.join(f"{k.replace('g ', '').replace('hydrolysis_', '')} {v:.3f}" for k, v in theta.items())
-
-
-# ------------------------------------------------------------------------------
-# registered: the models of the registry as they are
-# ------------------------------------------------------------------------------
-def stage_registered(args) -> None:
-    # The computed reaction energies of the run's medium: the centre of the freed energies of M3 and M3-split
-    thermo = calculate_network_thermo(298.15)
-    thermo.to_csv(RESULTS / 'computed_energies.csv')
-    log('computed ΔG_rxn at 298 K (eV, ± standard error of the MD solvation): ' + ', '.join(
-        f"{rxn} {row['dG_rxn_eV']:+.3f} ± {row['sigma_solv_eV']:.3f}" for rxn, row in thermo.iterrows()))
-    rows, tables = [], []
-    for name in MODELS:
-        for scenario in SCENARIOS:
-            # A registered model has no value for an amount a recipe does not fix: those samples are left out
-            samples, model = [s for s in sample_set(scenario) if not s.get('unknown_M')], get_model(name)
-            ages = find_free_age(model, samples, solver=REPORT_SOLVER)
-            residuals = calculate_residuals(model, samples, ages=ages, solver=REPORT_SOLVER)
-            table = tabulate_residuals(model, samples, ages=ages)
-            rows.append({'model': name, 'scenario': scenario, **summarize_residuals(residuals, table)})
-            tables.append(table.assign(model=name, scenario=scenario))
-            log(f"registered {name:16s} {scenario:7s} chi2 {rows[-1]['chi2']:12.1f}  max |z| {rows[-1]['max_abs_z']:8.1f}  "
-                f"({rows[-1]['worst']})")
-    pd.DataFrame(rows).to_csv(RESULTS / 'registered.csv', index=False)
-    pd.concat(tables, ignore_index=True).to_csv(RESULTS / 'registered_residuals.csv', index=False)
 
 
 # ------------------------------------------------------------------------------
@@ -227,7 +199,7 @@ def stage_steps(args) -> None:
         f"{st} {sc} {g['max |z|'].max():.1f}" for (st, sc), g in predicted.groupby(['step', 'scenario'], sort=False)))
 
 
-STAGES = {'registered': stage_registered, 'steps': stage_steps}
+STAGES = {'steps': stage_steps}
 
 
 def main():

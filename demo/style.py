@@ -1,7 +1,7 @@
-"""Shared visual language: surface and ink tokens, categorical slots, model colors and axis helpers.
+"""Shared visual language: surface and ink tokens, categorical slots, colour ramps and axis helpers.
 
 Categorical hues are assigned in a fixed order (validated for colour-vision deficiency) and follow the
-entity: each registered model keeps the same colour and line style in every figure.
+entity: each series keeps the same colour in every figure.
 
 Source: Y. Alcaraz Galván
 """
@@ -9,7 +9,6 @@ Source: Y. Alcaraz Galván
 import matplotlib.pyplot as plt
 import numpy as np
 
-from kinetics.microkinetics.models import MODELS
 
 SURFACE = '#fcfcfb'
 INK = '#0b0b0b'
@@ -20,16 +19,6 @@ RULE = '#c3c2b7'
 
 # Categorical slots in validated order: blue, orange, aqua, yellow, magenta, green, violet, red
 SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948']
-# Sequential blue ramp (steps 250 → 700), for ordered traces such as successive acquisitions
-BLUE_RAMP = ['#86b6ef', '#5598e7', '#2a78d6', '#1c5cab', '#104281', '#0d366b']
-SEQUENTIAL_CMAP = 'Blues'
-
-_LINESTYLES = ['-', '--', '-.', ':']
-
-# Fixed colour per reaction family
-FAMILY_COLORS = {'hydrolysis': SERIES[0], 'condensation': SERIES[1], 'transfer': SERIES[2], 'solvent_attack': SERIES[4]}
-
-
 def apply_style() -> None:
     """Notebook-wide matplotlib defaults: light surface, recessive grid and axes, thin lines."""
     plt.rcParams.update({
@@ -58,17 +47,6 @@ def apply_style() -> None:
         'font.family': 'sans-serif',
         'font.sans-serif': ['DejaVu Sans'],
     })
-
-
-def model_color(name: str) -> str:
-    """Fixed colour of a registered model (registry order); unregistered variants are neutral grey."""
-    names = list(MODELS)
-    return SERIES[names.index(name) % len(SERIES)] if name in names else INK_MUTED
-
-
-def model_linestyle(name: str) -> str:
-    names = list(MODELS)
-    return _LINESTYLES[names.index(name) % len(_LINESTYLES)] if name in names else '-'
 
 
 def label_line_ends(ax, x_end: float, labels_y: dict, min_gap_frac: float = 0.05) -> None:

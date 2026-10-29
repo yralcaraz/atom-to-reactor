@@ -124,10 +124,6 @@ def two_parabola(x: float, g: float, alpha0: float = 0.5, **_) -> tuple:
 # ------------------------------------------------------------------------------
 # Registry, reversal and work terms
 # ------------------------------------------------------------------------------
-# Reversal-invariant shapes satisfy axiom A2; the legacy cap does not
-REVERSAL_INVARIANT = {'bep_cap': False, 'marcus': True, 'agmon_levine': True, 'blowers_masel': True,
-                      'two_parabola': True}
-
 BARRIER_MODELS = {
     'bep_cap': bep_cap,
     'marcus': marcus,
@@ -162,10 +158,3 @@ def calculate_barrier(x: float, shape: str, g: float, wR_eV: float = 0.0, wP_eV:
     return value, alpha_eff
 
 
-def invert_marcus_barrier(dG_barrier_obs_eV: float, x: float) -> float:
-    """Intrinsic barrier g that reproduces an observed barrier under Marcus (closed form)."""
-    a = dG_barrier_obs_eV - x / 2.0
-    disc = a * a - x * x / 4.0
-    if a <= 0.0 or disc < 0.0:
-        raise ValueError("Observed barrier is incompatible with the Marcus relation for this ΔG°")
-    return 0.5 * (a + math.sqrt(disc))

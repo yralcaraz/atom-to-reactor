@@ -32,9 +32,7 @@ The K shares of a spectrum sum to one, so their K residuals are scaled by sqrt((
     build_sample_history        temperature segments from mixing and the spectrum times of one sample
     calculate_predicted_shares  the shares a model predicts for one sample
     calculate_residuals         whitened residual vector of a model over a sample set (χ² = Σ r²)
-    find_free_age               the age of the heated sample that a given model prefers (free scenario)
     tabulate_residuals          the standardised residuals, one row per measured quantity
-    summarize_residuals         χ², number of values and the largest standardised residual
 
 Source: Y. Alcaraz Galván
 """
@@ -497,33 +495,6 @@ def calculate_residuals(model, samples: list, *, ages: dict = None, water_fracti
     return (residuals, details) if return_details else residuals
 
 
-def find_free_age(model, samples: list, *, water_fraction: float = 1.0, added_M: dict = None, solver: dict = None,
-                  n_grid: int = 9) -> dict:
-    """{sample: age in hours} for the sample whose age is a fit parameter, chosen to minimise its χ² for this model.
-
-    Each sample's residuals depend on its own age only, so that sample is treated alone: a coarse grid in
-    log(age), then a bounded search around the best point. Returns {} when no sample has a free age parameter.
-    """
-    solver = solver or SEARCH_SOLVER
-    ages = {}
-    for sample in samples:
-        if sample['age_mode'] != 'parameter':
-            continue
-
-        def chi2(log_age):
-            r = calculate_residuals(model, [sample], ages={sample['name']: float(np.exp(log_age))},
-                                    water_fraction=water_fraction, added_M=added_M, solver=solver)
-            return float(np.sum(r ** 2))
-
-        grid = np.log(np.geomspace(*FREE_AGE_BOUNDS_H, n_grid))
-        values = [chi2(x) for x in grid]
-        j = int(np.argmin(values))
-        res = minimize_scalar(chi2, bounds=(grid[max(j - 1, 0)], grid[min(j + 1, n_grid - 1)]), method='bounded',
-                              options={'xatol': 0.02})
-        ages[sample['name']] = float(np.exp(res.x if res.fun < values[j] else grid[j]))
-    return ages
-
-
 def _rows_of_sample(sample: dict, predicted, age_h) -> list:
     name = sample['name']
     if predicted is None:
@@ -589,15 +560,3 @@ def tabulate_residuals(model, samples: list, *, ages: dict = None, water_fractio
     return pd.DataFrame(rows, columns=['sample', 'quantity', 'kind', 't_h', 'age_h', 'measured', 'predicted', 'sigma', 'z'])
 
 
-def summarize_residuals(residuals: np.ndarray, table: pd.DataFrame = None) -> dict:
-    """χ², number of residuals and (with the table) the largest standardised residual and where it sits."""
-    out = {'chi2': float(np.sum(residuals ** 2)), 'n_residuals': int(residuals.size)}
-    if table is not None and len(table):
-        worst = table.loc[table['z'].abs().idxmax()]
-        out.update(max_abs_z=float(abs(worst['z'])), worst=f"{worst['sample']}: {worst['quantity']}")
-    return out
-
-
-def copy_sample_set(samples: list) -> list:
-    """Independent copy of a sample set (e.g. to replace the measured shares by synthetic ones)."""
-    return deepcopy(samples)

@@ -20,7 +20,6 @@ from kinetics.paths import DATA_DIR_VAR, data_path
 
 DEFAULT_SNAPSHOT_FILE = "tank_api_snapshot_2026-09-24.json"
 DEFAULT_SNAPSHOT_PATH = data_path("data", DEFAULT_SNAPSHOT_FILE)
-SNAPSHOT_2026_10_08_PATH = data_path("data", "tank_api_snapshot_2026-10-08.json")
 DEFAULT_SOLVENT = "EC"
 
 # Solvent of an MD solvation record, for records that do not name it in `raw_metadata['solvent']` (2026-09-24 snapshot)
@@ -90,14 +89,6 @@ def get_structure(pipeline_id: str, path: str = DEFAULT_SNAPSHOT_PATH) -> tuple[
     uuid = _dataset_uuid(pipeline_id, path)
     record = load_snapshot(path)["structure"][uuid]
     return record["elements"], record["coordinates_angstrom"]
-
-
-def get_nmr_shieldings(pipeline_id: str, path: str = DEFAULT_SNAPSHOT_PATH) -> list:
-    """Per-atom shielding records [{'element', 'atom_index', 'isotropic_ppm', ...}], or [] if absent."""
-    record = get_dataset_records(path).get(pipeline_id)
-    if record is None or not record.get("has_nmr", False):
-        return []
-    return load_snapshot(path).get("nmr", {}).get(record["dataset_uuid"], {}).get("nmr_shieldings", [])
 
 
 @lru_cache(maxsize=64)

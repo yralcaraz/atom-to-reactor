@@ -385,19 +385,6 @@ def list_spectrum_sets(record: dict) -> list:
     return sets
 
 
-def tabulate_observable_shares(observables: dict) -> pd.DataFrame:
-    """One row per (sample, nucleus, spectrum, window): share, sigma_noise, sigma_baseline and the spectrum's time and T."""
-    rows = []
-    for name, sample in observables['samples'].items():
-        for nucleus, role, spectra in list_spectrum_sets(sample):
-            for k, spectrum in enumerate(spectra):
-                for window, v in spectrum['shares'].items():
-                    rows.append({'sample': name, 'nucleus': nucleus, 'role': role, 'spectrum': k,
-                                 'acquired_at': spectrum['acquired_at'], 't_since_first_h': spectrum['t_since_first_h'],
-                                 'temperature_C': spectrum['temperature_C'], 'window': window, **v})
-    return pd.DataFrame(rows)
-
-
 def describe_lab_observables(observables: dict) -> pd.DataFrame:
     """One row per sample: role, spectra, temperatures, times on the file clock, what is known of its history."""
     rows = {}

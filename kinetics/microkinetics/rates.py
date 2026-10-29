@@ -18,7 +18,7 @@ Source: Y. Alcaraz Galván
 import numpy as np
 import pandas as pd
 
-from kinetics.constants import EV_TO_KJ_MOL, H_SI, KB_EV, KB_SI, R_SI
+from kinetics.constants import EV_TO_KJ_MOL, H_SI, KB_SI, R_SI
 from kinetics.microkinetics.barriers import calculate_barrier, reversed_params
 from kinetics.microkinetics.parameters import (
     FAMILY_BEP_PARAMETERS, LEVEL1_PARAMETERS, resolve_family_params,
@@ -110,11 +110,6 @@ def calculate_rate_constants(rxn_id: str, T_K: float, *, kinetic_model: str = 'b
     if k_D is not None:
         result['k_D'] = k_D
     return result
-
-
-def calculate_eyring_rate(dG_barrier_eV: float, T_K: float) -> float:
-    """Eyring rate constant k = (kB·T/h) exp(-ΔG‡/kB·T) [s⁻¹ or M⁻¹s⁻¹] for a barrier in eV."""
-    return KB_SI * T_K / H_SI * np.exp(-dG_barrier_eV / (KB_EV * T_K))
 
 
 def calculate_network_rates(T_K: float, *, network: dict = None, **rate_options) -> pd.DataFrame:

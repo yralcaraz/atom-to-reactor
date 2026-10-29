@@ -19,7 +19,6 @@ Source: Y. Alcaraz Galván; N10–N15 from the generated network of the referenc
 """
 
 import numpy as np
-from scipy.linalg import null_space
 
 NETWORK = {
     'R1': {'reactants': {'TMSPA': 1, 'H2O': 1},   'products': {'BMSPA': 1, 'TMSOH': 1},    'class': 'hydrolysis'},
@@ -124,35 +123,6 @@ def build_order_matrices(network: dict, species: list) -> tuple[np.ndarray, np.n
         for sp, nu in rxn['products'].items():
             orders_r[idx[sp], j] += nu
     return orders_f, orders_r
-
-
-def find_reaction_cycles(network: dict, tol: float = 1e-10) -> np.ndarray:
-    """Basis of reaction combinations with zero net change (null space of S), shape (n_cycles, n_reactions).
-
-    Wegscheider's condition requires Σ_j c_j ΔG_j = 0 along each cycle c. The basis is returned in
-    reduced row-echelon form, so simple cycles such as R1 + R4 − R5 read directly.
-    """
-    S = build_stoichiometric_matrix(network, list_species(network))
-    basis = null_space(S).T
-    row = 0
-    for col in range(basis.shape[1]):
-        if row == basis.shape[0]:
-            break
-        pivot = row + int(np.argmax(np.abs(basis[row:, col])))
-        if abs(basis[pivot, col]) < tol:
-            continue
-        basis[[row, pivot]] = basis[[pivot, row]]
-        basis[row] /= basis[row, col]
-        for i in range(basis.shape[0]):
-            if i != row:
-                basis[i] -= basis[i, col] * basis[row]
-        row += 1
-    return np.round(basis, 10) + 0.0   # coefficients are rational; + 0.0 turns -0.0 into 0.0
-
-
-def expand_stoichiometry(side: dict) -> list:
-    """{'TMSOH': 2} → ['TMSOH', 'TMSOH']."""
-    return [sp for sp, nu in side.items() for _ in range(int(nu))]
 
 
 def format_equation(rxn: dict, arrow: str = ' ⇌ ') -> str:

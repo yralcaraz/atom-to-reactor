@@ -23,24 +23,13 @@ Source: Y. Alcaraz Galván; DFT and MD data from the Tank dataset
 """
 
 import math
-from copy import deepcopy
 from functools import lru_cache
 
 from kinetics.constants import HARTREE_TO_EV, KJ_MOL_TO_EV
 from kinetics.data.medium import SolvationMedium, get_active_medium
 from kinetics.data.snapshot import (
-    DEFAULT_SNAPSHOT_PATH, DEFAULT_SOLVENT, calculate_molar_mass, get_dataset_records, get_solvation_records,
+    calculate_molar_mass, get_dataset_records, get_solvation_records,
 )
-
-
-def load_species_database(snapshot_path: str = DEFAULT_SNAPSHOT_PATH, solvent: str = DEFAULT_SOLVENT) -> dict:
-    """Species database as an independent copy (safe to modify, e.g. to add frequencies)."""
-    return deepcopy(_cached_species_database(snapshot_path, solvent))
-
-
-def load_medium_species_database(medium: SolvationMedium) -> dict:
-    """Species database of a solvation medium (neat solvent or mixture), as an independent copy."""
-    return deepcopy(_cached_medium_database(medium))
 
 
 def resolve_species_database(species_db: dict = None) -> dict:

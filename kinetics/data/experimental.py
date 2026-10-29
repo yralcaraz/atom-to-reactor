@@ -15,8 +15,6 @@ import json
 import os
 from functools import lru_cache
 
-import pandas as pd
-
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_EXPERIMENTAL_PATH = os.path.join(_REPO_ROOT, 'data', 'experimental_gogoi2024.json')
 
@@ -26,19 +24,6 @@ def load_experimental_data(path: str = DEFAULT_EXPERIMENTAL_PATH) -> dict:
     """Parsed reference file (cached; do not modify)."""
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
-
-
-def get_measured_shifts(nucleus: str = None) -> pd.DataFrame:
-    """Measured shifts [ppm]: one row per (nucleus, species), with 'mid_ppm' the centre of the reported range."""
-    df = pd.DataFrame(load_experimental_data()['nmr_shifts'])
-    df['mid_ppm'] = 0.5 * (df['low_ppm'] + df['high_ppm'])
-    return df[df['nucleus'] == nucleus].reset_index(drop=True) if nucleus else df
-
-
-def get_barrier_windows() -> pd.DataFrame:
-    """ΔG‡ windows per reaction [eV] (NaN = open side), with the temperature and basis of each."""
-    return pd.DataFrame(load_experimental_data()['barrier_constraints']).set_index('rxn_id').astype(
-        {'low_eV': float, 'high_eV': float})
 
 
 def get_water_series() -> dict:

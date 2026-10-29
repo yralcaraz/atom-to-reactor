@@ -27,8 +27,6 @@ Two kinds of parameter come from the sample set and not from the structure: the 
 its first spectrum (free scenario), and the amount at mixing of a species a recipe does not fix ('c0 H2O TMSPa
 alone': the water of the tube mixed without water, third fit).
 
-build_fitted_model turns a fit result into a ModelSpec that reactors take like a registered model.
-
 Freed energies are parameters d_j = ΔG_rxn,j − computed value for R1–R4. They are applied as species shifts,
 so R5–R7 follow (transfer = hydrolysis + condensation) and R8, R9 keep their computed values. Their
 constraint is Gaussian with the covariance of the MD standard errors (kinetics.thermo).
@@ -293,40 +291,6 @@ def tabulate_reaction_barriers(structure: FitStructure, theta: dict, temperature
     return out
 
 
-OBSERVED_AT_K = {'hydrolysis': 295.65, 'transfer': 295.65, 'condensation': 353.15, 'solvent_attack': 353.15,
-                 'exchange': 295.65}
-
-
-def build_fitted_model(fit: dict, name: str = None):
-    """Self-contained ModelSpec (status 'fitted') from a fit result of `fit_structure`.
-
-    It carries its network and species shifts, so reactors take it like a registered model, and each barrier is
-    anchored (T_ref) at the temperature where its family was observed: 22.5 °C for hydrolysis and transfer,
-    80 °C for condensation and solvent attack. With ΔS‡ = 0 the anchor changes nothing; it is where an
-    activation entropy would pivot. The model is built from
-    the result file at run time and is not written into the registry: add it with MODELS[name] = ... if wanted.
-    """
-    structure = get_structure(fit['structure'])
-    model = structure.build(fit['theta'])['model']
-    params = {fam: dict(p) for fam, p in model.family_params.items()}
-    for family, entry in params.items():
-        anchor = next((T for key, T in OBSERVED_AT_K.items() if family.startswith(key)), None)
-        if anchor is not None:
-            entry['T_ref_K'] = anchor
-    scenario = fit.get('scenario', 'unstated')
-    return replace(
-        model, name=name or f"first_fit_{structure.name}_{scenario}", family_params=params, status='fitted',
-        label=f'First fit: {structure.label} ({scenario} scenario)',
-        assumptions=(
-            f"Fitted to the lab NMR observables under the '{scenario}' scenario of the unknown sample ages; "
-            'a diagnostic first fit, not a calibration',
-            f"chi2 {fit['chi2']:.1f} over {fit['n_residuals']} residuals, largest standardised residual {fit['max_abs_z']:.2f}",
-            'Barriers are anchored at the temperature where each family was observed; ΔS‡ = 0 is assumed, not fitted',
-            f"Reaction energies of {', '.join(structure.freed) or 'no reaction'} moved from their computed values within "
-            'the covariance of the MD standard errors',
-        ))
-
-
 _M1 = FitStructure('M1', 'one Marcus barrier per family', 'level1', parent='M0-Marcus')
 _M1_SPLIT = FitStructure('M1-split', 'Marcus barrier per family, R1 separate from R2 and R3', 'level1',
                          split=SPLIT_HYDROLYSIS, parent='M1')
@@ -350,32 +314,6 @@ FIT_STRUCTURES = {
                           label='first step of TMSPA apart in hydrolysis (R1) and transfer (R5); ΔG_rxn of every '
                                 'independent reaction (R1–R4, R8, R9) free within their covariance'),
 }
-
-
-def embed_parent_theta(structure, parent_theta: dict) -> dict:
-    """Parameter set of `structure` that reproduces a fit of the structure it extends.
-
-    A split class takes the barrier of its family, every family takes a shared barrier, freed energies start
-    at their computed values (shift 0) and all the water is available. Ages and amounts at mixing belong to the
-    sample set: they are passed on as they are.
-    """
-    structure = get_structure(structure)
-    out = {}
-    for p in structure.parameters():
-        if p.name in parent_theta:
-            out[p.name] = parent_theta[p.name]
-        elif p.kind == 'barrier':
-            family = NETWORK[structure.split[p.target][0]]['class'] if p.target in structure.split else p.target
-            for candidate in (f'g {family}', 'g all reactions'):
-                if candidate in parent_theta:
-                    out[p.name] = parent_theta[candidate]
-                    break
-        elif p.kind == 'energy':
-            out[p.name] = 0.0
-        elif p.kind == 'water':
-            out[p.name] = 1.0
-    out.update({k: v for k, v in parent_theta.items() if k.startswith(('log10 age ', RECIPE_PREFIX))})
-    return out
 
 
 def get_structure(structure) -> FitStructure:

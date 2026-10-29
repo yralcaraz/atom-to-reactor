@@ -9,7 +9,6 @@ the environment variable LAB_NMR_DIR (see `kinetics/paths.py` and `.env.example`
     phase_spectrum           automatic zero- and first-order phasing (ACME entropy minimisation)
     refine_window_phase      zero-order phase touch-up for one ppm window
     load_spectrum            ppm axis and real spectrum of one .jdf file, processed or FID
-    load_text_spectrum       ppm axis and intensity of a Delta text export (.txt or .asc)
     calculate_window_integrals  area, height and position of the signal in named ppm windows
     calculate_area_shares    share of the total area in each window, with a noise and a baseline uncertainty
     tabulate_area_shares     area shares of several spectra, one row per (spectrum, window)
@@ -21,7 +20,6 @@ Source: Y. Alcaraz Galván; reads NMR data from experiments
 """
 
 import hashlib
-import os
 import re
 import struct
 from datetime import datetime, timedelta
@@ -220,13 +218,6 @@ def load_spectrum(path, *, line_broadening_Hz: float = None, window_ppm=None):
     if window_ppm is not None:
         spectrum = refine_window_phase(ppm, spectrum, window_ppm)
     return ppm, spectrum.real
-
-
-def load_text_spectrum(path):
-    """ppm axis and real intensity of a Delta text export: two columns (.txt) or X/Real/Imaginary (.asc)."""
-    path = Path(path)
-    data = np.loadtxt(path, skiprows=1 if path.suffix == '.asc' else 0, usecols=(0, 1))
-    return data[:, 0], data[:, 1]
 
 
 def estimate_noise(intensity: np.ndarray, *, edge_fraction: float = 0.05) -> float:

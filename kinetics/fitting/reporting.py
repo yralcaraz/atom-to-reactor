@@ -11,9 +11,7 @@ overrides of its variant (stored under 'variant_overrides'), passed as `override
     evaluate_fit                     the samples of a fit with the age and the shares its parameter set gives each
     tabulate_fit_shares              measured and predicted share of every window of every spectrum
     simulate_fit_trajectories        concentrations of each tube from mixing, along its temperature history
-    tabulate_window_amounts          a trajectory as the amount of nuclei each window of one nucleus counts
     load_measured_spectra            the raw spectra behind the shares: baseline removed, area of the windows = 1
-    calculate_parameter_correlation  how the parameters move together near the best fit (local, linear)
 
 Source: Y. Alcaraz Galván
 """
@@ -25,7 +23,6 @@ from kinetics.constants import ZERO_CELSIUS_K
 from kinetics.data.observables import C_REGION_PPM, C_WINDOWS_PPM, P_WINDOWS_PPM, list_spectrum_sets
 from kinetics.fitting.candidates import get_structure
 from kinetics.fitting.config import check_fit_setup
-from kinetics.fitting.estimation import FitProblem, calculate_parameter_directions
 from kinetics.fitting.residuals import (
     FREE_AGE_BOUNDS_H, N_AGE_GRID, PAPER_OBSERVATIONS, REPORT_SOLVER, SHARE_SPECIES, _block_shares, _initial_composition, _whiten_sample,
     build_sample_history, build_sample_set, calculate_residuals,
@@ -33,7 +30,6 @@ from kinetics.fitting.residuals import (
 from kinetics.reactor.protocol import simulate_history
 
 P_REGION_PPM = (-32.0, 6.0)              # region of the ³¹P shares (build_lab_inventory_for_observables)
-PARAMETER_KINDS = ('barrier', 'energy', 'recipe', 'age')
 N_EXACT_AGES = 240                       # ages tried between the two trial ages of the fit that enclose a stored age
 
 
@@ -148,17 +144,6 @@ def simulate_fit_trajectories(evaluation: dict, *, until_h: float = None, t_firs
     return pd.concat(frames, ignore_index=True)
 
 
-def tabulate_window_amounts(trajectories: pd.DataFrame, nucleus: str, windows=None) -> pd.DataFrame:
-    """The trajectories with one column per NMR window: the nuclei of that window [mol/L], Σ n · C over its species.
-
-    For ³¹P a window is one phosphate species. For ¹³C (Si–CH3) it counts silyl groups: HMDSO carries two.
-    """
-    species = SHARE_SPECIES[nucleus]
-    windows = list(windows) if windows is not None else list(species)
-    amounts = {w: sum(n * trajectories[sp].clip(lower=0.0) for sp, n in species[w].items()) for w in windows}
-    return pd.DataFrame({'sample': trajectories['sample'], 't_h': trajectories['t_h'], 'T_C': trajectories['T_C'], **amounts})
-
-
 def load_measured_spectra(observables: dict, root=None, *, baseline_order: int = 3, exclusion_pad_ppm: float = 0.3) -> dict:
     """The raw spectra behind the shares, ready to be drawn against a model.
 
@@ -199,19 +184,3 @@ def load_measured_spectra(observables: dict, root=None, *, baseline_order: int =
     return out
 
 
-def calculate_parameter_correlation(fit: dict, observables: dict, *, kinds=PARAMETER_KINDS) -> dict:
-    """How the fitted parameters of a stored fit move together near its best fit.
-
-    From J = ∂(residuals)/∂(parameters) at the best fit (calculate_parameter_directions): covariance (JᵀJ)⁻¹,
-    'correlation' its normalised form and 'sigma_local' the standard error of each parameter. Local and linear:
-    it describes the neighbourhood of the best fit, and a parameter the data do not determine shows up as a
-    standard error wider than its search box. A parameter in a combination the data do not see at all gets NaN.
-    """
-    check_fit_setup(fit)
-    problem = FitProblem(fit['structure'], build_sample_set(observables, fit['scenario'], paper=_fit_paper(fit)))
-    found = calculate_parameter_directions(problem, fit['theta'], kinds=kinds)
-    names, sigma = found['parameters'], found['sigma_local'].to_numpy()
-    covariance = np.linalg.pinv(found['J'].T @ found['J'])
-    spread = np.where(np.isfinite(sigma), np.sqrt(np.diag(covariance)), np.nan)
-    return {'correlation': pd.DataFrame(covariance / np.outer(spread, spread), index=names, columns=names),
-            'sigma_local': pd.Series(spread, index=names)}
