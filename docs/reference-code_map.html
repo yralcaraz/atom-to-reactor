@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>atom-to-reactor Code Map</title>
+<!--
+  Code map of the branch M1-steps: where every folder, file and function is.
+  A single self-contained file: open it in any browser (no internet connection, server or installation needed).
+  Source: Y. Alcaraz Galván. Written for commit 37cfd5a (2026-10-29); update it when files or functions change.
+-->
+<style>
+/* Layout: a reference sheet read from the whole to the part; sticky index on the left, one section per level. */
+:root {
+  --bg: #f6f7f5; --panel: #ffffff; --fg: #1d2421; --fg-soft: #4a5550; --fg-muted: #6f7a75; --rule: #d9dfdb;
+  --accent: #1f6f5c; --accent-soft: #e2efe9; --mark: #fff1b8;
+  --c-data: #2f6db3; --c-thermo: #b0472f; --c-micro: #8a5a00; --c-reactor: #6b4bb0; --c-fit: #1f7a5c;
+  --c-demo: #a3367a; --c-scripts: #4b5563; --c-nb: #0e7490;
+  --f-display: "IBM Plex Sans Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #121715; --panel: #1a211e; --fg: #e3e9e6; --fg-soft: #b4bfba; --fg-muted: #8b9791; --rule: #2e3833;
+  --accent: #5cc4a3; --accent-soft: #1d3a31; --mark: #5a4b12;
+  --c-data: #7fb0ea; --c-thermo: #f08c72; --c-micro: #e0b04c; --c-reactor: #b39af0; --c-fit: #5cc4a3;
+  --c-demo: #ec86c6; --c-scripts: #a7b0bd; --c-nb: #5fc7e0;
+  color-scheme: dark } }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 40px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 16px; } nav.toc { position: static !important; } }
+nav.toc { position: sticky; top: 20px; align-self: start; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+nav.toc .k { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--fg-muted); margin-bottom: 6px; }
+nav.toc a { color: var(--fg-soft); text-decoration: none; padding: 3px 0 3px 10px; border-left: 2px solid var(--rule); }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); border-left-color: var(--accent); outline: none; }
+main { min-width: 0; display: flex; flex-direction: column; gap: 52px; }
+header h1 { font-family: var(--f-display); font-weight: 600; font-size: 34px; line-height: 1.1; margin: 0 0 8px; text-wrap: balance; }
+header p { margin: 0; color: var(--fg-soft); max-width: 72ch; }
+.meta { margin-top: 12px; font-family: var(--f-mono); font-size: 12.5px; color: var(--fg-muted); }
+h2 { font-family: var(--f-display); font-weight: 600; font-size: 24px; margin: 0 0 6px; text-wrap: balance; display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+h2 .lvl { font-family: var(--f-mono); font-size: 12px; font-weight: 500; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; padding: 1px 6px; }
+h3 { font-family: var(--f-display); font-weight: 600; font-size: 18px; margin: 0; }
+section > p.lead { margin: 0 0 18px; color: var(--fg-soft); max-width: 74ch; }
+code { font-family: var(--f-mono); font-size: 0.86em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+.scroll { overflow-x: auto; }
+
+/* Level 0: folder trees */
+.tree { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.box { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+.box h3 { margin-bottom: 8px; }
+.tree pre { margin: 0; font-family: var(--f-mono); font-size: 12.8px; line-height: 1.6; white-space: pre; overflow-x: auto; color: var(--fg); }
+.tree pre .c { color: var(--fg-muted); }
+
+/* Level 1: pipeline drawn with boxes and arrows */
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+.stage { flex: 1 1 0; min-width: 0; background: var(--panel); border: 1px solid var(--rule); border-top: 3px solid var(--sc); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.stage b { font-family: var(--f-mono); font-size: 13px; font-weight: 500; color: var(--sc); }
+.stage span { font-size: 13px; color: var(--fg-soft); }
+.stage ul { margin: 2px 0 0; padding-left: 16px; font-size: 12.5px; color: var(--fg-soft); }
+.arrow { align-self: center; color: var(--fg-muted); font-size: 20px; flex: 0 0 auto; }
+@media (max-width: 700px) { .flow { flex-direction: column; } .arrow { transform: rotate(90deg); } }
+.side { margin-top: 10px; font-size: 13.5px; color: var(--fg-soft); }
+
+/* Level 2: call chain as a nested list */
+.chain { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; }
+.chain ol { list-style: none; margin: 0; padding-left: 22px; border-left: 2px solid var(--rule); }
+.chain > ol { padding-left: 0; border-left: 0; }
+.chain li { position: relative; padding: 5px 0 5px 4px; }
+.chain li .fn { font-family: var(--f-mono); font-size: 13px; color: var(--fg); }
+.chain li .fn em { font-style: normal; color: var(--fg-muted); }
+.chain li .d { display: block; font-size: 13px; color: var(--fg-soft); }
+.chain .end { margin-top: 8px; font-family: var(--f-mono); font-size: 13px; color: var(--accent); }
+
+/* Level 3: modules */
+.tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+.tools input { flex: 1 1 260px; min-width: 0; font: inherit; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); color: var(--fg); }
+.tools input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 12.5px var(--f-body); border: 1px solid var(--rule); background: var(--panel); color: var(--fg-soft); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--fg); color: var(--fg); }
+.chip:focus-visible { outline: 2px solid var(--accent); }
+.pkg { margin-bottom: 26px; }
+.pkg-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--pc); margin-bottom: 12px; }
+.pkg-head h3 { color: var(--pc); }
+.pkg-head span { color: var(--fg-soft); font-size: 13.5px; }
+.mods { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
+@media (max-width: 420px) { .mods { grid-template-columns: minmax(0, 1fr); } }
+.mod { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.mod .path { font-family: var(--f-mono); font-size: 13px; font-weight: 500; color: var(--pc); word-break: break-all; }
+.mod .path small { color: var(--fg-muted); font-weight: 400; }
+.mod .what { font-size: 13.5px; color: var(--fg-soft); margin: 0; }
+.mod ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.mod li { display: grid; grid-template-columns: minmax(0, 1fr); font-size: 13.2px; line-height: 1.4; }
+.mod li b { font-family: var(--f-mono); font-weight: 500; font-size: 12.6px; color: var(--fg); word-break: break-word; }
+.mod li b.k { color: var(--fg-soft); }
+.mod li span { color: var(--fg-soft); }
+.mod .int { font-size: 12px; color: var(--fg-muted); font-family: var(--f-mono); word-break: break-word; }
+.mod .used { font-size: 12px; color: var(--fg-muted); border-top: 1px dashed var(--rule); padding-top: 6px; }
+.mod .used b { font-weight: 500; color: var(--fg-soft); }
+mark { background: var(--mark); color: inherit; border-radius: 2px; }
+.empty { color: var(--fg-muted); font-style: italic; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; font-size: 13.8px; background: var(--panel); border: 1px solid var(--rule); }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--f-display); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td.where { font-family: var(--f-mono); font-size: 12.6px; }
+.grp td { background: var(--accent-soft); font-family: var(--f-display); font-weight: 600; font-size: 13px; color: var(--fg); }
+
+/* Level 4: notebooks */
+.nbs { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.nb { background: var(--panel); border: 1px solid var(--rule); border-top: 3px solid var(--c-nb); border-radius: 6px; padding: 14px 16px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.nb h3 { font-family: var(--f-mono); font-size: 14px; font-weight: 500; word-break: break-all; }
+.nb ol { margin: 0; padding-left: 20px; font-size: 13.5px; color: var(--fg-soft); }
+.nb .lbl { font-family: var(--f-display); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--fg-muted); }
+.nb .uses { font-size: 12.6px; line-height: 1.6; }
+.nb .uses div { word-break: break-word; }
+.nb .uses i { font-style: normal; font-family: var(--f-mono); color: var(--fg); }
+.note { font-size: 13.5px; color: var(--fg-soft); background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; max-width: 80ch; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="toc" aria-label="Contents">
+    <div class="k">Contents</div>
+    <a href="#folders">0 · Folders</a>
+    <a href="#pipeline">1 · Pipeline</a>
+    <a href="#evaluation">2 · One evaluation</a>
+    <a href="#files">3 · File by file</a>
+    <a href="#notebooks">4 · Notebooks</a>
+    <a href="#where">5 · Where to change</a>
+    <a href="#docs">6 · docs/</a>
+  </nav>
+
+  <main>
+    <header>
+      <h1>atom-to-reactor Code Map</h1>
+      <p>Where everything is in the branch <code>M1-steps</code>: from the folders to the pipeline, from the pipeline to each file, and from each file to its functions. File and function names are given exactly as they appear in the code.</p>
+      <div class="meta">branch M1-steps · commit 37cfd5a · 29 October 2026 · 33 Python files, 4,871 lines</div>
+    </header>
+
+    <!-- Level 0 -->
+    <section id="folders">
+      <h2><span class="lvl">level 0</span>Folders</h2>
+      <p class="lead">The repository holds the code and the notebooks. The data and the fit results are kept outside version control; the file <code>.env</code> states where they are.</p>
+      <div class="tree">
+        <div class="box">
+          <h3>In the repository</h3>
+<pre>atom-to-reactor/
+├── <span style="color:var(--c-data)">kinetics/</span>          <span class="c">the package: the science</span>
+│   ├── data/          <span class="c">inputs: snapshot, network, NMR</span>
+│   ├── thermo/        <span class="c">G in solution, ΔG_rxn, σ</span>
+│   ├── microkinetics/ <span class="c">barriers, k_f, k_r, models</span>
+│   ├── reactor/       <span class="c">ODEs, history of each tube</span>
+│   ├── fitting/       <span class="c">residuals, structures, fit</span>
+│   ├── constants.py   <span class="c">physical constants</span>
+│   └── paths.py       <span class="c">where the data are</span>
+├── <span style="color:var(--c-demo)">demo/</span>              <span class="c">figures and tables</span>
+├── <span style="color:var(--c-scripts)">scripts/</span>           <span class="c">run_fit · check · build</span>
+├── <span style="color:var(--c-nb)">notebooks/</span>         <span class="c">05 rev08 · 06 rev01</span>
+├── docs/              <span class="c">theory, references, guides</span>
+├── data/              <span class="c">Gogoi 2024 (JSON) + README</span>
+├── README.md · requirements.txt
+└── .env.example       <span class="c">template of .env</span></pre>
+        </div>
+        <div class="box">
+          <h3>Outside version control</h3>
+<pre><span class="c"># ATOM_DATA_DIR (set in .env)</span>
+$ATOM_DATA_DIR/
+└── data/
+    ├── tank_api_snapshot_2026-10-08.json
+    ├── tank_api_snapshot_2026-09-24.json
+    ├── lab_observables.json   <span class="c">what the fit reads</span>
+    └── lab_sample_folders.json
+
+<span class="c"># LAB_NMR_DIR (set in .env)</span>
+raw JEOL .jdf spectra
+
+<span class="c"># notebooks/results/ (untracked)</span>
+fit8_M1-steps_S1-tube/       <span class="c">read by 05 and 06</span>
+fit8_M1-steps_S4-at-age/     <span class="c">read by 05 (§2.4)</span>
+05_fit7/fits/M1__10_min.json <span class="c">read by 05 (§3)</span>
+fit8_M1-steps/               <span class="c">glovebox-first chain</span>
+05_fit7/, 05_fit8/           <span class="c">used by M5-full</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Level 1 -->
+    <section id="pipeline">
+      <h2><span class="lvl">level 1</span>Pipeline</h2>
+      <p class="lead">Each folder of <code>kinetics/</code> is one stage. From the DFT energies and the MD solvation to the concentrations in each tube, which are compared with the measured spectra.</p>
+      <div class="flow">
+        <div class="stage" style="--sc:var(--c-data)"><b>data/</b><span>Inputs</span><ul><li>snapshot, species, medium: DFT + MD solvation</li><li>network: R1–R9, N10–N15</li><li>lab_nmr → observables: spectra → shares</li></ul></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="stage" style="--sc:var(--c-thermo)"><b>thermo/</b><span>G in solution, ΔG_rxn and its standard error σ</span></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="stage" style="--sc:var(--c-micro)"><b>microkinetics/</b><span>Barrier rule (Marcus or capped BEP), Eyring, k_f and k_r</span></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="stage" style="--sc:var(--c-reactor)"><b>reactor/</b><span>Mass-action ODEs along the temperature history of each tube</span></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="stage" style="--sc:var(--c-fit)"><b>fitting/</b><span>Predicted against measured shares, χ², best fit, profiles</span></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="stage" style="--sc:var(--c-nb)"><b>notebooks/ + demo/</b><span>Figures and tables of the stored fits</span></div>
+      </div>
+      <p class="side"><code>scripts/run_fit.py</code> launches the fitting stage and writes its results to <code>notebooks/results/&lt;run&gt;/</code>; the notebooks read them from there. The lab shares (<code>data/observables.py</code>) enter at the fitting stage.</p>
+    </section>
+
+    <!-- Level 2 -->
+    <section id="evaluation">
+      <h2><span class="lvl">level 2</span>One evaluation of the fit, step by step</h2>
+      <p class="lead">What happens each time the optimiser tries a set of barriers θ. This is the most frequently traversed chain: an unexpected χ² originates in one of these steps.</p>
+      <div class="chain">
+        <ol>
+          <li><span class="fn">scripts/run_fit.py <em>·</em> stage_steps</span><span class="d">one step S1…S5 under one reading (10 min, 1 h or 8 h)</span>
+            <ol>
+              <li><span class="fn">fitting/estimation.py <em>·</em> fit_structure</span><span class="d">Sobol screen of the box, bounded least squares from the best points, final polish</span>
+                <ol>
+                  <li><span class="fn">fitting/estimation.py <em>·</em> FitProblem.residuals(θ)</span>
+                    <ol>
+                      <li><span class="fn">fitting/candidates.py <em>·</em> FitStructure.build(θ)</span><span class="d">barriers per class → a ModelSpec with its own network</span></li>
+                      <li><span class="fn">fitting/residuals.py <em>·</em> calculate_residuals</span><span class="d">loops over the tubes</span>
+                        <ol>
+                          <li><span class="fn">fitting/residuals.py <em>·</em> calculate_predicted_shares</span><span class="d">one tube</span>
+                            <ol>
+                              <li><span class="fn">fitting/residuals.py <em>·</em> build_sample_history</span><span class="d">age of the reading, then the heating episodes between spectra</span></li>
+                              <li><span class="fn">reactor/protocol.py <em>·</em> simulate_history</span><span class="d">integrates the history segment by segment</span>
+                                <ol>
+                                  <li><span class="fn">microkinetics/models.py <em>·</em> ModelSpec.calculate_rates(T)</span>
+                                    <ol>
+                                      <li><span class="fn">microkinetics/rates.py <em>·</em> calculate_rate_constants</span><span class="d">barriers.py: Marcus or capped BEP; Eyring; detailed balance</span>
+                                        <ol>
+                                          <li><span class="fn">thermo/reaction.py <em>·</em> calculate_reaction_thermo</span><span class="d">ΔG_rxn and K_eq from solution.py, gas.py, standard_state.py, species.py, medium.py, snapshot.py</span></li>
+                                        </ol>
+                                      </li>
+                                    </ol>
+                                  </li>
+                                  <li><span class="fn">reactor/engine.py <em>·</em> MassActionSystem.integrate</span><span class="d">BDF with the analytic Jacobian</span></li>
+                                </ol>
+                              </li>
+                              <li><span class="fn">fitting/residuals.py <em>·</em> _block_shares → _whiten</span><span class="d">(predicted − measured share) / σ, scaled for the sum constraint</span></li>
+                            </ol>
+                          </li>
+                        </ol>
+                      </li>
+                    </ol>
+                  </li>
+                </ol>
+              </li>
+            </ol>
+          </li>
+        </ol>
+        <div class="end">χ² = Σ r²  (plus the prior of the freed energies in M3-split)</div>
+      </div>
+    </section>
+
+    <!-- Level 3 -->
+    <section id="files">
+      <h2><span class="lvl">level 3</span>File by file</h2>
+      <p class="lead">Each file with its public functions and key constants; internal helpers (names starting with <code>_</code>) are listed in grey. "Used by" names the files that import it.</p>
+      <div class="tools">
+        <input id="q" type="search" placeholder="Search a function, constant or word (e.g. barrier, age, ppm)" aria-label="Search the files">
+        <div class="chips" id="chips" role="group" aria-label="Filter by folder"></div>
+      </div>
+      <div id="pkgs"></div>
+      <p class="empty" id="none" hidden>Nothing matches the search.</p>
+      <noscript><p class="note">The file list needs JavaScript enabled in the browser.</p></noscript>
+    </section>
+
+    <!-- Level 4 -->
+    <section id="notebooks">
+      <h2><span class="lvl">level 4</span>Notebooks: what they read and what they call</h2>
+      <p class="lead">The three notebooks load the code of this branch (<code>CODE = REPO</code>). Before evaluating a stored fit they call <code>apply_fit_config(RESULTS)</code>, which activates the medium, network and sample changes of that run.</p>
+      <div class="nbs">
+        <div class="nb">
+          <h3>notebooks/05_fitting_rev08_(M1_steps).ipynb</h3>
+          <div class="lbl">Sections</div>
+          <ol>
+            <li>What was measured (tubes, what a spectrum gives, model and steps, scoring)</li>
+            <li>The process S1 → S5 (§2.0: every raw spectrum)</li>
+            <li>The steps in one table</li>
+            <li>Our M1 and the reference model (§4.4 uses M3-split+BEP)</li>
+            <li>What can be said, and what cannot</li>
+          </ol>
+          <div class="lbl">Reads</div>
+          <div class="uses"><div><i>results/fit8_M1-steps_S1-tube</i> · <i>fit8_M1-steps_S4-at-age</i> · <i>05_fit7/fits/M1__10_min.json</i> · <i>lab_observables.json</i> · the .jdf files</div></div>
+          <div class="lbl">Calls</div>
+          <div class="uses">
+            <div><b>fitting</b>: <i>apply_fit_config</i>, <i>load_fit_result</i>, <i>get_structure</i>, <i>FitProblem</i>, <i>build_sample_set</i>, <i>calculate_residuals</i>, <i>evaluate_fit</i>, <i>tabulate_fit_shares</i>, <i>simulate_fit_trajectories</i>, <i>load_measured_spectra</i></div>
+            <div><b>data</b>: <i>load_lab_observables</i>, <i>describe_lab_observables</i>, <i>build_lab_nmr_inventory</i>, <i>read_jdf</i>, <i>load_spectrum</i>, <i>calculate_area_shares</i>, <i>estimate_noise</i>, <i>set_active_network_variant</i>, <i>format_equation</i></div>
+            <div><b>reactor</b>: <i>simulate_protocol</i>, <i>calculate_recipe_molarities</i>, <i>tabulate_acquisitions</i></div>
+            <div><b>demo</b>: <i>fit_plots.plot_spectra_comparison</i>, <i>show_tube_comparison</i>, <i>plot_tube_concentrations</i>, <i>plot_concentration_panels</i>, <i>tables.format_interval_table</i>, <i>style.apply_style</i></div>
+          </div>
+        </div>
+        <div class="nb">
+          <h3>notebooks/06_fitting_thermo_rev01.ipynb</h3>
+          <div class="lbl">Sections</div>
+          <ol>
+            <li>The problem (dependences)</li>
+            <li>The tube that shows it: <code>2 % H2O</code> with the computed energies</li>
+            <li>Computed reaction energies</li>
+            <li>Effect of the solvation correction</li>
+            <li>Fitting</li>
+          </ol>
+          <div class="lbl">Reads</div>
+          <div class="uses"><div><i>results/fit8_M1-steps_S1-tube</i> (step S5) · <i>lab_observables.json</i> · the .jdf files</div></div>
+          <div class="lbl">Calls</div>
+          <div class="uses">
+            <div><b>thermo</b>: <i>calculate_network_thermo</i>, <i>calculate_solvation_sigma_components</i></div>
+            <div><b>fitting</b>: <i>apply_fit_config</i>, <i>load_fit_result</i>, <i>evaluate_fit</i>, <i>tabulate_fit_shares</i>, <i>simulate_fit_trajectories</i></div>
+            <div><b>data</b>: <i>load_lab_observables</i>, <i>resolve_species_database</i>, <i>build_lab_nmr_inventory</i>, <i>load_spectrum</i>, <i>calculate_area_shares</i>, <i>get_active_network</i>, <i>format_equation</i></div>
+            <div><b>demo</b>: <i>fit_plots.plot_tube_concentrations</i>, <i>style.apply_style</i></div>
+          </div>
+        </div>
+        <div class="nb">
+          <h3>docs/guide-NMR_processing_rev01.ipynb</h3>
+          <div class="lbl">Sections</div>
+          <ol>
+            <li>From the raw file to the share (diagram)</li>
+            <li>Processing</li>
+            <li>Spectrum selection</li>
+            <li>Measured against simulated</li>
+          </ol>
+          <div class="lbl">Calls</div>
+          <div class="uses">
+            <div><b>data</b>: <i>build_lab_nmr_inventory</i>, <i>calculate_area_shares</i>, <i>_polynomial_baseline</i>, <i>LINE_BROADENING_HZ</i>, <i>load_lab_observables</i>, <i>load_lab_sample_folders</i>, <i>P_WINDOWS_PPM</i></div>
+            <div><b>demo</b>: <i>style.apply_style</i></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Where to change -->
+    <section id="where">
+      <h2><span class="lvl">index</span>Where to change…</h2>
+      <p class="lead">The most frequent questions, with the exact place. Settings that belong to one run are in that run's <code>fit_config.json</code>, not in the code.</p>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>To change or inspect</th><th>Location</th></tr></thead>
+        <tbody>
+          <tr class="grp"><td colspan="2">The model</td></tr>
+          <tr><td>The available structures (M0-BEP, M0-Marcus, M1, M1-split, M3-split)</td><td class="where">fitting/candidates.py · FIT_STRUCTURES</td></tr>
+          <tr><td>The search box of each barrier</td><td class="where">fitting/candidates.py · BARRIER_BOX_EV</td></tr>
+          <tr><td>The fixed barrier of the exchange steps (1.15 eV)</td><td class="where">fitting/candidates.py · FIXED_BARRIERS_EV</td></tr>
+          <tr><td>The barrier rule (Marcus or capped BEP)</td><td class="where">microkinetics/barriers.py · marcus, bep_cap</td></tr>
+          <tr><td>The rule of the reference model (<code>+BEP</code>, α = 1)</td><td class="where">fitting/candidates.py · BEP_ALPHA, FitStructure.with_bep_rule</td></tr>
+          <tr><td>The intrinsic barriers g per family that a model starts from</td><td class="where">microkinetics/parameters.py · LEVEL1_PARAMETERS</td></tr>
+          <tr><td>The rate constant (Eyring, detailed balance)</td><td class="where">microkinetics/rates.py · calculate_rate_constants</td></tr>
+          <tr class="grp"><td colspan="2">The energies</td></tr>
+          <tr><td>ΔG_rxn and K_eq of each reaction</td><td class="where">thermo/reaction.py · calculate_network_thermo</td></tr>
+          <tr><td>The standard error σ of the MD solvation and its covariance</td><td class="where">thermo/uncertainty.py</td></tr>
+          <tr><td>The EC/DEC mixture or the snapshot</td><td class="where">data/medium.py · SolvationMedium ("solvation" in fit_config.json)</td></tr>
+          <tr><td>The reactions (R1–R9, N10–N15) and the network variants</td><td class="where">data/network.py · NETWORK, EXTRA_REACTIONS, NETWORK_VARIANTS</td></tr>
+          <tr class="grp"><td colspan="2">The lab data</td></tr>
+          <tr><td>Reading a .jdf file, phasing, integrating areas</td><td class="where">data/lab_nmr.py · read_jdf, phase_spectrum, calculate_area_shares</td></tr>
+          <tr><td>The ppm windows of ³¹P and ¹³C</td><td class="where">data/observables.py · P_WINDOWS_PPM, C_WINDOWS_PPM</td></tr>
+          <tr><td>The recipes and histories of the tubes</td><td class="where">data/observables.py · LAB_SAMPLES, RECORDED_HISTORIES</td></tr>
+          <tr><td>Rebuilding lab_observables.json from the spectra</td><td class="where">scripts/build_observables.py --from-raw</td></tr>
+          <tr><td>The species counted in each window</td><td class="where">fitting/residuals.py · SHARE_SPECIES</td></tr>
+          <tr><td>The error model of a share (noise, baseline, floor)</td><td class="where">fitting/residuals.py · _lab_block; data/observables.py · DEFAULT_ERROR_FLOOR</td></tr>
+          <tr class="grp"><td colspan="2">A run</td></tr>
+          <tr><td>The ages of the readings (10 min, 1 h, 8 h)</td><td class="where">fitting/residuals.py · SCENARIO_AGES_H</td></tr>
+          <tr><td>The steps S1…S5: which tube and which barrier</td><td class="where">results/&lt;run&gt;/fit_config.json · "steps"; logic in scripts/run_fit.py · stage_steps</td></tr>
+          <tr><td>The history of a tube in one run only</td><td class="where">fit_config.json · "sample_overrides" (keys in residuals.py · build_sample_set)</td></tr>
+          <tr><td>The search effort (Sobol points, starts)</td><td class="where">scripts/run_fit.py · EFFORT; fit_config.json · "effort"</td></tr>
+          <tr><td>The integrator tolerances</td><td class="where">fitting/residuals.py · SEARCH_SOLVER, REPORT_SOLVER</td></tr>
+          <tr><td>The fit rule (no |z| above 3)</td><td class="where">fitting/estimation.py · FIT_RULE_MAX_Z</td></tr>
+          <tr><td>The confidence intervals (profiles)</td><td class="where">fitting/estimation.py · calculate_profile, find_confidence_interval</td></tr>
+          <tr><td>Checking that the code reproduces the stored fits</td><td class="where">scripts/check_stored_fits.py &lt;results directory&gt;</td></tr>
+          <tr class="grp"><td colspan="2">The figures</td></tr>
+          <tr><td>Measured spectrum against the model's</td><td class="where">demo/fit_plots.py · plot_spectra_comparison</td></tr>
+          <tr><td>C(t) of a tube; model against NMR table</td><td class="where">demo/fit_plots.py · plot_tube_concentrations, show_tube_comparison</td></tr>
+          <tr><td>Colours and style of every figure</td><td class="where">demo/style.py</td></tr>
+          <tr><td>Where the code looks for the data</td><td class="where">.env + kinetics/paths.py</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <!-- docs -->
+    <section id="docs">
+      <h2><span class="lvl">docs/</span>Documents</h2>
+      <p class="lead">By prefix: <code>theory-</code> explains, <code>reference-</code> describes what exists, <code>guide-</code> shows how to do something, <code>plan-</code> proposes.</p>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>File</th><th>Subject</th></tr></thead>
+        <tbody>
+          <tr><td class="where">theory-multiscale_microkinetics.md</td><td>Thermodynamics and microkinetics as functions of T: from the gas-phase G to k(T)</td></tr>
+          <tr><td class="where">theory-reaction_mechanism.md</td><td>The reaction mechanism of Gogoi et al. 2024, organised by experiment</td></tr>
+          <tr><td class="where">reference-code_map.html</td><td>This map</td></tr>
+          <tr><td class="where">reference-fitting_system.md</td><td>How a fit runs, from the data to the result files</td></tr>
+          <tr><td class="where">reference-models_summary.md</td><td>The models: equations, variables and parameters</td></tr>
+          <tr><td class="where">reference-fitting_thermo.md</td><td>The thermodynamic fit (draft of 28 October; not yet implemented)</td></tr>
+          <tr><td class="where">reference-fit_results.md</td><td>Review of the fifth fit</td></tr>
+          <tr><td class="where">reference-fitting_improvements.md</td><td>Improvements of the fourth and fifth fits</td></tr>
+          <tr><td class="where">reference-api_migration.md</td><td>Migration of the API of the kinetics package</td></tr>
+          <tr><td class="where">plan-fit_improvement.md</td><td>Plan of the third fit (implemented)</td></tr>
+          <tr><td class="where">guide-NMR_processing_rev01.ipynb</td><td>From the .jdf file to the share: NMR processing with figures</td></tr>
+          <tr><td class="where">guide-operando_experimental_protocol.md</td><td>Operando protocol: simulation, NMR and identifiability of the reactions</td></tr>
+          <tr><td class="where">guide-commits.md</td><td>Guide to the commits, one entry per change set</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="note">Some documents in <code>docs/</code> still name modules or functions that now exist only in the branches <code>main</code> or <code>M5-full</code>.</p>
+    </section>
+  </main>
+</div>
+
+<script>
+const PKGS = [
+ { id: 'data', name: 'kinetics/data/', color: '--c-data', what: 'Inputs: the computed-data snapshot, the species, the reaction network and the lab NMR data.', mods: [
+  { f: 'snapshot.py', n: 110, what: 'Read-only access to the Tank API snapshot (gas-phase DFT, MD solvation, geometries).', fns: [
+    ['load_snapshot', 'the snapshot JSON (cached)'], ['get_dataset_records', 'gas-phase DFT records per species'], ['get_solvation_records', 'MD solvation records in one solvent'], ['list_solvation_sets', 'solvents and MD temperatures in a snapshot'], ['get_solvent', 'solvent (EC, DEC) of one MD record'], ['get_structure', 'optimised geometry of a species'], ['count_elements', 'atoms per element'], ['calculate_molar_mass', 'molar mass from the geometry'], ['DEFAULT_SNAPSHOT_FILE', 'default snapshot', 'k']],
+    int: '_dataset_uuid', used: 'medium, species, uncertainty, reactor/engine, reactor/protocol, validation' },
+  { f: 'species.py', n: 79, what: 'Species database (energies in eV) of the active solvation medium.', fns: [['resolve_species_database', 'the database given, or the shared one of the active medium']],
+    int: '_cached_medium_database, _cached_species_database', used: 'thermo/gas, solution, reaction, uncertainty' },
+  { f: 'medium.py', n: 92, what: 'The solvation medium: neat EC or an EC/DEC mixture, and from which snapshot.', fns: [
+    ['SolvationMedium', 'snapshot + volume fractions; .label, .to_dict, .from_dict'], ['get_active_medium', 'the medium in use'], ['set_active_medium', 'changes the medium in use'], ['DEFAULT_MEDIUM', 'neat EC, snapshot of 24 September', 'k']],
+    used: 'species, uncertainty, fitting/candidates, config' },
+  { f: 'network.py', n: 132, what: 'The network: R1–R9, the steps N10–N15 and their variants.', fns: [
+    ['NETWORK', 'R1–R9', 'k'], ['EXTRA_REACTIONS', 'N10–N15', 'k'], ['NETWORK_VARIANTS', '"R1-R9", "+N10-N15", "fixed 1.15 eV"', 'k'], ['build_network', 'the network of one variant'], ['get_active_network / set_active_network_variant', 'the network in use'], ['list_species', 'species of a network'], ['build_stoichiometric_matrix', 'matrix S'], ['build_order_matrices', 'forward and reverse reaction orders'], ['format_equation', '"2 TMSOH ⇌ HMDSO + H2O"']],
+    used: 'thermo, microkinetics/rates, reactor, fitting/candidates, config' },
+  { f: 'lab_nmr.py', n: 334, what: 'Lab NMR spectra (JEOL .jdf): reading, phasing, noise, areas.', fns: [
+    ['read_jdf', 'one .jdf file: title, nucleus, FID or spectrum'], ['build_lab_nmr_inventory', 'one row per .jdf file with its acquisition settings'], ['calculate_spectrum', 'FID → complex spectrum and ppm axis'], ['phase_spectrum', 'automatic phasing'], ['refine_window_phase', 'phase refined inside the windows'], ['load_spectrum', 'ppm axis and real spectrum of a .jdf file'], ['estimate_noise', 'noise of a spectrum'], ['calculate_window_integrals', 'area and height in each window'], ['calculate_area_shares', 'share of each window with its uncertainty'], ['tabulate_area_shares', 'shares of many spectra'], ['find_heated_windows', 'when a tube was heated'], ['LINE_BROADENING_HZ', 'line broadening applied', 'k']],
+    int: '_cstr, _acquired_at, _nucleus_from_name, _polynomial_baseline', used: 'observables, fitting/reporting' },
+  { f: 'observables.py', n: 439, what: 'The curated observables: what the fit reads, stored in lab_observables.json.', fns: [
+    ['load_lab_observables', 'reads lab_observables.json'], ['build_lab_inventory_for_observables', 'share tables from the raw spectra'], ['build_lab_observables', 'assembles the observables dictionary'], ['write_lab_observables', 'writes it to the data folder'], ['load_share_tables', 'exported share tables (CSV route)'], ['load_lab_sample_folders', 'raw folders of each tube'], ['list_spectrum_sets', 'blocks (nucleus, role, spectra) of a tube'], ['describe_lab_observables', 'one row per tube: spectra, history'], ['calculate_replicate_scatter', 'scatter of the repeated spectra'], ['LAB_SAMPLES, RECORDED_HISTORIES', 'recipes and histories of the tubes', 'k'], ['P_WINDOWS_PPM, C_WINDOWS_PPM', 'windows of ³¹P and ¹³C', 'k'], ['DEFAULT_ERROR_FLOOR, RT_MAX_C', 'error floor; upper limit of room temperature', 'k']],
+    int: '_recipe_molarities, _spectrum_record', used: 'fitting/residuals, reporting, scripts/build_observables' },
+  { f: 'experimental.py', n: 31, what: 'Reference data of Gogoi et al. 2024 (data/experimental_gogoi2024.json).', fns: [['load_experimental_data', 'the reference file'], ['get_water_series', 'the water series: medium and samples']],
+    used: 'reactor/validation' }
+ ]},
+ { id: 'thermo', name: 'kinetics/thermo/', color: '--c-thermo', what: 'Thermochemistry: G of each species in solution and ΔG_rxn of each reaction.', mods: [
+  { f: 'gas.py', n: 104, what: 'Gas-phase G, H and S: stored DFT values (or quasi-RRHO).', fns: [['calculate_gas_thermo', 'H°, S°, G° of one species at T'], ['THERMO_MODES', '"wb97mv", "qRRHO"', 'k']], int: '_stored_gibbs, _quasi_rrho', used: 'solution, reaction' },
+  { f: 'standard_state.py', n: 15, what: 'Standard-state change from 1 bar to 1 M.', fns: [['calculate_standard_state_shift', '+7.96 kJ/mol at 298 K']], used: 'solution' },
+  { f: 'solution.py', n: 31, what: 'G_sol = G_gas + ΔE_solv + ΔG°→*.', fns: [['calculate_solution_gibbs', 'G, H, S of one solvated species']], used: 'reaction' },
+  { f: 'uncertainty.py', n: 181, what: 'Uncertainty of the MD solvation propagated to the reactions.', fns: [['calculate_solvation_sigma_components', 'σ of solute and solvent per species'], ['calculate_solvation_sigma', 'σ of ΔΔE_solv of one reaction'], ['calculate_solvation_covariance', 'covariance between reactions'], ['calculate_species_shifts', 'species shifts that move ΔG_rxn'], ['build_shifted_species_database', 'species database with those shifts']], int: '_medium_components, _net_stoichiometry, _cached_shifted_database', used: 'reaction, microkinetics/models, fitting/candidates' },
+  { f: 'reaction.py', n: 83, what: 'ΔG_rxn and K_eq.', fns: [['calculate_reaction_thermo', 'ΔG_rxn, K_eq of one reaction'], ['calculate_network_thermo', 'table of the whole network: gas-phase ΔG, ΔΔE_solv ± σ, ΔG_rxn']], used: 'microkinetics/rates, fitting/candidates' }
+ ]},
+ { id: 'micro', name: 'kinetics/microkinetics/', color: '--c-micro', what: 'Rate constants: barrier rule, parameters per family, named models.', mods: [
+  { f: 'barriers.py', n: 78, what: 'ΔG‡ as a function of ΔG_rxn.', fns: [['marcus', 'ΔG‡ = g(1 + x/4g)²'], ['bep_cap', 'ΔG‡ = max(g, g + αx), the rule of the reference model'], ['calculate_barrier', 'forward barrier with work terms'], ['reversed_params', 'parameters of the reverse reaction'], ['BARRIER_MODELS', '"marcus", "bep_cap"', 'k']], int: '_check_g', used: 'rates' },
+  { f: 'parameters.py', n: 85, what: 'Intrinsic barriers g per family.', fns: [['LEVEL1_PARAMETERS', 'Marcus per family (base of M1)', 'k'], ['REFERENCE_BEP_PARAMETERS', 'E0 = 1.15 eV (base of M0-BEP)', 'k'], ['normalize_family_params', 'fills in the default values'], ['resolve_family_params', 'parameters of one reaction class']], used: 'rates, models' },
+  { f: 'rates.py', n: 114, what: 'Eyring + detailed balance → k_f, k_r.', fns: [['calculate_rate_constants', 'k_f, k_r and barriers of one reaction at T'], ['calculate_network_rates', 'the same for the whole network'], ['KINETIC_MODELS', '"bep_eyring", "level1"', 'k']], used: 'models' },
+  { f: 'models.py', n: 102, what: 'Registry of named models.', fns: [['ModelSpec', 'a complete model; .calculate_rates(T)'], ['MODELS', 'reference_bep, level1', 'k'], ['get_model', 'ModelSpec by name']], used: 'reactor/protocol, fitting/candidates' }
+ ]},
+ { id: 'reactor', name: 'kinetics/reactor/', color: '--c-reactor', what: 'Reactors: mass-action ODEs integrated in time.', mods: [
+  { f: 'engine.py', n: 94, what: 'Right-hand side, Jacobian and integrator of the network.', fns: [['MassActionSystem', '.rhs, .jacobian, .integrate'], ['IntegrationBudgetExceeded', 'raised when the call budget is exhausted'], ['calculate_element_totals', 'element balance over time']], used: 'protocol' },
+  { f: 'protocol.py', n: 212, what: 'Multi-stage bench protocol and the history of a tube.', fns: [['simulate_history', 'composition of a tube along its history (used by the fit)'], ['simulate_protocol', 'bench protocol stage by stage'], ['build_protocol_schedule', 'stages and timetable of the protocol'], ['calculate_recipe_molarities', 'molarities of the recipe'], ['tabulate_acquisitions', 'composition at each NMR acquisition'], ['Stage', 'one isothermal stage'], ['DEFAULT_DENSITY_G_ML', 'densities of the liquids', 'k']], used: 'validation, fitting/residuals, reporting, demo/fit_plots' },
+  { f: 'validation.py', n: 25, what: 'Recipe of the water series of Gogoi et al. 2024.', fns: [['calculate_water_series_c0', 'initial concentrations of one sample of the series']], used: 'data/observables' }
+ ]},
+ { id: 'fit', name: 'kinetics/fitting/', color: '--c-fit', what: 'The fit: residuals against the spectra, structures, search, profiles and reading of results.', mods: [
+  { f: 'residuals.py', n: 448, what: 'The observables against a model, under one reading of the unknown ages.', fns: [['build_sample_set', 'the tubes a model is compared with, under one reading'], ['build_sample_history', 'temperature segments from mixing'], ['calculate_predicted_shares', 'shares the model predicts for one tube'], ['calculate_residuals', 'vector of whitened residuals (χ² = Σ r²)'], ['tabulate_residuals', 'one row per measured quantity, with z'], ['set_sample_overrides / get_sample_overrides / merge_sample_overrides', 'changes to the tubes for a whole run'], ['SCENARIO_AGES_H, SCENARIOS', '10 min, 1 h, 8 h', 'k'], ['SHARE_SPECIES', 'species counted in each window', 'k'], ['SEARCH_SOLVER, REPORT_SOLVER', 'integrator tolerances', 'k'], ['PENALTY', 'residual of a failed simulation', 'k']],
+    int: '_lab_block, _lab_sample, _hold_heated, _cool_before_spectra, _episodes, _shares_from_state, _block_shares, _initial_composition, _whiten, _whiten_sample, _evaluate_sample, _rows_of_sample, _rows_of_block', used: 'config, estimation, reporting, demo/fit_plots, scripts' },
+  { f: 'candidates.py', n: 284, what: 'Structures: which barriers and energies are free.', fns: [['FIT_STRUCTURES', 'M0-BEP, M0-Marcus, M1, M1-split, M3-split', 'k'], ['get_structure', 'structure by name; "+BEP" adds the rule of the reference model'], ['FitStructure', '.parameters, .build(θ) → ModelSpec, .network, .with_bep_rule'], ['FitParameter', 'one free parameter with its box'], ['tabulate_reaction_barriers', 'ΔG‡ of each reaction for a θ'], ['scale_energy_prior', 'prior of the energies with another scale'], ['get_energy_box_sigma / set_energy_box_sigma', 'box of the freed energies'], ['BARRIER_BOX_EV', 'search box of each barrier', 'k'], ['FIXED_BARRIERS_EV', 'exchange steps at 1.15 eV', 'k'], ['SPLIT_HYDROLYSIS', 'R1 apart from R2/R3', 'k']],
+    int: '_energy_tools, _M1, _M1_SPLIT', used: 'config, estimation, reporting, scripts/run_fit' },
+  { f: 'estimation.py', n: 360, what: 'Best fit and profile intervals.', fns: [['FitProblem', 'structure + tubes: parameters, box, .residuals, .chi2, .table'], ['fit_structure', 'Sobol + least squares + final polish'], ['calculate_profile', 'χ² re-minimised along one parameter'], ['find_confidence_interval', '95 % interval from a profile'], ['build_profile_grid', 'grid of a profile'], ['write_fit_result / load_fit_result', 'results as JSON'], ['FIT_RULE_MAX_Z', '3: a structure fits if no |z| exceeds 3', 'k']],
+    int: '_chi2_unit, _polish, _polish_unit, _map, _select_starts, _profile_chain, _plain, _restore', used: 'scripts/run_fit, check_stored_fits, notebooks' },
+  { f: 'reporting.py', n: 152, what: 'A stored fit against the measurements.', fns: [['evaluate_fit', 'what a stored fit predicts for its tubes'], ['tabulate_fit_shares', 'measured and predicted share of each window of each spectrum'], ['simulate_fit_trajectories', 'C(t) of each tube from mixing'], ['load_measured_spectra', 'raw spectra ready to be plotted'], ['P_REGION_PPM', 'region of ³¹P', 'k']], used: 'notebooks' },
+  { f: 'config.py', n: 96, what: 'The setup of one run: fit_config.json.', fns: [['apply_fit_config', 'reads fit_config.json and activates medium, network and tube changes'], ['load_fit_config', 'only reads it'], ['check_fit_setup / check_fit_medium', 'checks that a fit is evaluated with its own setup'], ['DEFAULT_FIT_CONFIG', 'setup without a file', 'k']], used: 'reporting, scripts, notebooks' }
+ ]},
+ { id: 'root', name: 'kinetics/ (top level)', color: '--c-scripts', what: 'Two files used throughout the package.', mods: [
+  { f: 'constants.py', n: 31, what: 'Physical constants and unit conversions (CODATA 2018).', fns: [['R_SI, KB_SI, H_SI', 'R, k_B, h', 'k'], ['EV_TO_KJ_MOL, KJ_MOL_TO_EV, HARTREE_TO_EV', 'energy conversions', 'k'], ['ZERO_CELSIUS_K, T_STD_K, P_STD_PA, C_STD_MOL_M3', 'reference states', 'k']], used: 'most files' },
+  { f: 'paths.py', n: 63, what: 'Where the data are (reads .env).', fns: [['data_dir', 'the folder ATOM_DATA_DIR'], ['data_path', 'a file inside it'], ['lab_nmr_dir', 'the folder LAB_NMR_DIR']], int: '_read_dotenv', used: 'data/lab_nmr, medium, snapshot, observables, reporting, notebooks' }
+ ]},
+ { id: 'demo', name: 'demo/', color: '--c-demo', what: 'Figures and tables for the notebooks. No science is computed here.', mods: [
+  { f: 'fit_plots.py', n: 326, what: 'A fit against what was measured.', fns: [['plot_spectra_comparison', 'measured spectra with the fitted one drawn over them'], ['tabulate_tube_comparison', 'model against NMR, in mM, per window'], ['show_tube_comparison', 'that table coloured by z'], ['plot_tube_concentrations', 'C(t) of a tube in four panels'], ['WINDOW_LABELS, NUCLEUS_LABELS', 'labels', 'k'], ['SMOOTH_FWHM_PPM, RAW_FWHM_PPM', 'display broadening', 'k']], int: '_smooth, _width_at_half_height, _line', used: 'notebooks 05, 06' },
+  { f: 'reactor_plots.py', n: 65, what: 'Concentration panels of a simulation.', fns: [['plot_concentration_panels', '2 × 2 panels with the temperature programme']], int: '_time_axis', used: 'fit_plots, notebook 05' },
+  { f: 'tables.py', n: 38, what: 'Tables of intervals.', fns: [['format_interval', 'one interval as text'], ['format_interval_table', '95 % intervals, parameter × reading']], used: 'notebook 05' },
+  { f: 'style.py', n: 87, what: 'Colours and style of every figure.', fns: [['apply_style', 'matplotlib style of the notebooks'], ['SERIES, INK, SURFACE, GRID', 'colours', 'k'], ['label_line_ends', 'labels at the end of the lines'], ['add_temperature_strip', 'strip of the temperature programme'], ['mark_acquisitions', 'marks of the acquisitions'], ['select_post_injection', 'points from the TMSPA addition on']], used: 'fit_plots, reactor_plots, notebooks' }
+ ]},
+ { id: 'scripts', name: 'scripts/', color: '--c-scripts', what: 'Programs run from the terminal.', mods: [
+  { f: 'run_fit.py', n: 247, what: 'Fit of M1 one tube at a time: python scripts/run_fit.py steps --results DIR.', fns: [['stage_steps', 'the steps of fit_config.json, each scoring every tube'], ['score_tubes', 'χ² and worst miss of each tube for one θ'], ['score_step', 'a step without free parameters'], ['cached', 'reuses a result already on disk'], ['EFFORT', 'search effort per structure', 'k'], ['LAB_FITTED_SAMPLES', 'the six tubes', 'k'], ['SCENARIO_ORDER', '10 min, 1 h, 8 h', 'k']], used: '(run from the terminal)' },
+  { f: 'check_stored_fits.py', n: 70, what: 'Recomputes the χ² of the stored fits without fitting.', fns: [['check_fit', 'relative change of the χ² of one fit'], ['main', 'python scripts/check_stored_fits.py DIR']], used: '(run from the terminal)' },
+  { f: 'build_observables.py', n: 57, what: 'Builds lab_observables.json.', fns: [['main', '--from-raw: from the raw spectra']], used: '(run from the terminal)' }
+ ]}
+];
+
+const pkgsEl = document.getElementById('pkgs'), chipsEl = document.getElementById('chips'), q = document.getElementById('q'), none = document.getElementById('none');
+let active = 'all';
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+function hl(text, term) {
+  const t = esc(text);
+  if (!term) return t;
+  const re = new RegExp('(' + esc(term).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+  return t.replace(re, '<mark>$1</mark>');
+}
+function chip(id, label) {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button'; b.textContent = label; b.dataset.id = id;
+  b.setAttribute('aria-pressed', id === active ? 'true' : 'false');
+  b.addEventListener('click', () => { active = id; [...chipsEl.children].forEach(c => c.setAttribute('aria-pressed', c.dataset.id === active ? 'true' : 'false')); render(); });
+  chipsEl.appendChild(b);
+}
+chip('all', 'All');
+PKGS.forEach(p => chip(p.id, p.name.replace('kinetics/', '').replace(' (top level)', 'top level')));
+
+function render() {
+  const term = q.value.trim().toLowerCase();
+  let shown = 0;
+  pkgsEl.innerHTML = '';
+  for (const p of PKGS) {
+    if (active !== 'all' && active !== p.id) continue;
+    const mods = p.mods.map(m => {
+      const text = (m.f + ' ' + m.what + ' ' + (m.int || '')).toLowerCase();
+      const fns = term ? m.fns.filter(([n, d]) => (n + ' ' + d).toLowerCase().includes(term)) : m.fns;
+      const fileHit = term && text.includes(term);
+      if (term && !fileHit && fns.length === 0) return null;
+      return { m, fns: fileHit && fns.length === 0 ? m.fns : fns };
+    }).filter(Boolean);
+    if (!mods.length) continue;
+    shown += mods.length;
+    const sec = document.createElement('div');
+    sec.className = 'pkg'; sec.style.setProperty('--pc', `var(${p.color})`);
+    sec.innerHTML = `<div class="pkg-head"><h3>${p.name}</h3><span>${esc(p.what)}</span></div><div class="mods"></div>`;
+    const grid = sec.querySelector('.mods');
+    for (const { m, fns } of mods) {
+      const card = document.createElement('article');
+      card.className = 'mod';
+      card.innerHTML = `<div class="path">${hl(m.f, term)} <small>${m.n} lines</small></div>
+        <p class="what">${hl(m.what, term)}</p>
+        <ul>${fns.map(([n, d, k]) => `<li><b class="${k ? 'k' : ''}">${hl(n, term)}</b><span>${hl(d, term)}</span></li>`).join('')}</ul>
+        ${m.int ? `<div class="int">internal: ${hl(m.int, term)}</div>` : ''}
+        <div class="used"><b>Used by:</b> ${esc(m.used)}</div>`;
+      grid.appendChild(card);
+    }
+    pkgsEl.appendChild(sec);
+  }
+  none.hidden = shown > 0;
+}
+q.addEventListener('input', render);
+render();
+</script>
+</body>
+</html>

@@ -51,6 +51,8 @@ cp .env.example .env              # then set the two data folders (see Data)
 
 ## Layout
 
+[docs/reference-code_map.html](docs/reference-code_map.html) is a map of every folder, file and function of this branch, with a search box. Open the file in a browser (it needs no installation or internet connection); GitHub shows its source code instead of the page.
+
 ```text
 atom-to-reactor/
 ├── kinetics/            the package
@@ -63,7 +65,7 @@ atom-to-reactor/
 ├── notebooks/           05_fitting_rev08_(M1_steps) · 06_fitting_thermo_rev01
 ├── scripts/             run_fit.py (steps) · check_stored_fits.py · build_observables.py
 ├── data/                reference data and the data inventory (data/README.md)
-└── docs/                theory and references
+└── docs/                theory and references; reference-code_map.html maps every file and function
 ```
 
 ## Data
