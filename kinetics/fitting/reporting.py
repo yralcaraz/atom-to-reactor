@@ -5,8 +5,8 @@ tube are folded into a mean and its drifts. A reader wants the same comparison i
 the share of each peak in each spectrum, the concentrations of a tube since it was mixed, and the spectrum
 itself. Nothing here is fitted: a stored parameter set is run forward, in the solvation medium, with the network
 and with the run-wide changes to the samples it was fitted with (apply_fit_config on the run's results directory
-first), and with the paper observations it was fitted with. A fit of a sensitivity variant also needs the
-overrides of its variant (stored under 'variant_overrides'), passed as `overrides`.
+first). A fit of a sensitivity variant also needs the overrides of its variant (stored under
+'variant_overrides'), passed as `overrides`.
 
     evaluate_fit                     the samples of a fit with the age and the shares its parameter set gives each
     tabulate_fit_shares              measured and predicted share of every window of every spectrum
@@ -24,38 +24,11 @@ from kinetics.data.observables import C_REGION_PPM, C_WINDOWS_PPM, P_WINDOWS_PPM
 from kinetics.fitting.candidates import get_structure
 from kinetics.fitting.config import check_fit_setup
 from kinetics.fitting.residuals import (
-    FREE_AGE_BOUNDS_H, N_AGE_GRID, PAPER_OBSERVATIONS, REPORT_SOLVER, SHARE_SPECIES, _block_shares, _initial_composition, _whiten_sample,
-    build_sample_history, build_sample_set, calculate_residuals,
+    REPORT_SOLVER, SHARE_SPECIES, _initial_composition, build_sample_history, build_sample_set, calculate_residuals,
 )
 from kinetics.reactor.protocol import simulate_history
 
 P_REGION_PPM = (-32.0, 6.0)              # region of the ³¹P shares (build_lab_inventory_for_observables)
-N_EXACT_AGES = 240                       # ages tried between the two trial ages of the fit that enclose a stored age
-
-
-def _fit_paper(fit: dict) -> tuple:
-    """The paper observations a stored fit was fitted with (fits from before the record: PAPER_OBSERVATIONS)."""
-    return tuple(fit['paper']) if 'paper' in fit else PAPER_OBSERVATIONS
-
-
-def _find_exact_age(sample: dict, built: dict, age_h: float, solver: dict) -> float:
-    """Age near age_h at which the model, run without interpolation, is closest to the spectra of one sample.
-
-    A fit finds the age of an unheated sample on shares interpolated between trial ages (_profile_age). Where
-    the composition changes within one step of those ages, the stored age is off by a part of that step; here
-    the same χ² is minimised on the trajectory itself, inside the step on either side of the stored age.
-    """
-    step = (FREE_AGE_BOUNDS_H[1] / FREE_AGE_BOUNDS_H[0]) ** (1.0 / (N_AGE_GRID - 1))
-    ages_h = np.unique(np.clip(np.geomspace(age_h / step, age_h * step, N_EXACT_AGES), *FREE_AGE_BOUNDS_H))
-    t_spec = np.concatenate([block['t_spec_s'] for block in sample['blocks']])
-    times = (3600.0 * ages_h[:, None] + t_spec[None, :]).ravel()
-    sim = simulate_history(_initial_composition(sample, built['water_fraction'], built['added_M'].get(sample['name'])),
-                           [(sample['T_rt_K'], float(times.max()))], times, model=built['model'], **solver)
-    if not sim['success']:
-        return age_h
-    C = sim['C_M'].reshape(sim['C_M'].shape[0], len(ages_h), len(t_spec))
-    chi2 = [np.sum(_whiten_sample(sample, _block_shares(sample, C[:, a, :], sim['idx'])) ** 2) for a in range(len(ages_h))]
-    return float(ages_h[int(np.argmin(chi2))])
 
 
 def evaluate_fit(fit: dict, observables: dict, *, overrides: dict = None, ages: dict = None, solver: dict = None) -> dict:
@@ -63,23 +36,16 @@ def evaluate_fit(fit: dict, observables: dict, *, overrides: dict = None, ages: 
 
     Returns 'samples' (the sample set of the fit's scenario), 'built' (FitStructure.build of its θ), 'ages'
     {sample: hours from mixing to the first spectrum, None where the history is known} and 'predicted'
-    {sample: one array (spectra × windows) per block, or the value of a paper observable}.
-    The ages are those of the fit, except for a sample whose age the fit finds inside each evaluation (free
-    scenario): that one is found again on the exact trajectory (_find_exact_age).
+    {sample: one array (spectra × windows) per block}. The ages are those of the fit's reading.
     overrides: as in build_sample_set (e.g. TMSOH present at mixing).
     ages: {sample: hours} used as they are, e.g. those of another evaluation of the same fit.
     """
     check_fit_setup(fit)
     solver = solver or REPORT_SOLVER
-    samples = build_sample_set(observables, fit['scenario'], overrides=overrides, paper=_fit_paper(fit))
+    samples = build_sample_set(observables, fit['scenario'], overrides=overrides)
     built = get_structure(fit['structure']).build(fit['theta'])
-    if ages is None:
-        ages = {**fit.get('ages', {}), **built['ages']}
-        for sample in samples:
-            if sample['age_mode'] == 'profile' and ages.get(sample['name']) is not None:
-                ages[sample['name']] = _find_exact_age(sample, built, ages[sample['name']], solver)
-    _, details = calculate_residuals(built['model'], samples, ages=ages, water_fraction=built['water_fraction'],
-                                     added_M=built['added_M'], solver=solver, return_details=True)
+    _, details = calculate_residuals(built['model'], samples, ages=ages, added_M=built['added_M'], solver=solver,
+                                     return_details=True)
     return {'samples': samples, 'built': built, 'ages': {name: d['age_h'] for name, d in details.items()},
             'predicted': {name: d['predicted'] for name, d in details.items()}}
 
@@ -98,7 +64,7 @@ def tabulate_fit_shares(evaluation: dict) -> pd.DataFrame:
         if sample['kind'] != 'lab' or predicted is None:
             continue
         age_h = evaluation['ages'][name]
-        c0 = _initial_composition(sample, evaluation['built']['water_fraction'], evaluation['built']['added_M'].get(name))
+        c0 = _initial_composition(sample, evaluation['built']['added_M'].get(name))
         _, times = build_sample_history(sample, age_h)
         for block, shares, t_s in zip(sample['blocks'], predicted, times):
             species = SHARE_SPECIES[block['nucleus']]
@@ -134,7 +100,7 @@ def simulate_fit_trajectories(evaluation: dict, *, until_h: float = None, t_firs
             total_s = 3600.0 * until_h
         ends = np.cumsum([duration for _, duration in segments])
         times = np.unique(np.concatenate([np.geomspace(3600.0 * t_first_h, total_s, n_points), ends]))
-        sim = simulate_history(_initial_composition(sample, built['water_fraction'], built['added_M'].get(name)),
+        sim = simulate_history(_initial_composition(sample, built['added_M'].get(name)),
                                segments, times, model=built['model'], **solver)
         if not sim['success']:
             continue

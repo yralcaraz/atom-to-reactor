@@ -21,7 +21,7 @@ def format_interval(row, spec: str = '.3f') -> str:
     return 'not determined'
 
 
-def format_interval_table(intervals: pd.DataFrame, structure: str, scenarios=('short', 'middle', 'long', 'free'),
+def format_interval_table(intervals: pd.DataFrame, structure: str, scenarios=('10 min', '1 h', '8 h'),
                           tag: str = '') -> pd.DataFrame:
     """95 % profile intervals of one structure: one row per parameter, one column per scenario.
 
@@ -33,6 +33,6 @@ def format_interval_table(intervals: pd.DataFrame, structure: str, scenarios=('s
         rows[name] = {}
         for scenario in scenarios:
             match = data[(data['parameter'] == name) & (data['scenario'] == scenario)]
-            rows[name][scenario] = format_interval(match.iloc[0], '.2f' if 'age' in name or 'water' in name else '.3f') \
+            rows[name][scenario] = format_interval(match.iloc[0], '.3f') \
                 if len(match) else '—'
     return pd.DataFrame.from_dict(rows, orient='index')

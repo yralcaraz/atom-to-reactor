@@ -6,8 +6,6 @@ Parameter schema per reaction family (all keys optional except the barrier):
     'alpha'                     Brønsted slope, read only by the legacy 'bep_cap' shape
     'shape'                     barrier model; used by the 'level1' kinetic model
     'T_ref_K', 'dS_act_J_mol_K' g(T) = g(T_ref) - (T - T_ref)·ΔS‡
-    'alpha0'                    α(0) for 'two_parabola'
-    'w_eV'                      bond-energy parameter for 'blowers_masel'
     'wR_eV', 'wP_eV'            Marcus work terms (precursor / successor complexes)
     'prior', 'source'           provenance and calibration intervals (not used in rates)
 The 'default' entry applies to any family without its own entry.
@@ -18,16 +16,6 @@ Source: Y. Alcaraz Galván; barrier windows from Gogoi et al., J. Phys. Chem. C 
 from copy import deepcopy
 
 _GOGOI_2024 = "Gogoi et al., J. Phys. Chem. C 2024, 128, 1654"
-
-# Legacy family parameters (capped BEP). Values unchanged from the pre-Level 1 engine.
-FAMILY_BEP_PARAMETERS = {
-    'hydrolysis':     {'g_eV': 0.80, 'alpha': 0.50},
-    'condensation':   {'g_eV': 0.80, 'alpha': 0.50},
-    'transfer':       {'g_eV': 0.80, 'alpha': 0.50},
-    # Observed barrier derived from the 80 °C protocol of Gogoi 2024 (not a value reported in the paper)
-    'solvent_attack': {'g_eV': 1.30, 'alpha': 0.50},
-    'default':        {'g_eV': 0.80, 'alpha': 0.50},
-}
 
 # Reference model for the bench protocol: one global E0 chosen so
 # that TMSPA depletion spreads across the RT → 80 °C temperature steps.
@@ -69,8 +57,6 @@ _FAMILY_DEFAULTS = {
     'alpha': 0.50,
     'T_ref_K': 298.15,
     'dS_act_J_mol_K': 0.0,
-    'alpha0': 0.50,
-    'w_eV': 5.0,
     'wR_eV': 0.0,
     'wP_eV': 0.0,
 }

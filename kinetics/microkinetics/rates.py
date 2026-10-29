@@ -5,10 +5,8 @@
     k_r   = k_f / K_eq
 
 Kinetic models (the `kinetic_model` argument):
-    'bep_eyring'     legacy capped BEP, ΔG‡_f = max(g, g + α·ΔG_rxn); direction-dependent
-    'marcus_eyring'  Marcus, ΔG‡_f = g (1 + ΔG_rxn / 4g)²
-    'agmon_levine', 'blowers_masel', 'two_parabola'   smooth Level 1 shapes with the family g
-    'level1'         per-family shape and LEVEL1_PARAMETERS
+    'bep_eyring'     legacy capped BEP, ΔG‡_f = max(g, g + α·ΔG_rxn); direction-dependent (reference_bep)
+    'level1'         per-family shape ('marcus' or 'bep_cap') and LEVEL1_PARAMETERS
 Each model has a fallback parameter set used when `family_params` is None or lacks a family.
 Reactions flagged 'canonical': False in the network use the reversed family parameters.
 
@@ -21,18 +19,14 @@ import pandas as pd
 from kinetics.constants import EV_TO_KJ_MOL, H_SI, KB_SI, R_SI
 from kinetics.microkinetics.barriers import calculate_barrier, reversed_params
 from kinetics.microkinetics.parameters import (
-    FAMILY_BEP_PARAMETERS, LEVEL1_PARAMETERS, resolve_family_params,
+    LEVEL1_PARAMETERS, REFERENCE_BEP_PARAMETERS, resolve_family_params,
 )
 from kinetics.data.network import NETWORK
 from kinetics.thermo.reaction import calculate_reaction_thermo
 
 # kinetic_model → (barrier shape, or None to read each family's 'shape'; fallback parameter set)
 KINETIC_MODELS = {
-    'bep_eyring':    ('bep_cap', FAMILY_BEP_PARAMETERS),
-    'marcus_eyring': ('marcus', FAMILY_BEP_PARAMETERS),
-    'agmon_levine':  ('agmon_levine', FAMILY_BEP_PARAMETERS),
-    'blowers_masel': ('blowers_masel', FAMILY_BEP_PARAMETERS),
-    'two_parabola':  ('two_parabola', FAMILY_BEP_PARAMETERS),
+    'bep_eyring':    ('bep_cap', REFERENCE_BEP_PARAMETERS),
     'level1':        (None, LEVEL1_PARAMETERS),
 }
 
@@ -61,10 +55,6 @@ def calculate_rate_constants(rxn_id: str, T_K: float, *, kinetic_model: str = 'b
     shape_params = {'wR_eV': fam['wR_eV'], 'wP_eV': fam['wP_eV']}
     if active_shape == 'bep_cap':
         shape_params['alpha'] = fam['alpha']
-    elif active_shape == 'blowers_masel':
-        shape_params['w'] = fam['w_eV']
-    elif active_shape == 'two_parabola':
-        shape_params['alpha0'] = fam['alpha0']
 
     dG_rxn_kJ_mol = thermo['dG_rxn_kJ_mol']
     dG_barrier_f_eV, alpha_eff = calculate_barrier(thermo['dG_rxn_eV'], active_shape, g_eV, **shape_params)

@@ -4,18 +4,18 @@ Every stage of a run reads the setup at its start, and so does every notebook th
 solvation medium the reaction energies are computed in, the reaction network (kinetics.data.network variants),
 the changes to the samples that hold for the whole run ('sample_overrides', e.g. the heating steps of the 2 %
 tube in the fifth fit; keys as in residuals.build_sample_set), the readings of the unknown ages that are fitted,
-the paper observations added to the lab samples, the sensitivity variants of the night stage ('sensitivities':
+the sensitivity variants of the night stage ('sensitivities':
 names of scripts/run_fit.SENSITIVITIES; None runs those of the fourth fit) and the changes to the synthetic
 recovery check ('recovery': truths replaced per case, the search of the fits for every case, or the cases
 themselves; see scripts/run_fit.recovery_cases). Sixth fit: the box of the freed energies in standard errors
 ('energy_box_sigma', kinetics.fitting.candidates), and for scripts/run_fit.py the structures of the run
 ('structures': main and extended), their search ('effort'), the fits whose parameters start the search
 ('start_from': an earlier results directory) and the parts of the night and traces stages that run ('night').
-Seventh fit: the readings of near-zero ages ('0 min', '5 min', '10 min'), which only a run that lists them uses.
-Eighth fit: the readings '1 h' and '8 h', and the steps of a fit made one tube at a time ('steps', 'step_variants';
+Eighth fit: the readings '10 min', '1 h' and '8 h' (the only ones of this branch), and the steps of a fit made one tube at a time ('steps', 'step_variants';
 see scripts/run_fit.stage_steps).
-A results directory without the file is a run of the default setup, that of the first three fits: neat EC from
-the 2026-09-24 snapshot, R1–R9, the four readings and E1.
+A results directory without the file is a run of the default setup: neat EC from the 2026-09-24 snapshot, R1–R9
+and the three readings. A setup with paper observations (Gogoi 2024, the first fits) is refused: they are in the
+branch M5-full.
 
     DEFAULT_FIT_CONFIG  the setup of a directory without fit_config.json
     load_fit_config     the setup stored in a results directory
@@ -35,12 +35,12 @@ from kinetics.data.network import (
 )
 from kinetics.fitting.candidates import set_energy_box_sigma
 from kinetics.fitting.residuals import (
-    DEFAULT_SCENARIOS, PAPER_OBSERVATIONS, SCENARIOS, get_sample_overrides, set_sample_overrides,
+    DEFAULT_SCENARIOS, SCENARIOS, get_sample_overrides, set_sample_overrides,
 )
 
 FIT_CONFIG_FILE = 'fit_config.json'
 DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'network': DEFAULT_NETWORK_VARIANT, 'sample_overrides': {},
-                      'scenarios': list(DEFAULT_SCENARIOS), 'paper_observations': list(PAPER_OBSERVATIONS),
+                      'scenarios': list(DEFAULT_SCENARIOS),
                       'sensitivities': None, 'recovery': {}, 'energy_box_sigma': None, 'structures': None,
                       'effort': {}, 'start_from': None, 'night': {}, 'steps': [], 'step_variants': {}}
 
@@ -53,7 +53,9 @@ def load_fit_config(results_dir) -> dict:
     config = {**DEFAULT_FIT_CONFIG, **stored}
     unknown = set(config['scenarios']) - set(SCENARIOS)
     if unknown:
-        raise ValueError(f'{path}: unknown scenarios {sorted(unknown)}')
+        raise ValueError(f'{path}: unknown scenarios {sorted(unknown)} (this branch reads {list(SCENARIOS)})')
+    if config.get('paper_observations'):
+        raise ValueError(f"{path}: paper observations {config['paper_observations']} are not in this branch")
     if config['network'] not in NETWORK_VARIANTS:
         raise ValueError(f"{path}: unknown network '{config['network']}' (one of {NETWORK_VARIANTS})")
     config['medium'] = SolvationMedium.from_dict(config['solvation'])

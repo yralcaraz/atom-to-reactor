@@ -15,7 +15,7 @@ Master's thesis project, Department of Chemistry – Ångström Laboratory, Upps
 | `M5-full` | The fit of every tube at once: M1 ⊂ M5 ⊂ M5-first, each with Marcus barriers and with the capped BEP rule (seventh fit). Notebook `05_fitting_rev07_(M1_all fitted)` |
 | `main` | The history up to the sixth fit: notebooks 01–05 rev05, the spectroscopy and experiment-design modules, the earlier stages of the runner. Closed at the tag `historico-261027` |
 
-This branch keeps only what the M1 steps and notebooks 05 and 06 need. Anything removed is in `main` (and most of it in `M5-full`).
+This branch keeps only what the M1 steps and notebooks 05 and 06 need: the structures M0-BEP, M0-Marcus, M1, M1-split and M3-split (each also with the reference model's barrier rule, `+BEP`), Marcus and capped-BEP barriers, and the readings 10 min, 1 h and 8 h. Anything removed is in `main` (and most of it in `M5-full`).
 
 ## What it does
 

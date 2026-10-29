@@ -4,17 +4,19 @@ A ModelSpec fixes everything a reactor needs to turn the network into rate const
 (thermo_mode, kinetic_model, family parameters) and records its status and assumptions, so that
 notebooks can compare several models and then select one by name. Register new models in MODELS.
 A model may carry its own network (a family split per reaction) and corrections to the computed
-free energies (species shifts); the registered models carry neither.
+free energies (species shifts); the registered models carry neither. The registry holds the two models the fit
+structures start from: reference_bep (M0-BEP) and level1 (every other structure); family_bep and family_marcus are
+in the branch M5-full.
 
 Source: Y. Alcaraz Galván; barrier windows from Gogoi et al., J. Phys. Chem. C 2024, 128, 1654
 """
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 
 import pandas as pd
 
 from kinetics.microkinetics.parameters import (
-    FAMILY_BEP_PARAMETERS, LEVEL1_PARAMETERS, REFERENCE_BEP_PARAMETERS,
+    LEVEL1_PARAMETERS, REFERENCE_BEP_PARAMETERS,
 )
 from kinetics.microkinetics.rates import KINETIC_MODELS, calculate_network_rates
 from kinetics.thermo.uncertainty import build_shifted_species_database
@@ -46,13 +48,6 @@ class ModelSpec:
         return {'kinetic_model': self.kinetic_model, 'family_params': self.family_params,
                 'thermo_mode': self.thermo_mode}
 
-    @property
-    def barrier_shapes(self) -> list:
-        shape = KINETIC_MODELS[self.kinetic_model][0]
-        if shape is not None:
-            return [shape]
-        return sorted({p.get('shape', 'marcus') for p in self.family_params.values()})
-
     def calculate_rates(self, T_K: float, **options) -> pd.DataFrame:
         """Rate constants of every reaction at T_K (options: network, species_db, viscosity_Pa_s).
 
@@ -64,29 +59,6 @@ class ModelSpec:
         if self.species_shifts_eV:
             options['species_db'] = build_shifted_species_database(self.species_shifts_eV, options.get('species_db'))
         return calculate_network_rates(T_K, **self.rate_options, **options)
-
-    def with_barrier(self, g_eV: float, families: list = None, name: str = None) -> 'ModelSpec':
-        """Copy with the intrinsic barrier of `families` (default: every entry) set to g_eV."""
-        params = {fam: dict(p) for fam, p in self.family_params.items()}
-        for fam in families or list(params):
-            params.setdefault(fam, {}).pop('E0_eV', None)
-            params[fam]['g_eV'] = g_eV
-        return replace(self, name=name or f"{self.name}@{g_eV:.2f}", family_params=params,
-                       label=f"{self.label} [g = {g_eV:.2f} eV]")
-
-    def with_family_params(self, family: str, name: str = None, **updates) -> 'ModelSpec':
-        """Copy with `updates` (e.g. g_eV=1.2, dS_act_J_mol_K=-80) applied to one family.
-
-        A family without its own entry starts from the set's 'default' entry.
-        """
-        params = {fam: dict(p) for fam, p in self.family_params.items()}
-        entry = params.setdefault(family, dict(params.get('default', {})))
-        if 'g_eV' in updates:
-            entry.pop('E0_eV', None)
-        entry.update(updates)
-        tag = ', '.join(f'{k}={v:g}' for k, v in updates.items())
-        return replace(self, name=name or f"{self.name}[{family}: {tag}]", family_params=params,
-                       label=f"{self.label} [{family}: {tag}]")
 
 
 MODELS = {
@@ -101,30 +73,6 @@ MODELS = {
             '(a design choice, not a fit to data)',
             'Capped BEP: every exergonic step has ΔG‡ = E0, so ΔG_rxn does not rank their rates',
             'Barrier depends on the direction a reaction is written (Finding 15)',
-        ),
-    ),
-    'family_bep': ModelSpec(
-        name='family_bep',
-        label='Family BEP: E0 = 0.80 eV, solvent attack 1.30 eV',
-        kinetic_model='bep_eyring',
-        family_params=FAMILY_BEP_PARAMETERS,
-        status='sensitivity',
-        assumptions=(
-            'E0 = 0.80 eV for hydrolysis, condensation and transfer is a placeholder (reference model)',
-            'Solvent attack E0 = 1.30 eV is derived from the 80 °C protocol of Gogoi et al. 2024',
-            'Condensation at 0.80 eV contradicts Gogoi 2024 (Finding 16)',
-            'Barrier depends on the direction a reaction is written (Finding 15)',
-        ),
-    ),
-    'family_marcus': ModelSpec(
-        name='family_marcus',
-        label='Family Marcus: g = 0.80 eV, solvent attack 1.30 eV',
-        kinetic_model='marcus_eyring',
-        family_params=FAMILY_BEP_PARAMETERS,
-        status='sensitivity',
-        assumptions=(
-            'Same intrinsic barriers as family_bep; λ = 4g',
-            'Exergonic steps get lower barriers than under the BEP cap',
         ),
     ),
     'level1': ModelSpec(

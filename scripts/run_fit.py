@@ -54,7 +54,6 @@ from kinetics.fitting.candidates import get_energy_box_sigma
 from kinetics.fitting.residuals import get_sample_overrides
 
 RESULTS = None                           # the results directory (--results); set in main
-PAPER = ()                               # paper observations added to every sample set; set from the run's setup
 
 # Search effort per structure: (Sobol screen points, starts polished, least-squares iterations per start); the
 # setup can change it ('effort')
@@ -79,7 +78,7 @@ def cached(path: Path, compute):
 
 
 def sample_set(scenario: str, **options) -> list:
-    return build_sample_set(load_lab_observables(), scenario, **{'paper': PAPER, **options})
+    return build_sample_set(load_lab_observables(), scenario, **options)
 
 
 def short(theta: dict) -> str:
@@ -89,7 +88,7 @@ def short(theta: dict) -> str:
 # ------------------------------------------------------------------------------
 # steps: the main structure fitted one tube at a time
 # ------------------------------------------------------------------------------
-SCENARIO_ORDER = ('0 min', '5 min', '10 min', '1 h', '8 h', 'middle', 'short', 'long', 'free')
+SCENARIO_ORDER = ('10 min', '1 h', '8 h')
 MAIN_STRUCTURE = 'M1'                    # the structure the steps fit; set in main
 LAB_FITTED_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox')
 
@@ -164,7 +163,7 @@ def stage_steps(args) -> None:
                 fit.update(scenario=scenario, tag=f'__{name}', step=name, step_fit=list(step['fit']), step_free=free,
                            step_from=step.get('from'), label=structure.label, energy_box_sigma=get_energy_box_sigma(),
                            barriers=tabulate_reaction_barriers(structure, fit['theta']), medium=get_active_medium().to_dict(),
-                           paper=[], network=get_active_network_variant(), sample_overrides=get_sample_overrides(),
+                           network=get_active_network_variant(), sample_overrides=get_sample_overrides(),
                            variant_overrides={})
                 return fit
 
@@ -212,12 +211,11 @@ def main():
     parser.add_argument('--profile-nfev', type=int, default=15, help='least-squares iterations per profile point')
     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
     args = parser.parse_args()
-    global RESULTS, SCENARIOS, SCENARIO_ORDER, PAPER, MAIN_STRUCTURE, STEPS, STEP_VARIANTS
+    global RESULTS, SCENARIOS, SCENARIO_ORDER, MAIN_STRUCTURE, STEPS, STEP_VARIANTS
     RESULTS = Path(args.results).resolve()
     config = apply_fit_config(RESULTS)
     SCENARIOS = tuple(sc for sc in SCENARIOS if sc in config['scenarios'])
     SCENARIO_ORDER = tuple(sc for sc in SCENARIO_ORDER if sc in config['scenarios'])
-    PAPER = tuple(config['paper_observations'])
     if config['structures']:
         MAIN_STRUCTURE = config['structures']['main']
     EFFORT.update({name: tuple(effort) for name, effort in config['effort'].items()})
@@ -238,7 +236,7 @@ def main():
     log(f"setup ({config['source']}): {config['medium'].label()}; network {config['network']}; energy box "
         f"{'±%g standard errors' % config['energy_box_sigma'] if config['energy_box_sigma'] else 'fixed'}; main structure "
         f"{MAIN_STRUCTURE}; readings "
-        f"{', '.join(SCENARIOS)}; paper observations {', '.join(PAPER) or 'none'}; samples changed for the run: "
+        f"{', '.join(SCENARIOS)}; samples changed for the run: "
         f"{', '.join(config['sample_overrides']) or 'none'}")
     t0 = time.perf_counter()
     STAGES[args.stage](args)

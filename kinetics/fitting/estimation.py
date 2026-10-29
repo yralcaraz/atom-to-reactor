@@ -1,6 +1,6 @@
 """Block 14F — Estimation: best fit of a candidate structure and profile intervals.
 
-The objective is the χ² of kinetics.fitting.residuals (measured shares, one-sided paper limits) plus, for
+The objective is the χ² of kinetics.fitting.residuals (measured shares) plus, for
 freed reaction energies, their distance from the computed values in the metric of the computed covariance.
 Unknown ages are a scenario of the sample set, not a prior. An amount at mixing that a recipe does not fix is a
 parameter with a declared range (kinetics.fitting.candidates).
@@ -85,9 +85,7 @@ class FitProblem:
 
     def residuals(self, x) -> np.ndarray:
         built = self.build(x)
-        data = calculate_residuals(built['model'], self.samples, ages=built['ages'],
-                                   water_fraction=built['water_fraction'], added_M=built.get('added_M'),
-                                   solver=self.solver)
+        data = calculate_residuals(built['model'], self.samples, added_M=built.get('added_M'), solver=self.solver)
         return np.concatenate([data, built['prior']])
 
     def chi2(self, x) -> float:
@@ -97,9 +95,7 @@ class FitProblem:
     def table(self, x) -> pd.DataFrame:
         """Standardised residuals of every measured quantity and of the freed energies, at this problem's solver."""
         built = self.build(x)
-        table = tabulate_residuals(built['model'], self.samples, ages=built['ages'],
-                                   water_fraction=built['water_fraction'], added_M=built.get('added_M'),
-                                   solver=self.solver)
+        table = tabulate_residuals(built['model'], self.samples, added_M=built.get('added_M'), solver=self.solver)
         if built['prior_rows']:
             table = pd.concat([table, pd.DataFrame(built['prior_rows'])], ignore_index=True)
         return table
@@ -210,14 +206,13 @@ def fit_structure(problem: FitProblem, *, n_screen: int = 512, n_starts: int = 1
     table = final.table(x)
     residuals = final.residuals(x)
     worst = table.loc[table['z'].abs().idxmax()]
-    built = final.build(x)
     ages = {name: age for name, age in zip(table['sample'], table['age_h']) if np.isfinite(age)}
     return {
         'structure': problem.structure.name, 'parameters': list(problem.names), 'fixed': dict(problem.fixed),
         'theta': final.theta(x), 'x': [float(v) for v in x], 'chi2': float(residuals @ residuals),
         'n_residuals': int(residuals.size), 'n_parameters': n, 'max_abs_z': float(abs(worst['z'])),
         'worst': f"{worst['sample']}: {worst['quantity']}", 'fits': bool(abs(worst['z']) <= FIT_RULE_MAX_Z),
-        'table': table, 'ages': {**ages, **built['ages']},
+        'table': table, 'ages': ages,
         'local_optima': [{'theta': problem.theta(problem.from_unit(p['u'])), 'chi2': p['chi2']} for p in polished],
         'at_bounds': [name for name, u in zip(problem.names, best['u']) if u < 1.0 + 2e-3 or u > 2.0 - 2e-3],
         'n_evaluations': int(n_eval), 'seconds': time.perf_counter() - t_start,
@@ -229,8 +224,8 @@ def fit_structure(problem: FitProblem, *, n_screen: int = 512, n_starts: int = 1
 # ------------------------------------------------------------------------------
 def build_profile_grid(problem: FitProblem, theta: dict, name: str) -> np.ndarray:
     """Grid of one parameter around its best value: fixed offsets for a barrier (±0.30 eV), multiples of the
-    standard error for a freed energy (±2 SE), multiples of the best value for an amount at mixing, the whole
-    box for the water fraction and an age."""
+    standard error for a freed energy (±2 SE), multiples of the best value for an amount at mixing (the whole
+    box when it is zero)."""
     parameter = next(p for p in problem.all_parameters if p.name == name)
     best = theta[name]
     if parameter.kind == 'barrier':

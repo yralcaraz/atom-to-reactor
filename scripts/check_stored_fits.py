@@ -30,7 +30,7 @@ def check_fit(path: Path, observables: dict) -> float:
     """Relative change of the χ² of one stored fit (None: its structure cannot be rebuilt by name)."""
     fit = load_fit_result(str(path))
     exclude = tuple(s for s in LAB_SAMPLES if s not in fit['step_fit']) if 'step_fit' in fit else ()
-    samples = build_sample_set(observables, fit['scenario'], paper=tuple(fit.get('paper', ())), exclude=exclude)
+    samples = build_sample_set(observables, fit['scenario'], exclude=exclude)
     try:
         problem = FitProblem(fit['structure'], samples, solver=REPORT_SOLVER, fixed=fit.get('fixed') or None)
     except KeyError:
