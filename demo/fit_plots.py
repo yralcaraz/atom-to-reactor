@@ -26,10 +26,10 @@ OVERLAY_COLORS = [SERIES[1], SERIES[2], SERIES[4], SERIES[6]]    # fits drawn ov
 # A fit against what was measured: spectra and concentrations (kinetics.fitting.reporting)
 # ------------------------------------------------------------------------------
 WINDOW_LABELS = {'P-silyl': 'silyl on phosphate', 'TMSOEG': 'TMSOEG (opened EC)'}
-SMOOTH_FWHM_PPM = {'31P': 0.4, '13C': 0.06}     # display broadening: far below the distance between two lines
-RAW_FWHM_PPM = {'31P': 0.02, '13C': 0.004}      # the same for the 'paper' view: about the resolution of the spectra
+SMOOTH_FWHM_PPM = {'31P': 0.4, '13C': 0.06, '29Si': 0.3}     # display broadening: far below the distance between two lines
+RAW_FWHM_PPM = {'31P': 0.02, '13C': 0.004, '29Si': 0.02}     # the same for the 'paper' view: about the resolution of the spectra
 SPECTRUM_VIEWS = ('paper', 'smooth', 'intensity')
-NUCLEUS_LABELS = {'31P': '³¹P', '13C': '¹³C'}
+NUCLEUS_LABELS = {'31P': '³¹P', '13C': '¹³C', '29Si': '²⁹Si', '1H': '¹H'}
 _GAUSS = 2.0 * np.sqrt(2.0 * np.log(2.0))       # FWHM of a Gaussian in units of its standard deviation
 
 
