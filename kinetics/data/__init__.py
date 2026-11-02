@@ -8,6 +8,7 @@ experimental reference data.
     experimental.py  Gogoi et al. 2024: control experiments, water series
     lab_nmr.py       measured NMR spectra (JEOL .jdf, read from LAB_NMR_DIR): inventory and processing
     observables.py   curated lab observables (shares, uncertainties, sample histories) that a fit reads
+    lab_spectra.py   every spectrum of every tube: class (used in the fit, usable, noise) and shares (rules of NB05 rev08 §2)
 
 Source: Y. Alcaraz Galván
 """

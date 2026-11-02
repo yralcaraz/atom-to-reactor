@@ -5,6 +5,7 @@
     estimation.py   best fit and profile intervals
     reporting.py    a stored fit against the measurements, spectrum by spectrum and in time
     config.py       the setup of one fit run (solvation medium, network, readings, steps), stored with its results
+    thermo_fit.py   the solvation energies from the spectra at equilibrium (no reactor): which spectra, the problem
 
 Source: Y. Alcaraz Galván
 """

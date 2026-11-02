@@ -12,7 +12,8 @@ themselves; see scripts/run_fit.recovery_cases). Sixth fit: the box of the freed
 ('structures': main and extended), their search ('effort'), the fits whose parameters start the search
 ('start_from': an earlier results directory) and the parts of the night and traces stages that run ('night').
 Eighth fit: the readings '10 min', '1 h' and '8 h' (the only ones of this branch), and the steps of a fit made one tube at a time ('steps', 'step_variants';
-see scripts/run_fit.stage_steps).
+see scripts/run_fit.stage_steps). Thermodynamic fit: its own part under 'thermo' (kinetics.fitting.thermo_fit.DEFAULT_THERMO_SETUP,
+scripts/run_thermo_fit.py); the medium, network and sample changes above hold for it too.
 A results directory without the file is a run of the default setup: neat EC from the 2026-09-24 snapshot, R1–R9
 and the three readings. A setup with paper observations (Gogoi 2024, the first fits) is refused: they are in the
 branch M5-full.
@@ -42,7 +43,7 @@ FIT_CONFIG_FILE = 'fit_config.json'
 DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'network': DEFAULT_NETWORK_VARIANT, 'sample_overrides': {},
                       'scenarios': list(DEFAULT_SCENARIOS),
                       'sensitivities': None, 'recovery': {}, 'energy_box_sigma': None, 'structures': None,
-                      'effort': {}, 'start_from': None, 'night': {}, 'steps': [], 'step_variants': {}}
+                      'effort': {}, 'start_from': None, 'night': {}, 'steps': [], 'step_variants': {}, 'thermo': None}
 
 
 def load_fit_config(results_dir) -> dict:

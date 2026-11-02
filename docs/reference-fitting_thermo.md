@@ -1,41 +1,41 @@
-# Thermodynamic fit: reaction energies from the equilibrium data
+# Thermodynamic fit: reaction energies from the spectra at equilibrium
 
 | | |
 |---|---|
-| **Status** | Draft, 2026-10-28. Nothing in this document is programmed yet |
-| **Source** | Y. Alcaraz Galván |
-| **Scope** | How the reaction energies ΔG_rxn are fitted to the tubes whose reaction has finished, before and apart from the kinetic fit: the model (how ΔG, K and the equilibrium composition are computed), what is free (E_solv with or without its error), the data, the objective, and the hand-over to the kinetic fit. It is the specification for the code |
-| **See also** | [reference-fitting_system.md](reference-fitting_system.md) (the kinetic fit this one precedes), [reference-models_summary.md](reference-models_summary.md) (M3/M5 free the same energies inside the kinetic fit), [MODULES.md](../MODULES.md) §3 (thermo) |
+| **Status** | Programmed 2026-10-29, not run. The run is prepared in `notebooks/results/thermo1_steps/` (§5) |
+| **Source** | Y. Alcaraz Galván; the problem as set out in `notebooks/06_fitting_thermo_rev01.ipynb` §1 and §5 |
+| **Scope** | How the reaction energies are fitted to the tubes whose reaction has finished, before and apart from the kinetic fit: which spectra are at equilibrium, the model (ΔG, K, the equilibrium composition), what is free (E_solv inside ±ξ standard errors), the steps, and the hand-over to M1. It is the specification of the code of §8 |
+| **See also** | [reference-fitting_system.md](reference-fitting_system.md) (the kinetic fit this one precedes), notebook `05_fitting_rev08_(M1_steps)` §2 (every spectrum of every tube: used, usable, noise) |
 
 ## 1. The idea
 
 The data are of two kinds, and they do not need each other:
 
-- **Equilibrium**: the tubes whose reaction has finished. The composition no longer changes, so *when* the first NMR was taken does not matter, and neither do the barriers. Only K = exp(−ΔG/RT) matters.
-- **Reaction**: the few tubes caught while changing (0.5 % water, TMSPa alone at its first spectrum, the TMSOH tubes). Their ages are unknown and they depend on ΔG and on the barriers.
+- **Equilibrium**: spectra of a tube whose reaction has finished. The composition no longer changes, so *when* the first NMR was taken does not matter, and neither do the barriers. Only K = exp(−ΔG/RT) matters.
+- **Reaction**: the spectra caught while the tube changes. They depend on ΔG and on the barriers, and their ages are unknown.
 
-So the energies are fitted first, from the equilibrium tubes alone, with an algebraic model (no reactor, no ages). The kinetic fit then fits only the barriers.
+So the energies are fitted first, from the spectra at equilibrium alone, with an algebraic model (no reactor, no ages). The kinetic fit (M1) then takes them and fits the barriers.
 
 ```mermaid
 flowchart LR
-    DB[("Tank snapshot<br/>G_gas, E_solv ± σ")] --> G["G_i = G_gas,i + E_solv,i"]
-    G --> DG["ΔG_j = Σ ν_ij G_i"]
-    DG --> K["K_j = exp(−ΔG_j / RT)"]
-    K --> EQ["equilibrium composition<br/>(mass balance + mass action)"]
-    TUBES[("equilibrium tubes<br/>composition at mixing")] --> EQ
-    EQ --> SH["shares ³¹P, ¹³C"]
-    SH --> CHI["χ² against measured shares"]
-    PRIOR["prior on E_solv<br/>(its σ in the DB)"] --> CHI
-    CHI -- "shifts d of ΔG" --> DG
-    CHI --> OUT["ΔG fitted ± error"]
-    OUT --> KIN["kinetic fit<br/>(barriers g only)"]
+    RAW[("raw .jdf files<br/>every tube")] --> CLS["class of each file<br/>used / usable / noise<br/>(NB05 rev08 §2)"]
+    CLS --> RULE["rule + our criterion:<br/>which spectra are<br/>at equilibrium (§4)"]
+    DB[("Tank snapshot<br/>G_gas, E_solv ± SD")] --> G["G_i = G_gas,i + E_solv,i<br/>E_solv,i ∈ ΔE_i ± ξ·SD_i"]
+    G --> EQ["equilibrium composition<br/>of each tube (§2.3)"]
+    RULE --> EQ
+    EQ --> SH["shares ³¹P, ¹³C,<br/>¹H, ²⁹Si"]
+    RULE --> CHI["χ² against the<br/>measured shares"]
+    SH --> CHI
+    CHI -- "move E_solv,i<br/>inside the box" --> G
+    CHI --> OUT["ΔG, K of every reaction<br/>(R1–R9, N10–N15)"]
+    OUT --> KIN["M1: barriers only,<br/>energies held"]
 ```
 
 ## 2. The model
 
 ### 2.1 Free energy of a species and of a reaction
 
-Each species has a stored gas-phase Gibbs energy (ωB97M-V, 298.15 K, RRHO) and a solvation energy from MD (`dE_solv_eV`; an energy, not a free energy):
+Each species has a stored gas-phase Gibbs energy (ωB97M-V, 298.15 K, RRHO) and a solvation energy from MD (`dE_solv_eV`; an energy, not a free energy), in the medium of the run (EC:DEC 1:1, linear mixing, 2026-10-08 snapshot):
 
 ```
 G_i    = G_gas,i + E_solv,i                         (kinetics/thermo/solution.py)
@@ -44,123 +44,149 @@ K_j    = exp(−ΔG_j / RT)
 ```
 
 - Every reaction of the network is 2 → 2, so the shift from the 1 bar gas to the 1 M solution cancels and is not applied.
-- Concentrations are in mol/L with a 1 M standard state, no activity coefficients, and EC enters as a concentration (7.1 M at mixing). This is the convention of the reactor (`k_r = k_f / K`), and the equilibrium solver must use the same one, or the two fits disagree.
-- The reactions are not independent. The network has 11 species and its stoichiometric matrix S has rank 6, so six ΔG fix all the others (Wegscheider). For the equilibria that matters here: **R1–R4**, and R5 = R1 + R4, R6 = R2 + R4, R7 = R3 + R4. R8 and R9 (EC ring opening, CO₂ is produced) are not known to reach equilibrium in any tube; they keep their computed values.
+- Concentrations are in mol/L with a 1 M standard state, no activity coefficients, and EC enters as a concentration (7.1 M at mixing). This is the convention of the reactor (`k_r = k_f / K`): the two fits use the same K.
 
 ### 2.2 Temperature
 
-All equilibrium spectra were taken at 22–23 °C. The stored energies are for 298.15 K, and from the stored enthalpies the change of K over those 3 K is at most 3 % (R1–R4), so the fit uses ΔG(298.15 K) as it is. Keep in mind for the hand-over:
-
-- In the code today (`thermo_mode='wb97mv'`) ΔG does not change with T, so K(80 °C) differs from K(25 °C) only through RT.
-- Using the stored H and G (ΔG(T) = ΔH − T·ΔS) would move ΔG at 80 °C by −4.4, −3.4, −1.9, +2.9 kJ/mol for R1–R4. The entropy comes from gas-phase RRHO, and E_solv has none. Equilibria at one temperature cannot tell which part of a fitted shift is enthalpy and which entropy: the shifts are treated as temperature independent.
+All spectra used were taken at 22–23 °C; RT is that of each tube (mean of its spectra). In the code (`thermo_mode='wb97mv'`) ΔG does not change with T, so the fitted shifts are treated as temperature independent: equilibria at one temperature cannot tell enthalpy from entropy. Using the stored H and G instead would move ΔG at 80 °C by −4.4, −3.4, −1.9, +2.9 kJ/mol for R1–R4: keep in mind for the hand-over.
 
 ### 2.3 Equilibrium composition of a closed tube
 
-Unknowns: the extents ξ_j of R1–R4 (the independent reactions of the species present). With c0 the composition at mixing:
+All fifteen reactions of the network are at equilibrium (R1–R9, N10–N15). Six of them are independent (11 species, rank 6: R1–R4, R8, R9); the other nine are combinations of these and need no parameter of their own, but they are in the equilibrium all the same (`list_equilibrium_reactions`). With the computed energies, R8 and R9 at equilibrium open about 0.6 M of EC in the 2 % tube and the probe (TMSOdiEG and CO₂): the fit has to move the energies of EC, CO₂, TMSOEG and TMSOdiEG to keep the ring closed where the spectra show it closed.
+
+The composition is the minimum of the Gibbs energy of the solution under the amounts these reactions conserve:
 
 ```
-C = c0 + S · ξ                                   mass balance
-ln K_j = Σ_i ν_ij · ln C_i        j = R1…R4     mass action
+min  Σ_i C_i (μ_i + RT ln C_i − RT)     subject to   Aᵀ C = Aᵀ c0       (A: null space of the stoichiometry)
+dual: C_i = exp(−μ_i/RT + (Aλ)_i),  λ by Newton on  Σ_i C_i − λ·Aᵀc0   (convex)
 ```
 
-Solved by Newton on ξ (in ln C, so that C > 0 always). TMSPA is far below detection at equilibrium in any wet tube, which a solver must handle without dividing by zero. It costs microseconds to milliseconds, against seconds for a reactor simulation: profiles and sampling of the posterior become cheap.
-
-The check of the solver: the reactor run long enough (all sample histories at their temperature) must end at the same composition.
+- Every C stays positive, so a species far below detection (TMSPA in a wet tube, 10⁻¹⁰ M) is computed without dividing by zero.
+- A species no reaction can make from the composition at mixing stays at zero.
+- About 1 ms per tube, against seconds for a reactor run.
+- Checked (`tests/test_thermo_fit.py`): Q = K to 10⁻⁶ in ln for every reaction in the span of R1–R4, phosphorus and silyl conserved, on the recipes of the tubes. The solver stops at 10⁻⁸ of the largest conserved amount (EC, 7 M, sets that scale).
 
 ### 2.4 What is compared
 
-The shares of the kinetic fit, unchanged (`SHARE_SPECIES` in [residuals.py](../kinetics/fitting/residuals.py)):
+The shares and the error model of the kinetic fit, unchanged (`SHARE_SPECIES` and `_lab_block` in [residuals.py](../kinetics/fitting/residuals.py)):
 
 ```
 ³¹P   share_k = C_k / (C_TMSPA + C_BMSPA + C_MMSPA + C_H3PO4)
 ¹³C   share_k = n_k C_k / Σ n C,   n = silyl groups per molecule (HMDSO 2; P-silyl: TMSPA 3, BMSPA 2, MMSPA 1)
-z     = (predicted − measured) / σ,    errors and whitening as in reference-fitting_system §2.3
+²⁹Si  as ¹³C (one Si per silyl group), read by height          ¹H  silyl on phosphate / free silyl
+z     = (predicted − measured) / σ;  σ = noise ⊕ baseline ⊕ floor; three spectra or more of one nucleus at room
+        temperature share their baseline and floor (one composition and "no drift", as the 2 % tube in the kinetic fit)
 ```
 
-## 3. What is free: E_solv
+The model predicts one composition per tube, so a block of repeated spectra gives one "mean" residual per window and its "drift" residuals (which no parameter moves).
 
-Only differences of species energies appear in ΔG, so a shift δ_i of E_solv,i moves a reaction by
+## 3. What is free: E_solv,i within ±ξ standard errors
 
-```
-d = Sᵀ δ        d_j = Σ_i ν_ij δ_i          ΔG_j = ΔG_j,computed + d_j
-```
+As in notebook 06 §5:
 
-Of the 11 shifts δ_i only six combinations act (rank S = 6) and the equilibria can see four. **The unknowns of the fit are therefore d = (d_R1 … d_R4)**, not the 11 δ_i: the rest has no effect. When the reactor needs species energies, the smallest δ that gives d is used (`calculate_species_shifts`, already in the code), which keeps every Wegscheider cycle closed.
+| | |
+|---|---|
+| **Variables** | E_solv,i of every species of the reactions: TMSPA, BMSPA, MMSPA, H₃PO₄, H₂O, TMSOH, HMDSO, EC, TMSOEG, CO₂, TMSOdiEG. Parameter `dE_solv <species>` = shift δ_i from the computed value |
+| **Parameters** | G_gas,i, SD_i, ν_ij, T, c0 |
+| **Box** | δ_i ∈ [−ξ·SD_i, +ξ·SD_i], SD_i the standard error of the MD run of the species. No E_solv moves without this limit |
+| **Objective** | min χ² = Σ_k ((s_k^model − s_k^NMR)/σ_k)², nothing else: inside the box every value is allowed alike |
+| **ξ** | 1, 2 and 3, each fitted |
 
-Two ways to treat them:
+**What the data can see.** Only differences of species energies enter ΔG, so the data see at most six combinations of the eleven δ_i (one per independent reaction). The other directions are flat inside the box. The result to read is ΔG_j and K_j of every reaction; a single E_solv,i is determined only where its profile says so. Outputs: the profile of each δ_i across its box, and for every reaction the lowest and highest ΔG over the profile points within Δχ² = 3.84 of the best fit (an envelope, `calculate_energy_ranges`).
 
-| | **A. Free** | **B. With its error** |
-|---|---|---|
-| Statement | E_solv is unknown; the data decide | E_solv is the DB value with the standard error of the DB; the data pull it |
-| Objective | χ²_A(d) = Σ z² | χ²_B(d) = Σ z² + dᵀ Σ⁻¹ d |
-| Prior | none | δ_i ~ N(0, σ_i²) |
-| Gives | what the equilibria alone say about each ΔG: a value, or only a bound | the most probable ΔG given the computation and the data |
+**What a window counts** (`SHARE_SPECIES`): ³¹P one phosphate per window; ¹³C, ²⁹Si and ¹H count silyl groups, so HMDSO counts twice, the TMSOEG window holds TMSOEG + TMSOdiEG, and P-silyl (¹H: P-bound silyl) is 3 TMSPA + 2 BMSPA + MMSPA; ¹H free silyl is TMSOH + 2 HMDSO + TMSOEG + TMSOdiEG. Every usable nucleus is fitted.
 
-The prior of B in reaction space is the one the kinetic fit already uses ([uncertainty.py](../kinetics/thermo/uncertainty.py), `calculate_solvation_covariance`):
+## 4. The data: which spectra are at equilibrium
 
-```
-Σ_jk = Σ_i ν_ij ν_ik σ_i²  +  (Σ_i ν_ij)(Σ_i ν_ik) σ_ref²
-```
+Two criteria, kept apart in the setup: the **rule** (automatic) and **our criterion** (written into the setup as `overrides`, file by file).
 
-σ_i is the solute-in-box and gas-phase standard error of species i (independent); σ_ref the standard error of the pure-solvent box, the same run for every species, which enters only through the net change in the number of solutes and cancels in 2 → 2 steps. In the medium of the current fit (EC:DEC 1:1, 2026-10-08 snapshot) the standard errors of R1–R4 are 0.10, 0.09, 0.08 and 0.12 eV, with correlations up to −0.66 (R3, R4).
+### 4.1 The rule
 
-**A is B with an infinite covariance, so there is one code**: `prior_scale` (the factor on Σ already in `FitProblem`) goes from 1 (B) to very large (A).
+Every usable spectrum of every tube (not noise, NB05 rev08 §2; `kinetics/data/lab_spectra.py`) is a **candidate** if it was taken at room temperature (< 25 °C), is quantitative (³¹P with the NOE off and d1 ≥ 5 s; ²⁹Si not INEPT) and has two windows or more. The candidates of one tube and one nucleus are at equilibrium from the first one on which every later one agrees: at least 2 spectra, at least 24 h apart, each within |z| ≤ 3 of the mean of the others (σ: noise ⊕ baseline, no floor).
 
-### 3.1 Proposal
+### 4.2 Our criterion (overrides)
 
-**Base: B. A as the diagnostic that goes with it.**
+A spectrum that has moved away from the composition at mixing (some share more than 3 σ off, σ as one spectrum in the fit) has seen the reaction run, and is taken as at equilibrium, **also alone**: one ³¹P that shows no TMSPA left is read as the end state. **Unless a later spectrum of the same tube and nucleus differs from it** (|z| > 3, noise ⊕ baseline): an early spectrum away from the later ones was taken before the end, and the model cannot go through it and through the line. The steps (§5.2) show where the reading fails. `find_departed_spectra` lists them; the ones the rule leaves out are written into `overrides` (notebook 06 §5, 29 Oct):
 
-- The data may not pin all four. In the 2 % tube TMSPA is below detection at equilibrium, so it only bounds K1 (and K5 = K1·K4) from below. The tubes that keep some TMSPA (TMSPa alone, A) could pin it, but only through an unknown water or an equilibrium that is not yet confirmed (§4). Without a prior, A may leave d_R1 open on one side; B fills it with the computed value, weighted by its error.
-- Only two or three tubes are at equilibrium, and one of them (TMSPa alone) also has its water unknown. With a free E_solv the fit could absorb a mistake of the model or of the data (a tube that is not at equilibrium, ¹³C against ³¹P) in an energy and report it as a measurement. In B the same mistake shows up as a large pull z_j = d_j / σ_j (the fifth fit pulled R1–R4 by 2.2–2.7 σ with this kind of prior) and the question becomes whether it is the model or the energy.
-- A is cheap to run (§2.3) and its profile tells where the prior matters: per direction, compare the interval A gives with σ_prior. If the data interval is much narrower, A and B give the same answer there; if wider, the prior is carrying that energy.
-
-Known weakness of B: σ_i has only the MD sampling error. The DFT functional and the solvent model (mixing rule, EC and DEC at different temperatures) are not in it. Two options, both a sensitivity and not the base: `prior_scale` > 1 (covariance × 2, × 4, as in the fifth fit), or an extra independent σ_sys added to every σ_i. This is the decision of §7.
-
-## 4. The data
-
-| Tube | Equilibrium? | Composition at mixing | Role in the thermo fit |
+| Tube | By the rule | Added by our criterion | Left out |
 |---|---|---|---|
-| 2 % H2O (³¹P + ¹³C, 6 rounds at 22–23 °C) | Yes, from the first round | TMSPA, H2O recipe | One equilibrium; the six rounds share a common σ (one composition + "no drift"). Fixes d_R2, d_R3, d_R4 and bounds d_R1 |
-| TMSPa alone, last spectrum | Yes, according to its ³¹P (to be confirmed) | TMSPA only; **water unknown** | Nuisance parameter `c0 H2O TMSPa alone` (0–0.3 M), as in the kinetic fit |
-| TMSPa + TMSOH (A) | Final state (reference-fit_results §2.1) | TMSPA + TMSOH, no water added | Equilibrium of the transfer steps, TMSPA still measurable |
-| TMSPa + TMSOH (B) | Same recipe as A, 16 scans | as A | Hold-out: predicted, not fitted |
-| 0.5 % H2O, TMSPa alone at its first spectrum, TMSOH probe and glovebox | No | | **Not used here.** They go to the kinetic fit, with the energies held |
+| `2 % H2O` | ³¹P, ¹³C, ¹H × 6; ²⁹Si × 3 from 96.6 h | — | the six hot rounds; ²⁹Si at 0.2, 33.6, 72.6 h (apart from the later ones, \|z\| 10, 7, 6) |
+| `TMSOH, probe` | ¹³C × 2 (both at the mixing composition: TMSOH 0.96, 0.93) | ²⁹Si at 144 h | ¹³C at 80 °C; ¹H one window; ³¹P noise |
+| `TMSOH, glovebox` | — | ¹³C, ²⁹Si | ¹H one window |
+| `TMSPa + TMSOH (A)` | — | ³¹P (0.06 h), ¹³C (234 h), ¹H (265 h) | ¹H at 0 and 234 h (apart from the later ones, \|z\| 20 and 3.3); ²⁹Si INEPT |
+| `TMSPa + TMSOH (B)` | — | ³¹P (2 h) | ¹H at the mixing composition; ²⁹Si INEPT |
+| `TMSPa alone` | — | ³¹P and ¹H at 243 h | ³¹P and ¹H at 0 h (at the mixing composition) |
+| `0.5 % H2O` | — | ³¹P (18.9 h) | ¹³C and ²⁹Si (at the mixing composition); the second ³¹P (d1 1 s) |
 
-The age of the first NMR drops out of every row used. What replaces it is the assumption that the tube had reached equilibrium, and the repeated room-temperature spectra of the 2 % tube (no drift) are its check. For each other tube that check does not exist: a second spectrum or the sign of the residuals decides.
+### 4.3 Tubes of the same recipe
+
+Two tubes mixed from the same recipe must end at the same shares. If their spectra at equilibrium agree (|z| ≤ 3 between the noise-weighted means, nucleus by nucleus, `compare_replicates`), they are fitted together; if they do not, one model cannot sit between them, and they are **two solutions**: the steps split (§5.2). On 29 Oct:
+
+| Tubes | Nucleus | max \|z\| | |
+|---|---|---|---|
+| `TMSPa + TMSOH (A)` / `(B)` | ³¹P | 2.1 | together |
+| `TMSOH, probe` / `TMSOH, glovebox` | ¹³C, ²⁹Si | 18.7, 11.8 | apart: two solutions |
+
+The probe and the glovebox differ in history (the glovebox 8 h at 80 °C, the probe minutes), but at room temperature the same recipe has one equilibrium: one of the two did not reach it.
+
+### 4.4 Earlier check (R1–R4 only, 29 Oct)
+
+Fitted alone with R1–R4, `2 % H2O` asked for ΔG(R4) −0.09 to −0.14 eV and `TMSOH, probe` for +0.15 to +0.20 eV: the probe may have stopped rather than reached equilibrium (no phosphate, slow condensation). With every reaction and every nucleus the steps test it again (T1 and the scores of the later steps).
 
 ## 5. Procedure
 
-1. Equilibrium solver (§2.3) and its check against the reactor.
-2. Fit d with `prior_scale` = 1 (B): Sobol screen plus bounded least squares, as `fit_structure`. Parameters: d_R1 … d_R4 (box ±3 σ of the prior, as `energy_box_sigma`) and the water of TMSPa alone.
-3. Fit d with a very large `prior_scale` (A). Compare with B: χ², d, and the pulls z_j.
-4. Profiles of every d for A and B (`calculate_profile`, Δχ² = 3.84). Where A has a bound and not an interval, say so.
-5. Leave one tube out (2 %, TMSPa alone, A): how much each d depends on one tube.
-6. Recovery: generate equilibria with known d, the error model of the lab set, refit with A and B. The check of the pipeline, as in the kinetic fit.
-7. Output: d̂, the covariance of the fit (inverse of the Hessian of χ²_B at the minimum, or samples of the posterior, now cheap), the pulls, and a table of ΔG and K for R1–R9 and N10–N15 (all follow from d̂ through the species).
+### 5.1 Run
+
+```
+python scripts/run_thermo_fit.py points --results notebooks/results/thermo1_steps   # again after changing the rule or the overrides
+python scripts/run_thermo_fit.py steps  --results notebooks/results/thermo1_steps   # the steps at ξ = 1, 2, 3
+```
+
+The specs are set in notebook 06 §5 (`# Specs`), which writes them into `fit_config.json` of the results directory under `thermo`; the medium, network and sample changes are those of `fit8_M1-steps_S1-tube` (the water of `TMSPa alone` at 65.6 mM). Each job writes one file and is skipped when that file exists: a new setup needs a new directory. 
+
+### 5.2 The steps: cumulative, one tube added at a time
+
+The tubes are added in the order of the setup (`order`): probe, glovebox, tube A, tube B, `TMSPa alone`, `0.5 % H2O`, `2 % H2O`. Each step fits **every tube added so far together**, from the step before, and frees every species present in those tubes: nothing fitted is dropped, and the step where the fit starts to fail names the tube that breaks it. When a tube disagrees with a tube of the same recipe already in the chain (§4.3), the chain splits: one goes on with the earlier tube, the other with the new one in its place, starting from the last step without the earlier one (`build_cumulative_steps`). With the data of 29 Oct:
+
+| Step | Chain a (probe) | Chain b (glovebox) |
+|---|---|---|
+| T1 | probe | — |
+| T2 | — | glovebox (from the computed values) |
+| T3 … T7 | + A, + B, + `TMSPa alone`, + `0.5 % H2O`, + `2 % H2O` | the same |
+
+After every step each tube is scored with the step's parameters: a tube not added yet is a prediction. A smoke run (`--quick`) of the twelve steps at three ξ takes 5.5 minutes. The three ξ and the two chains are independent: `notebooks/results/thermo1_steps/run_parallel.sh` runs them as six processes (`--xi`, `--chain`) and then writes the tables from the fits on disk; `cloud.sh` there runs it on a 64-vCPU Spot VM (6 × 10 workers).
+
+### 5.3 Output (in the results directory; lab-derived, never in git)
+
+| File | Content |
+|---|---|
+| `spectra_shares.csv` | shares of every usable spectrum, one row per window |
+| `replicates.csv` | tubes of the same recipe against each other: together or two solutions |
+| `equilibrium_points.csv` | one row per spectrum: candidate, by rule, at equilibrium, decided by (rule / setup), plateau, max \|z\|, reason |
+| `steps/thermo__<step>__xi<ξ>.json` | the fit: θ, χ², residual table, `species_shifts_eV` (the hand-over), setup |
+| `step_profiles/…json` | the profile of every free parameter |
+| `steps_summary.csv` | per step and ξ: χ², worst miss, fits, at bounds, θ |
+| `steps_scores.csv` | per step, ξ and tube: χ² and worst miss; fitted here, before, or not used |
+| `steps_intervals.csv` | per free parameter: interval, bound or not determined |
+| `steps_energies.csv` | per step, ξ and reaction (R1–R9, N10–N15): computed and fitted ΔG and K, the envelope low–high |
 
 ## 6. Hand-over to the kinetic fit
 
-The kinetic fit takes ΔG from the thermo fit and fits g (and what is left: ages, water). Two ways, in order of simplicity:
-
-- **Held (base).** d = d̂, no energy is free. The equilibrium states of the tubes of §4 stay in the kinetic fit as *checks*: once the energies are held, the reactor must end at those shares, which tests whether the reactions reach equilibrium in the time of the experiment.
-- **With the error.** d free with the Gaussian of the thermo fit (mean d̂, covariance of §5.7) as its prior. The end states of the equilibrium tubes must then be taken out of the kinetic χ², or they count twice.
-
-Do not free the energies in the kinetic fit with the original MD prior *and* keep those tubes: that is the M3/M5 of the earlier fits, where the equilibrium tubes and the switch times pulled the same parameters.
+The fit stores `species_shifts_eV` ({species: eV}), the form the model already takes (`ModelSpec.species_shifts_eV`, applied by `build_shifted_species_database`). M1 then runs with the energies held at the thermo fit and fits the barriers alone. Because the shifts are per species, every Wegscheider cycle stays closed: N10–N15 follow without a parameter. The spectra at equilibrium stay in the kinetic fit as checks: once the energies are held, the reactor must end at those shares in the time of the experiment.
 
 ## 7. To decide
 
-1. **Base B, A as diagnostic** (§3.1), or A as the base.
-2. **σ of the prior**: DB value only (base proposed), or with `prior_scale` 2 as a second run. A systematic DFT/solvent term would be a new input and is left out until the first run shows how far the pulls go.
-3. **R8 and R9**: kept at their computed values (proposed). Freed only if a TMSOH tube is accepted as near equilibrium for ring opening, which the glovebox tube (8 h at 80 °C) does not establish.
-4. **Tube A and TMSPa alone** as equilibria: confirm, or keep them out of the first run and use the 2 % tube alone.
-5. **Hand-over**: held (proposed) or with the error.
+1. **ξ**: multiplicative, ±ξ·SD_i (1, 2, 3), as in the code of NB06 §5. NB06 §1 also writes ±(SD_i + ξ).
+2. **The water of `TMSPa alone`**: declared at 65.6 mM as in M1 (¹H OH line), or free (0–0.3 M).
 
-## 8. What to program
+## 8. Code
 
 | Piece | Where | Reuses |
 |---|---|---|
-| Equilibrium solver `calculate_equilibrium(c0, dG_rxn, T, network)` | `kinetics/thermo/equilibrium.py` | `build_stoichiometric_matrix`, `calculate_reaction_thermo` |
-| Equilibrium samples and residuals (shares, whitening, replicate σ) | `kinetics/fitting/thermo_fit.py` | `_shares_from_state`, `_whiten`, the sample set of `build_sample_set` filtered to the §4 rows |
-| Parameters d_R1…d_R4, prior | same | `_energy_tools`, `scale_energy_prior`, `calculate_solvation_covariance`, `calculate_species_shifts` |
-| Fit, profiles, leave-one-out, recovery | same, or a `FitProblem` whose `residuals` calls the solver | `fit_structure`, `calculate_profile`, `fit_leave_one_out` |
-| Tests | `tests/test_thermo_fit.py` | solver against the reactor at long time; closure of the cycles; recovery on synthetic data |
+| Class and shares of every spectrum | `kinetics/data/lab_spectra.py` | the rules of NB05 rev08 §2, `calculate_area_shares`, the observables' shares of the fitted spectra |
+| Equilibrium solver | `kinetics/thermo/equilibrium.py` (`calculate_equilibrium`, `list_equilibrium_reactions`) | `build_stoichiometric_matrix`, `calculate_solution_gibbs` |
+| Rule, samples, problem, energies | `kinetics/fitting/thermo_fit.py` (`find_equilibrium_points`, `build_equilibrium_samples`, `ThermoProblem`, `tabulate_reaction_energies`, `calculate_energy_ranges`) | `_lab_block`, `_whiten`, `_rows_of_block`, `_shares_from_state` (residuals.py); `FitParameter`; the run's sample changes |
+| Fit, profiles, intervals | `ThermoProblem` has the interface of `FitProblem` | `fit_structure`, `calculate_profile`, `find_confidence_interval`, `write_fit_result` (estimation.py) |
+| Runner | `scripts/run_thermo_fit.py` (`points`, `steps`) | the step logic of `scripts/run_fit.py steps`; `apply_fit_config` |
+| Shares of ¹H and ²⁹Si | `SHARE_SPECIES` in residuals.py | the windows of NB05 rev08 §2 |
+| Tests | `tests/test_thermo_fit.py` | solver closure and conservation; recovery on invented spectra |

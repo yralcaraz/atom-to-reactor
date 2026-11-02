@@ -51,6 +51,12 @@ SHARE_SPECIES = {
     # 'P-silyl': the silyl groups still on phosphate, a window of the tubes that hold phosphate only
     '13C': {'TMSOH': {'TMSOH': 1}, 'HMDSO': {'HMDSO': 2}, 'TMSOEG': {'TMSOEG': 1, 'TMSOdiEG': 1},
             'P-silyl': {'TMSPA': 3, 'BMSPA': 2, 'MMSPA': 1}},
+    # Read by the thermodynamic fit only (kinetics.data.lab_spectra): ²⁹Si, one Si per silyl group, the windows of ¹³C;
+    # ¹H, Si–CH3 region, 9 H per silyl group, TMSOH and HMDSO in one window
+    '29Si': {'TMSOH': {'TMSOH': 1}, 'HMDSO': {'HMDSO': 2}, 'TMSOEG': {'TMSOEG': 1, 'TMSOdiEG': 1},
+             'P-silyl': {'TMSPA': 3, 'BMSPA': 2, 'MMSPA': 1}},
+    '1H': {'P-bound silyl': {'TMSPA': 3, 'BMSPA': 2, 'MMSPA': 1},
+           'free silyl': {'TMSOH': 1, 'HMDSO': 2, 'TMSOEG': 1, 'TMSOdiEG': 1}},
 }
 REPLICATE_MIN_SPECTRA = 3
 PENALTY = 1.0e3               # residual given to every value of a sample whose simulation failed

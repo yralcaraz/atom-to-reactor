@@ -5,6 +5,7 @@
     solution.py        G_sol = G_gas + ΔE_solv + ΔG°→*
     uncertainty.py     σ of the solvation contribution to a reaction; corrections applied per species
     reaction.py        ΔG_rxn, K_eq, network table
+    equilibrium.py     equilibrium composition of a closed tube (Gibbs minimum under the conserved amounts)
 
 Source: Y. Alcaraz Galván
 """

@@ -125,7 +125,7 @@ def plot_spectra_comparison(spectra: dict, shares, rows: list, *, nucleus: str, 
                     ax.text(0.5 * (low + high), 1.24, f"{found[0]['measured']:.2f}", ha='center', va='center', fontsize=7.5, color=INK_SOFT)
                 else:                            # measured / simulated, centred on the slash, simulated in the colour of the fit
                     ax.text(0.5 * (low + high), 1.24, f"{found[0]['measured']:.2f} /", ha='right', va='center', fontsize=7.5, color=INK_SOFT)
-                    ax.text(0.5 * (low + high), 1.24, f" {found[0]['predicted']:.2f}", ha='left', va='center', fontsize=7.5, color=SERIES[0])
+                    ax.text(0.5 * (low + high), 1.24, ' —' if np.isnan(found[0]['predicted']) else f" {found[0]['predicted']:.2f}", ha='left', va='center', fontsize=7.5, color=SERIES[0])
                 if ax is column[0]:
                     ax.text(0.5 * (low + high), 1.5, WINDOW_LABELS.get(window, window), ha='center', va='bottom', fontsize=8.5, color=INK)
                 lows.append(low)
