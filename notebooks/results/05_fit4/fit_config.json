@@ -1,0 +1,41 @@
+{
+ "fit": "fourth fit",
+ "solvation": {
+  "snapshot": "tank_api_snapshot_2026-10-08.json",
+  "volume_fractions": {
+   "EC": 0.5,
+   "DEC": 0.5
+  },
+  "rule": "linear"
+ },
+ "scenarios": [
+  "middle",
+  "long",
+  "free"
+ ],
+ "paper_observations": [],
+ "why": [
+  "solvation: the tubes are EC/DEC 1:1 by volume; fits 1-3 used neat EC (24 Sept snapshot). Linear mixing of the MD solvation in EC (338 K) and in DEC (298 K) of the 8 Oct snapshot, mole fractions 0.645 / 0.355",
+  "scenarios: the 1 h reading failed in every earlier fit (chi2 767 in the third)",
+  "paper_observations: E1 (TMSOH in EC, 1 week at RT) rests on a time Gogoi 2024 does not state; leaving it out did not change the third fit (chi2 35.3 either way)",
+  "recovery (added 2026-10-19 after the first night stopped): case C failed once (seed 1, chi2 82.3 against 69.2 for the truth). Its truth was the third fit's answer, now about 4 sigma from the new computed energies; it is replaced by the fourth fit's free-age answer (rounded), and every case gets at least the search of the fits (M3-split 8192 points, 32 starts instead of 1024 and 8). The first B and C results are kept in recovery_first_run/"
+ ],
+ "recovery": {
+  "effort": "fits",
+  "truths": {
+   "C": {
+    "g hydrolysis_R1": 1.5,
+    "g hydrolysis_R23": 0.95,
+    "g transfer": 0.7,
+    "g condensation": 1.3,
+    "g solvent_attack": 1.23,
+    "dG R1": 0.18,
+    "dG R2": 0.2,
+    "dG R3": 0.12,
+    "dG R4": -0.22,
+    "c0 H2O TMSPa alone": 0.06,
+    "log10 age 2 % H2O": 1.83
+   }
+  }
+ }
+}

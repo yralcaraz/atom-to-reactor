@@ -1,0 +1,835 @@
+diff --git a/kinetics/data/__init__.py b/kinetics/data/__init__.py
+index cadd193..4257f8e 100644
+--- a/kinetics/data/__init__.py
++++ b/kinetics/data/__init__.py
+@@ -19,7 +19,9 @@ from kinetics.data.snapshot import (
+ from kinetics.data.medium import DEFAULT_MEDIUM, SolvationMedium, get_active_medium, set_active_medium
+ from kinetics.data.species import load_medium_species_database, load_species_database
+ from kinetics.data.network import (
+-    NETWORK, NETWORK_SPECIES, build_stoichiometric_matrix, find_reaction_cycles, format_equation, list_species,
++    EXTRA_REACTIONS, NETWORK, NETWORK_SPECIES, NETWORK_VARIANTS, build_network, build_stoichiometric_matrix,
++    find_reaction_cycles, format_equation, get_active_network, get_active_network_variant, list_species,
++    set_active_network_variant,
+ )
+ from kinetics.data.experimental import (
+     get_barrier_windows, get_measured_shifts, get_water_series, load_experimental_data,
+@@ -38,8 +40,9 @@ __all__ = [
+     "load_snapshot", "get_dataset_records", "get_solvation_records", "get_solvent", "list_solvation_sets", "count_elements", "calculate_molar_mass",
+     "DEFAULT_MEDIUM", "SolvationMedium", "get_active_medium", "set_active_medium",
+     "load_medium_species_database", "load_species_database",
+-    "NETWORK", "NETWORK_SPECIES", "build_stoichiometric_matrix", "find_reaction_cycles", "format_equation",
+-    "list_species",
++    "EXTRA_REACTIONS", "NETWORK", "NETWORK_SPECIES", "NETWORK_VARIANTS", "build_network", "build_stoichiometric_matrix",
++    "find_reaction_cycles", "format_equation", "get_active_network", "get_active_network_variant", "list_species",
++    "set_active_network_variant",
+     "load_experimental_data", "get_measured_shifts", "get_barrier_windows", "get_water_series",
+     "DEFAULT_LAB_NMR_DIR", "build_lab_nmr_inventory", "read_jdf", "load_spectrum", "load_text_spectrum",
+     "estimate_noise", "calculate_window_integrals", "refine_window_phase", "calculate_area_shares",
+diff --git a/kinetics/data/network.py b/kinetics/data/network.py
+index e0ed00f..9b2a4ea 100644
+--- a/kinetics/data/network.py
++++ b/kinetics/data/network.py
+@@ -4,7 +4,18 @@ A network is a dict {rxn_id: {'reactants': {species: nu}, 'products': {species:
+ An optional 'canonical': False flag marks a reaction written against its family's reference direction
+ (Level 1 engine only). Species names are snapshot `pipeline_id`s.
+ 
+-Source: Y. Alcaraz Galván
++The fits take one of three variants of the network (the active one, set per fit run by
++kinetics.fitting.config, like the solvation medium):
++
++    'R1-R9'                          the nine steps (NETWORK); fits 1–4
++    'R1-R9+N10-N15'                  with the six further steps of P. Broqvist's generated network (fifth fit)
++    'R1-R9+N10-N15, Peter barriers'  the same, the six all in the fixed-barrier class 'exchange'
++
++    build_network                the network of a variant
++    get_active_network           the network of the active variant
++    set_active_network_variant   change it (None: back to 'R1-R9')
++
++Source: Y. Alcaraz Galván; N10–N15 from P. Broqvist's tmspa_reaction_network_model notebook (2026-10-08)
+ """
+ 
+ import numpy as np
+@@ -27,6 +38,56 @@ NETWORK_SPECIES = [
+     'TMSPA', 'BMSPA', 'MMSPA', 'H3PO4', 'H2O', 'TMSOH', 'HMDSO', 'EC', 'TMSOEG', 'TMSOdiEG', 'CO2'
+ ]
+ 
++# The six steps between the same species that P. Broqvist's generated network adds. Each is a combination of
++# R1–R9 (N10 = R2 − R1, N11 = R9 − R8, N12 = R2 + R7, N13 = R2 − R3, N14 = R3 − R1, N15 = R1 + R6), so its ΔG
++# follows from the species energies: they add routes, not end points. 'follows': the reaction whose barrier the
++# step takes (N12 and N15 are hydrolyses that release HMDSO instead of TMSOH). 'exchange': a silyl group moving
++# between two phosphates or two glycols, at a fixed barrier (kinetics.fitting.candidates.FIXED_BARRIERS_EV)
++EXTRA_REACTIONS = {
++    'N10': {'reactants': {'BMSPA': 2},            'products': {'MMSPA': 1, 'TMSPA': 1},    'class': 'exchange'},
++    'N11': {'reactants': {'TMSOEG': 2},           'products': {'TMSOH': 1, 'TMSOdiEG': 1}, 'class': 'exchange'},
++    'N12': {'reactants': {'BMSPA': 1, 'H2O': 1},  'products': {'H3PO4': 1, 'HMDSO': 1},    'class': 'hydrolysis', 'follows': 'R2'},
++    'N13': {'reactants': {'BMSPA': 1, 'H3PO4': 1}, 'products': {'MMSPA': 2},               'class': 'exchange'},
++    'N14': {'reactants': {'BMSPA': 1, 'MMSPA': 1}, 'products': {'H3PO4': 1, 'TMSPA': 1},   'class': 'exchange'},
++    'N15': {'reactants': {'TMSPA': 1, 'H2O': 1},  'products': {'MMSPA': 1, 'HMDSO': 1},    'class': 'hydrolysis', 'follows': 'R1'},
++}
++NETWORK_VARIANTS = ('R1-R9', 'R1-R9+N10-N15', 'R1-R9+N10-N15, Peter barriers')
++DEFAULT_NETWORK_VARIANT = 'R1-R9'
++_NETWORKS = {}
++_ACTIVE_VARIANT = [DEFAULT_NETWORK_VARIANT]
++
++
++def build_network(variant: str = DEFAULT_NETWORK_VARIANT) -> dict:
++    """The network of one variant (NETWORK_VARIANTS). Shared between calls: copy it before changing it."""
++    if variant not in NETWORK_VARIANTS:
++        raise ValueError(f"network variant must be one of {NETWORK_VARIANTS}, not '{variant}'")
++    if variant not in _NETWORKS:
++        net = dict(NETWORK)
++        if variant != DEFAULT_NETWORK_VARIANT:
++            for rxn_id, rxn in EXTRA_REACTIONS.items():
++                net[rxn_id] = dict(rxn)
++                if variant.endswith('Peter barriers'):          # as in his notebook: one barrier for all six
++                    net[rxn_id]['class'] = 'exchange'
++                    net[rxn_id].pop('follows', None)
++        _NETWORKS[variant] = net
++    return _NETWORKS[variant]
++
++
++def get_active_network_variant() -> str:
++    return _ACTIVE_VARIANT[0]
++
++
++def set_active_network_variant(variant: str = None) -> str:
++    """Make `variant` the network the fit structures use (None: 'R1-R9') and return it."""
++    variant = variant or DEFAULT_NETWORK_VARIANT
++    build_network(variant)                                      # refuses an unknown variant
++    _ACTIVE_VARIANT[0] = variant
++    return variant
++
++
++def get_active_network() -> dict:
++    return build_network(_ACTIVE_VARIANT[0])
++
+ 
+ def list_species(network: dict) -> list:
+     """Species appearing in the network, in first-appearance order."""
+diff --git a/kinetics/fitting/__init__.py b/kinetics/fitting/__init__.py
+index 6c01d36..431a8f0 100644
+--- a/kinetics/fitting/__init__.py
++++ b/kinetics/fitting/__init__.py
+@@ -40,15 +40,15 @@ from kinetics.fitting.design import (
+ 
+ from kinetics.fitting.residuals import (
+     FREE_AGE_BOUNDS_H, REPORT_SOLVER, SCENARIO_AGES_H, SCENARIOS, SEARCH_SOLVER, build_sample_history,
+-    build_sample_set, calculate_predicted_shares, calculate_residuals, find_free_age, summarize_residuals,
+-    tabulate_residuals,
++    build_sample_set, calculate_predicted_shares, calculate_residuals, find_free_age, get_sample_overrides,
++    merge_sample_overrides, set_sample_overrides, summarize_residuals, tabulate_residuals,
+ )
+ from kinetics.fitting.candidates import (
+     FIT_STRUCTURES, FitParameter, FitStructure, build_fitted_model, embed_parent_theta, get_structure,
+     tabulate_reaction_barriers,
+ )
+ from kinetics.fitting.config import (
+-    DEFAULT_FIT_CONFIG, FIT_CONFIG_FILE, apply_fit_config, check_fit_medium, load_fit_config,
++    DEFAULT_FIT_CONFIG, FIT_CONFIG_FILE, apply_fit_config, check_fit_medium, check_fit_setup, load_fit_config,
+ )
+ from kinetics.fitting.estimation import (
+     DELTA_CHI2_95, FIT_RULE_MAX_Z, FitProblem, add_profile_points, build_profile_grid, calculate_parameter_directions,
+@@ -59,7 +59,7 @@ from kinetics.fitting.estimation import (
+ )
+ 
+ __all__ = [
+-    "DEFAULT_FIT_CONFIG", "FIT_CONFIG_FILE", "apply_fit_config", "check_fit_medium", "load_fit_config",
++    "DEFAULT_FIT_CONFIG", "FIT_CONFIG_FILE", "apply_fit_config", "check_fit_medium", "check_fit_setup", "load_fit_config",
+     "FIT_STRUCTURES", "FitParameter", "FitStructure", "build_fitted_model", "embed_parent_theta", "get_structure",
+     "tabulate_reaction_barriers",
+     "DELTA_CHI2_95", "FIT_RULE_MAX_Z", "FitProblem", "add_profile_points", "build_profile_grid",
+@@ -68,8 +68,8 @@ __all__ = [
+     "fit_leave_one_out", "fit_structure", "get_profile_theta", "load_fit_result", "refine_profile_edges",
+     "simulate_synthetic_shares", "write_fit_result",
+     "FREE_AGE_BOUNDS_H", "REPORT_SOLVER", "SCENARIO_AGES_H", "SCENARIOS", "SEARCH_SOLVER", "build_sample_history",
+-    "build_sample_set", "calculate_predicted_shares", "calculate_residuals", "find_free_age", "summarize_residuals",
+-    "tabulate_residuals",
++    "build_sample_set", "calculate_predicted_shares", "calculate_residuals", "find_free_age", "get_sample_overrides",
++    "merge_sample_overrides", "set_sample_overrides", "summarize_residuals", "tabulate_residuals",
+     "DEFAULT_G_GRID_EV", "FAMILIES", "find_barrier_bounds", "get_family_parameter", "project_bounds_to_entropy",
+     "scan_family_barriers", "summarize_feasible_intervals",
+     "DEFAULT_SCAN_GRID_EV", "SHARED_BARRIER", "build_observation", "build_share_window", "describe_observations",
+diff --git a/kinetics/fitting/candidates.py b/kinetics/fitting/candidates.py
+index 9e213bf..220ff3a 100644
+--- a/kinetics/fitting/candidates.py
++++ b/kinetics/fitting/candidates.py
+@@ -22,6 +22,11 @@ Freed energies are parameters d_j = ΔG_rxn,j − computed value for R1–R4. Th
+ so R5–R7 follow (transfer = hydrolysis + condensation) and R8, R9 keep their computed values. Their
+ constraint is Gaussian with the covariance of the MD standard errors (kinetics.thermo).
+ 
++The network is the active variant (kinetics.data.network; fifth fit: R1–R9 and N10–N15). A step that
++'follows' a reaction (N12 follows R2, N15 follows R1) takes the barrier class of that reaction in each structure,
++so it adds no parameter; a class of FIXED_BARRIERS_EV ('exchange': N10, N11, N13, N14) has a declared barrier
++and is not fitted. Their ΔG come from the species energies, freed shifts included.
++
+ The search box of each barrier is DECLARED: it is narrower than the 0.60–1.70 eV scanned in notebook 03 where
+ no observation allows the excluded part and the solver crawls there (solvent attack below 1.10 eV).
+ 
+@@ -34,15 +39,18 @@ import numpy as np
+ from scipy.linalg import cholesky, solve_triangular
+ 
+ from kinetics.data.medium import get_active_medium
+-from kinetics.data.network import NETWORK
++from kinetics.data.network import NETWORK, get_active_network
+ from kinetics.fitting.residuals import FREE_AGE_BOUNDS_H
+ from kinetics.microkinetics.models import get_model
+ from kinetics.thermo.reaction import calculate_network_thermo
+ from kinetics.thermo.uncertainty import calculate_solvation_covariance, calculate_species_shifts
+ 
++# Fifth fit: the box of the first hydrolysis reaches 1.80 eV. N15 (TMSPA + H2O → MMSPA + HMDSO) shares its barrier
++# and starts the reaction about seven times faster than R1 at the same g, so g_R1 has to rise by about 0.05 eV; the
++# fourth fit's 7 day reading already sat at 1.635 eV
+ BARRIER_BOX_EV = {
+     'all reactions': (0.60, 1.70),
+-    'hydrolysis': (0.80, 1.70), 'hydrolysis_R1': (0.80, 1.70), 'hydrolysis_R23': (0.80, 1.70),
++    'hydrolysis': (0.80, 1.70), 'hydrolysis_R1': (0.80, 1.80), 'hydrolysis_R23': (0.80, 1.70),
+     'transfer': (0.60, 1.50), 'condensation': (1.00, 1.70), 'solvent_attack': (1.10, 1.60),
+ }
+ ENERGY_BOX_EV = (-0.75, 0.75)            # about three standard errors of the computed ΔG_rxn
+@@ -51,6 +59,10 @@ RECIPE_PREFIX = 'c0 '                    # 'c0 <species> <sample>': amount at mi
+ FREED_REACTIONS = ('R1', 'R2', 'R3', 'R4')
+ SPLIT_HYDROLYSIS = {'hydrolysis_R1': ('R1',), 'hydrolysis_R23': ('R2', 'R3')}
+ FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'transfer', 'condensation', 'solvent_attack')
++# Barriers that are declared, not fitted. 'exchange': a silyl group moving between two phosphates or two glycols
++# (N10, N11, N13, N14). DECLARED: the value P. Broqvist gives every step he has no data for (class "other" of his
++# tmspa_reaction_network_model notebook); at room temperature it takes about a year in our tubes
++FIXED_BARRIERS_EV = {'exchange': 1.15}
+ 
+ 
+ @dataclass(frozen=True)
+@@ -81,7 +93,7 @@ class FitStructure:
+             return ['all reactions']
+         families = []
+         for rxn_id, rxn in self.network().items():
+-            if rxn['class'] not in families:
++            if rxn['class'] not in families and rxn['class'] not in FIXED_BARRIERS_EV:
+                 families.append(rxn['class'])
+         return sorted(families, key=FAMILY_ORDER.index)
+ 
+@@ -108,13 +120,18 @@ class FitStructure:
+ 
+     # --- model ------------------------------------------------------------------------------------
+     def network(self) -> dict:
+-        """The network with the split classes (the default network when nothing is split)."""
+-        if not self.split:
+-            return NETWORK
+-        net = {rxn_id: dict(rxn) for rxn_id, rxn in NETWORK.items()}
++        """The active network with the split classes, and each step that follows a reaction in that reaction's class
++        (the active network as it is when nothing changes)."""
++        active = get_active_network()
++        if not self.split and not any('follows' in rxn for rxn in active.values()):
++            return active
++        net = {rxn_id: dict(rxn) for rxn_id, rxn in active.items()}
+         for new_class, members in self.split.items():
+             for rxn_id in members:
+                 net[rxn_id]['class'] = new_class
++        for rxn in net.values():
++            if 'follows' in rxn:
++                rxn['class'] = net[rxn['follows']]['class']
+         return net
+ 
+     def build(self, theta: dict) -> dict:
+@@ -141,6 +158,13 @@ class FitStructure:
+                 entry = params.setdefault(c, dict(params.get('default', {})))
+                 entry.pop('E0_eV', None)
+                 entry['g_eV'] = float(theta[f'g {c}'])
++        network = self.network()
++        for c in sorted({rxn['class'] for rxn in network.values()} & set(FIXED_BARRIERS_EV)):
++            entry = params[c] = dict(params.get('default', {}))
++            entry.pop('E0_eV', None)
++            entry['g_eV'] = FIXED_BARRIERS_EV[c]
++            if self.shape is not None:
++                entry['shape'] = self.shape
+         shifts, prior, prior_rows = {}, np.zeros(0), []
+         if self.freed:
+             d = np.array([float(theta[f'dG {r}']) for r in self.freed])
+@@ -151,7 +175,7 @@ class FitStructure:
+                            't_h': np.nan, 'age_h': np.nan, 'measured': 0.0, 'predicted': d[j], 'sigma': sigma[j],
+                            'z': d[j] / sigma[j]} for j, r in enumerate(self.freed)]
+         model = replace(spec, name=f'{self.name} (fit)', label=self.label, family_params=params,
+-                        network=self.network() if self.split else None, species_shifts_eV=shifts)
++                        network=network, species_shifts_eV=shifts)
+         ages = {name[len('log10 age '):]: float(10.0 ** value) for name, value in theta.items()
+                 if name.startswith('log10 age ')}
+         added = {}
+@@ -202,11 +226,13 @@ def scale_energy_prior(structure: FitStructure, built: dict, theta: dict, prior_
+ def tabulate_reaction_barriers(structure: FitStructure, theta: dict, temperatures_K: dict = None) -> dict:
+     """ΔG‡ [eV] of every reaction at the temperature where its family is observed, and its ΔG_rxn.
+ 
+-    temperatures_K: {rxn_id: T}; default 295.65 K (22.5 °C) for R1–R3 and R5–R7, 353.15 K for R4, R8, R9.
++    temperatures_K: {rxn_id: T}; default 353.15 K for R4, R8, R9 and N11 (seen at 80 °C), 295.65 K (22.5 °C) for
++    every other reaction of the structure's network.
+     With ΔS‡ = 0 the barrier does not depend on T; the temperature only says where the value is anchored.
+     """
+     model = structure.build(theta)['model']
+-    temperatures_K = temperatures_K or {r: (353.15 if r in ('R4', 'R8', 'R9') else 295.65) for r in NETWORK}
++    temperatures_K = temperatures_K or {r: (353.15 if r in ('R4', 'R8', 'R9', 'N11') else 295.65)
++                                        for r in structure.network()}
+     out = {}
+     for T in sorted(set(temperatures_K.values())):
+         rates = model.calculate_rates(T)
+@@ -217,7 +243,8 @@ def tabulate_reaction_barriers(structure: FitStructure, theta: dict, temperature
+     return out
+ 
+ 
+-OBSERVED_AT_K = {'hydrolysis': 295.65, 'transfer': 295.65, 'condensation': 353.15, 'solvent_attack': 353.15}
++OBSERVED_AT_K = {'hydrolysis': 295.65, 'transfer': 295.65, 'condensation': 353.15, 'solvent_attack': 353.15,
++                 'exchange': 295.65}
+ 
+ 
+ def build_fitted_model(fit: dict, name: str = None):
+diff --git a/kinetics/fitting/config.py b/kinetics/fitting/config.py
+index c10ee90..1dcab67 100644
+--- a/kinetics/fitting/config.py
++++ b/kinetics/fitting/config.py
+@@ -1,15 +1,20 @@
+ """Block 14H — Setup of one fit run, stored with its results (`fit_config.json` in the results directory).
+ 
+ Every stage of a run reads the setup at its start, and so does every notebook that reads the run's results: the
+-solvation medium the reaction energies are computed in, the readings of the unknown ages that are fitted, the
+-paper observations added to the lab samples and the changes to the synthetic recovery check ('recovery': truths
+-replaced per case, and the search of the fits for every case; see scripts/run_fit.recovery_cases). A results directory without the file is a run of the default setup,
+-that of the first three fits: neat EC from the 2026-09-24 snapshot, the four readings and E1.
++solvation medium the reaction energies are computed in, the reaction network (kinetics.data.network variants),
++the changes to the samples that hold for the whole run ('sample_overrides', e.g. the heating steps of the 2 %
++tube in the fifth fit; keys as in residuals.build_sample_set), the readings of the unknown ages that are fitted,
++the paper observations added to the lab samples, the sensitivity variants of the night stage ('sensitivities':
++names of scripts/run_fit.SENSITIVITIES; None runs those of the fourth fit) and the changes to the synthetic
++recovery check ('recovery': truths replaced per case, and the search of the fits for every case; see
++scripts/run_fit.recovery_cases). A results directory without the file is a run of the default setup, that of the
++first three fits: neat EC from the 2026-09-24 snapshot, R1–R9, the four readings and E1.
+ 
+     DEFAULT_FIT_CONFIG  the setup of a directory without fit_config.json
+     load_fit_config     the setup stored in a results directory
+-    apply_fit_config    load it and make its medium the active one (kinetics.data.medium); returns the setup
++    apply_fit_config    load it and make its medium, network and sample changes the active ones; returns the setup
+     check_fit_medium    raise if a stored fit was computed in another medium than the active one
++    check_fit_setup     check_fit_medium, and the same for the network and the changes to the samples
+ 
+ Source: Y. Alcaraz Galván
+ """
+@@ -18,11 +23,15 @@ import json
+ from pathlib import Path
+ 
+ from kinetics.data.medium import DEFAULT_MEDIUM, SolvationMedium, get_active_medium, set_active_medium
+-from kinetics.fitting.residuals import PAPER_OBSERVATIONS, SCENARIOS
++from kinetics.data.network import (
++    DEFAULT_NETWORK_VARIANT, NETWORK_VARIANTS, get_active_network_variant, set_active_network_variant,
++)
++from kinetics.fitting.residuals import PAPER_OBSERVATIONS, SCENARIOS, get_sample_overrides, set_sample_overrides
+ 
+ FIT_CONFIG_FILE = 'fit_config.json'
+-DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'scenarios': list(SCENARIOS),
+-                      'paper_observations': list(PAPER_OBSERVATIONS), 'recovery': {}}
++DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'network': DEFAULT_NETWORK_VARIANT, 'sample_overrides': {},
++                      'scenarios': list(SCENARIOS), 'paper_observations': list(PAPER_OBSERVATIONS),
++                      'sensitivities': None, 'recovery': {}}
+ 
+ 
+ def load_fit_config(results_dir) -> dict:
+@@ -34,15 +43,20 @@ def load_fit_config(results_dir) -> dict:
+     unknown = set(config['scenarios']) - set(SCENARIOS)
+     if unknown:
+         raise ValueError(f'{path}: unknown scenarios {sorted(unknown)}')
++    if config['network'] not in NETWORK_VARIANTS:
++        raise ValueError(f"{path}: unknown network '{config['network']}' (one of {NETWORK_VARIANTS})")
+     config['medium'] = SolvationMedium.from_dict(config['solvation'])
+     config['source'] = str(path) if path.exists() else 'default (no fit_config.json)'
+     return config
+ 
+ 
+ def apply_fit_config(results_dir) -> dict:
+-    """load_fit_config, and its medium made the active one. Call it before computing anything from a run's fits."""
++    """load_fit_config, and its medium, network and changes to the samples made the active ones. Call it before
++    computing anything from a run's fits."""
+     config = load_fit_config(results_dir)
+     set_active_medium(config['medium'])
++    set_active_network_variant(config['network'])
++    set_sample_overrides(config['sample_overrides'])
+     return config
+ 
+ 
+@@ -52,3 +66,17 @@ def check_fit_medium(fit: dict) -> None:
+     if stored != get_active_medium():
+         raise ValueError(f"this fit was computed in '{stored.label()}', the active medium is "
+                          f"'{get_active_medium().label()}': call apply_fit_config(<its results directory>) first")
++
++
++def check_fit_setup(fit: dict) -> None:
++    """check_fit_medium, and the same for the network and for the run's changes to the samples: a stored fit is run
++    forward with the network it was fitted with and, where it records them (fifth fit on), on top of the same
++    run-wide changes. The overrides of a variant (stored under 'variant_overrides') are passed by the caller."""
++    check_fit_medium(fit)
++    stored = fit.get('network', DEFAULT_NETWORK_VARIANT)
++    if stored != get_active_network_variant():
++        raise ValueError(f"this fit was computed with the network '{stored}', the active one is "
++                         f"'{get_active_network_variant()}': call apply_fit_config(<its results directory>) first")
++    if 'sample_overrides' in fit and json.loads(json.dumps(get_sample_overrides())) != fit['sample_overrides']:
++        raise ValueError(f"this fit was computed with the run-wide changes to the samples {fit['sample_overrides']}, "
++                         f"the active ones are {get_sample_overrides()}: call apply_fit_config(<its results directory>) first")
+diff --git a/kinetics/fitting/reporting.py b/kinetics/fitting/reporting.py
+index 5826749..de693b7 100644
+--- a/kinetics/fitting/reporting.py
++++ b/kinetics/fitting/reporting.py
+@@ -3,8 +3,10 @@
+ A fit result holds a parameter set and its table of standardised residuals, in which the repeated spectra of a
+ tube are folded into a mean and its drifts. A reader wants the same comparison in the units of the experiment:
+ the share of each peak in each spectrum, the concentrations of a tube since it was mixed, and the spectrum
+-itself. Nothing here is fitted: a stored parameter set is run forward, in the solvation medium it was fitted in
+-(apply_fit_config on the run's results directory first) and with the paper observations it was fitted with.
++itself. Nothing here is fitted: a stored parameter set is run forward, in the solvation medium, with the network
++and with the run-wide changes to the samples it was fitted with (apply_fit_config on the run's results directory
++first), and with the paper observations it was fitted with. A fit of a sensitivity variant also needs the
++overrides of its variant (stored under 'variant_overrides'), passed as `overrides`.
+ 
+     evaluate_fit                     the samples of a fit with the age and the shares its parameter set gives each
+     tabulate_fit_shares              measured and predicted share of every window of every spectrum
+@@ -22,7 +24,7 @@ import pandas as pd
+ from kinetics.constants import ZERO_CELSIUS_K
+ from kinetics.data.observables import C_REGION_PPM, C_WINDOWS_PPM, P_WINDOWS_PPM, list_spectrum_sets
+ from kinetics.fitting.candidates import get_structure
+-from kinetics.fitting.config import check_fit_medium
++from kinetics.fitting.config import check_fit_setup
+ from kinetics.fitting.estimation import FitProblem, calculate_parameter_directions
+ from kinetics.fitting.residuals import (
+     FREE_AGE_BOUNDS_H, N_AGE_GRID, PAPER_OBSERVATIONS, REPORT_SOLVER, SHARE_SPECIES, _block_shares, _initial_composition, _whiten_sample,
+@@ -71,7 +73,7 @@ def evaluate_fit(fit: dict, observables: dict, *, overrides: dict = None, ages:
+     overrides: as in build_sample_set (e.g. TMSOH present at mixing).
+     ages: {sample: hours} used as they are, e.g. those of another evaluation of the same fit.
+     """
+-    check_fit_medium(fit)
++    check_fit_setup(fit)
+     solver = solver or REPORT_SOLVER
+     samples = build_sample_set(observables, fit['scenario'], overrides=overrides, paper=_fit_paper(fit))
+     built = get_structure(fit['structure']).build(fit['theta'])
+@@ -204,7 +206,7 @@ def calculate_parameter_correlation(fit: dict, observables: dict, *, kinds=PARAM
+     it describes the neighbourhood of the best fit, and a parameter the data do not determine shows up as a
+     standard error wider than its search box. A parameter in a combination the data do not see at all gets NaN.
+     """
+-    check_fit_medium(fit)
++    check_fit_setup(fit)
+     problem = FitProblem(fit['structure'], build_sample_set(observables, fit['scenario'], paper=_fit_paper(fit)))
+     found = calculate_parameter_directions(problem, fit['theta'], kinds=kinds)
+     names, sigma = found['parameters'], found['sigma_local'].to_numpy()
+diff --git a/kinetics/fitting/residuals.py b/kinetics/fitting/residuals.py
+index 1cb2c66..9eac03e 100644
+--- a/kinetics/fitting/residuals.py
++++ b/kinetics/fitting/residuals.py
+@@ -22,6 +22,8 @@ The K shares of a spectrum sum to one, so their K residuals are scaled by sqrt((
+ χ² of K − 1 independent values when the K errors are equal.
+ 
+     build_sample_set            observables + scenario → the samples a fit compares with
++    set_sample_overrides        changes to the samples that hold for a whole fit run (fit_config.json)
++    merge_sample_overrides      the changes of a run with those of one call on top
+     build_sample_history        temperature segments from mixing and the spectrum times of one sample
+     calculate_predicted_shares  the shares a model predicts for one sample
+     calculate_residuals         whitened residual vector of a model over a sample set (χ² = Σ r²)
+@@ -158,6 +160,51 @@ def _hold_heated(sample: dict, hold_h: float) -> list:
+     return episodes
+ 
+ 
++def _cool_before_spectra(sample: dict, cooling_h: float) -> list:
++    """The heating episodes of a sample, each moved earlier where needed so that it ends at least cooling_h hours
++    before the next spectrum; a moved one never starts before the previous one ends (it is shortened instead)."""
++    spectra = sorted({float(t) for block in sample['blocks'] for t in block['t_spec_s']})
++    cooling, clock, episodes = 3600.0 * cooling_h, -np.inf, []
++    for start, T, duration in sample['heated']:
++        next_spectrum = min([t for t in spectra if t > start], default=np.inf)
++        stop = min(start + duration, next_spectrum - cooling)
++        start = max(stop - duration, clock)
++        episodes.append((start, T, stop - start))
++        clock = stop
++    return episodes
++
++
++def _episodes(rows) -> list:
++    """[(start_h, T_C, duration_h), ...] on the clock of the first spectrum → [(start_s, T_K, duration_s), ...] in time order."""
++    return sorted((3600.0 * float(start), float(T_C) + ZERO_CELSIUS_K, 3600.0 * float(hours)) for start, T_C, hours in rows)
++
++
++# Changes to the samples that hold for a whole fit run (fit_config.json 'sample_overrides', set by
++# kinetics.fitting.config): every sample set starts from them, and the overrides of a call go on top
++_ACTIVE_OVERRIDES = [{}]
++
++
++def get_sample_overrides() -> dict:
++    return _ACTIVE_OVERRIDES[0]
++
++
++def set_sample_overrides(overrides: dict = None) -> dict:
++    """Make `overrides` ({sample: {key: value}}, keys as in build_sample_set) the changes every sample set of the
++    run starts from (None: none) and return them."""
++    _ACTIVE_OVERRIDES[0] = deepcopy(overrides or {})
++    return _ACTIVE_OVERRIDES[0]
++
++
++def merge_sample_overrides(base: dict, extra: dict = None) -> dict:
++    """`base` with `extra` on top, key by key within a sample ('added_M' species by species)."""
++    out = deepcopy(base or {})
++    for name, change in (extra or {}).items():
++        entry = out.setdefault(name, {})
++        for key, value in change.items():
++            entry[key] = {**entry.get(key, {}), **value} if key == 'added_M' else deepcopy(value)
++    return out
++
++
+ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclude=(), paper=PAPER_OBSERVATIONS,
+                      error_floor: dict = None, floor_scale: float = 1.0, overrides: dict = None) -> list:
+     """The samples a model is compared with, under one scenario of the unknown ages.
+@@ -167,15 +214,20 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
+     paper: one-sided observations of Gogoi 2024 added to the set (ids of data/experimental_gogoi2024.json).
+     floor_scale multiplies the declared error floor (0 removes it).
+     overrides: {sample: {'hold_h': hours of its known pre-history, 'pre_history': [(T_C or None for room
+-    temperature, hours), ...] from mixing to the first spectrum (the age is then known), 'heated_duration_h':
+-    hours of every heating episode (at most until the next one starts), 'heated_hold_h': hours of every heating
+-    episode as a hold that is over before the next room-temperature spectrum (see _hold_heated), 'added_M': {species: mol/L present at
+-    mixing on top of the recipe}}}, for the sensitivity to the times the files do not fix and to what the recipe
+-    does not list.
++    temperature, hours), ...] from mixing to the first spectrum (the age is then known), 'heated_episodes':
++    [(start_h, T_C, hours), ...] on the clock of the first spectrum, replacing the recorded heating (None: the
++    recorded one), 'added_episodes': the same, added to it (a negative start lies before the first spectrum and
++    is cut at mixing), 'cooling_h': hours at room temperature at least before every spectrum (an episode that
++    ends later is moved earlier, see _cool_before_spectra), 'heated_duration_h': hours of every heating episode (at most until the next one starts),
++    'heated_hold_h': hours of every heating episode as a hold that is over before the next room-temperature
++    spectrum (see _hold_heated), 'added_M': {species: mol/L present at mixing on top of the recipe}}}, for the
++    sensitivity to the times the files do not fix and to what the recipe does not list. They go on top of the
++    run's own changes (set_sample_overrides).
+     """
+     if scenario not in SCENARIOS:
+         raise ValueError(f"scenario must be one of {SCENARIOS}")
+     error_floor = error_floor or observables['_meta'].get('error_floor', DEFAULT_ERROR_FLOOR)
++    overrides = merge_sample_overrides(get_sample_overrides(), overrides)
+     samples = []
+     for name, record in observables['samples'].items():
+         if name in exclude:
+@@ -183,7 +235,9 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
+         sample = _lab_sample(name, record, observables, error_floor, floor_scale, tuple(roles))
+         if sample is None:
+             continue
+-        change = (overrides or {}).get(name, {})
++        change = overrides.get(name, {})
++        if change.get('heated_episodes') is not None:
++            sample['heated'] = _episodes(change['heated_episodes'])
+         if 'pre_history' in change:
+             sample['pre_segments'] = [(sample['T_rt_K'] if T_C is None else T_C + ZERO_CELSIUS_K, 3600.0 * hours)
+                                       for T_C, hours in change['pre_history']]
+@@ -196,6 +250,10 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
+                                 for (start, T, _), following in zip(sample['heated'], starts)]
+         if 'heated_hold_h' in change:
+             sample['heated'] = _hold_heated(sample, change['heated_hold_h'])
++        if change.get('added_episodes'):
++            sample['heated'] = sorted(sample['heated'] + _episodes(change['added_episodes']))
++        if change.get('cooling_h') is not None:
++            sample['heated'] = _cool_before_spectra(sample, change['cooling_h'])
+         for species, added in change.get('added_M', {}).items():
+             sample['c0_M'][species] = sample['c0_M'].get(species, 0.0) + added
+         if not sample['pre_segments']:                       # the age is unknown
+@@ -223,8 +281,30 @@ def build_sample_history(sample: dict, age_h: float = None) -> tuple:
+             raise ValueError(f"{sample['name']}: an age is needed (free scenario)")
+         segments.append((sample['T_rt_K'], 3600.0 * age_h))
+     t_zero = sum(d for _, d in segments)                     # the first spectrum, on the clock that starts at mixing
++    early = [episode for episode in sample['heated'] if episode[0] < 0.0]
++    if early:                                                # heating before the first spectrum, inside the age
++        if sample['pre_segments']:
++            raise ValueError(f"{sample['name']}: heating before the first spectrum needs an unknown age, not a known history")
++        segments, clock = [], -t_zero
++        for start, T_K, duration in early:
++            stop = start + duration
++            if stop > 1e-6:
++                raise ValueError(f"{sample['name']}: a heating episode before the first spectrum must end before it")
++            start = max(start, -t_zero)                      # an episode longer than the age is cut at mixing
++            if stop <= start:
++                continue
++            if start < clock - 1e-6:
++                raise ValueError(f"{sample['name']}: heating episodes overlap")
++            if start > clock:
++                segments.append((sample['T_rt_K'], start - clock))
++            segments.append((T_K, stop - start))
++            clock = stop
++        if clock < 0.0:
++            segments.append((sample['T_rt_K'], -clock))
+     clock = 0.0
+     for start, T_K, duration in sample['heated']:
++        if start < 0.0:
++            continue
+         if start < clock - 1e-6:
+             raise ValueError(f"{sample['name']}: heating episodes overlap")
+         if start > clock:
+diff --git a/scripts/run_fit.py b/scripts/run_fit.py
+index f836c71..bcdc080 100644
+--- a/scripts/run_fit.py
++++ b/scripts/run_fit.py
+@@ -37,6 +37,15 @@ mixing of the MD solvation in EC and in DEC of the 2026-10-08 snapshot; readings
+ New sensitivities: the covariance of the computed energies x4, and the protocol of the article for the 2 % water
+ tube (8 h at room temperature before the first spectrum, with or without an 8 h step at 30 °C, and 8 h holds).
+ 
++Fifth fit (notebooks/results/05_fit5/fit_config.json; docs/reference-fit_improvements.md §2): the 2 % water tube
++heated 8 h at each step of its ramp, the six steps placed on the file clock and written as explicit episodes
++('sample_overrides'); the network with N10–N15 of P. Broqvist's generated network ('network'), N12 and N15 in the
++barrier class of R2 and R1, the four silyl exchanges at a fixed 1.15 eV. Every fit records its network, the
++run-wide changes to the samples and the overrides of its variant. Sensitivities chosen in the setup
++('sensitivities'): the fourth fit's minus its three readings of the article, plus the heating as recorded, an
++8 h step at 30 °C before the first spectrum, 3 h at room temperature before each round of the 2 % tube instead of
++1 h, and N10–N15 all at 1.15 eV.
++
+ Source: Y. Alcaraz Galván
+ """
+ 
+@@ -49,6 +58,7 @@ import argparse
+ import sys
+ import time
+ import warnings
++from contextlib import contextmanager
+ from pathlib import Path
+ 
+ import numpy as np
+@@ -60,6 +70,7 @@ if str(REPO) not in sys.path:
+ 
+ from kinetics.data import load_experimental_data, load_lab_observables
+ from kinetics.data.medium import get_active_medium
++from kinetics.data.network import get_active_network_variant, set_active_network_variant
+ from kinetics.fitting import (
+     DELTA_CHI2_95, REPORT_SOLVER, SCENARIOS, FitProblem, FitStructure, add_profile_points, apply_fit_config,
+     build_sample_set,
+@@ -70,7 +81,7 @@ from kinetics.fitting import (
+     tabulate_reaction_barriers, tabulate_residuals, write_fit_result,
+ )
+ from kinetics.fitting.estimation import RECIPE_FACTORS
+-from kinetics.fitting.residuals import PAPER_OBSERVATIONS
++from kinetics.fitting.residuals import PAPER_OBSERVATIONS, get_sample_overrides
+ from kinetics.thermo.reaction import calculate_network_thermo
+ from kinetics.microkinetics.models import MODELS, get_model
+ from kinetics.reactor import (
+@@ -322,7 +333,9 @@ def run_one(structure, scenario: str, args, *, tag: str = '', starts=(), sample_
+         fit['tmsoh_block'] = block
+         fit.update(scenario=scenario, tag=tag, label=structure.label,
+                    barriers=tabulate_reaction_barriers(structure, fit['theta']),
+-                   medium=get_active_medium().to_dict(), paper=[s['name'] for s in data if s['kind'] == 'paper'])
++                   medium=get_active_medium().to_dict(), paper=[s['name'] for s in data if s['kind'] == 'paper'],
++                   network=get_active_network_variant(), sample_overrides=get_sample_overrides(),
++                   variant_overrides=(sample_options or {}).get('overrides', {}))
+         return fit
+ 
+     path = fit_path(structure.name, scenario, tag)
+@@ -695,7 +708,31 @@ SENSITIVITIES = {
+                                                          'heated_duration_h': 8.0}}}, 1.0),
+     'glovebox 4 h': ({'overrides': {'TMSOH, glovebox': {'hold_h': 4.0}}}, 1.0),
+     'glovebox 16 h': ({'overrides': {'TMSOH, glovebox': {'hold_h': 16.0}}}, 1.0),
++    # Fifth fit, whose base heats the 2 % tube 8 h per step (fit_config.json): the heating the files record (the
++    # base of fits 1-4); the other reading of NMR 1 "after 30 °C", an 8 h step at 30 °C ending 1 h before it (cut at
++    # mixing when the age is shorter); and N10-N15 all at P. Broqvist's 1.15 eV ('network': a variant of
++    # kinetics.data.network for the fits of this variant)
++    'heating as recorded': ({'overrides': {'2 % H2O': {'heated_episodes': None}}}, 1.0),
++    '30 C before NMR 1': ({'overrides': {'2 % H2O': {'added_episodes': [[-9.0, 30.0, 8.0]]}}}, 1.0),
++    'Peter barriers': ({'network': 'R1-R9+N10-N15, Peter barriers'}, 1.0),
++    # Fifth fit: the 1 h at room temperature declared before each room-temperature round of the 2 % tube is not
++    # neutral (the ³¹P shares relax for about 2 h after a fast cool-down): every step ends at least 3 h before
++    'cooling 3 h': ({'overrides': {'2 % H2O': {'cooling_h': 3.0}}}, 1.0),
+ }
++FOURTH_FIT_SENSITIVITIES = ('floor x0', 'floor x2', 'covariance x0.5', 'covariance x2', 'covariance x4', 'ramp held 8 h',
++                            'article 8 h RT', 'article 8 h RT + 30 C', 'glovebox 4 h', 'glovebox 16 h')
++SENSITIVITY_NAMES = FOURTH_FIT_SENSITIVITIES   # the variants of this run (fit_config.json 'sensitivities'); set in main
++
++
++@contextmanager
++def network_variant(variant: str = None):
++    """The fits inside use `variant` of kinetics.data.network (None: the run's own network)."""
++    previous = get_active_network_variant()
++    set_active_network_variant(variant or previous)
++    try:
++        yield
++    finally:
++        set_active_network_variant(previous)
+ 
+ 
+ def run_sensitivities(structure: str, scenario: str, args) -> pd.DataFrame:
+@@ -703,16 +740,20 @@ def run_sensitivities(structure: str, scenario: str, args) -> pd.DataFrame:
+     rows = [{'variant': 'as fitted', 'scenario': scenario, 'search': 'full', 'chi2': main['chi2'], 'max |z|': main['max_abs_z'],
+              'worst': main['worst'], 'fits': main['fits'], **main['theta'],
+              **{f'dG‡ {rxn}': b['dG_barrier_eV'] for rxn, b in main['barriers'].items()}}]
+-    for variant, (options, prior_scale) in SENSITIVITIES.items():
++    for variant in SENSITIVITY_NAMES:
++        options, prior_scale = SENSITIVITIES[variant]
++        options = dict(options)
++        network = options.pop('network', None)
+         tag = f'__{variant}'.replace(' ', '_')
+-        fit = run_one(structure, scenario, args, tag=tag, starts=[main['theta']],
+-                      sample_options=options, prior_scale=prior_scale, effort=(128, 3, 30))
+-        search = 'reduced'
+-        if not fit['fits']:
+-            # A variant is not called a failure on a reduced search: it is fitted again with the full one
+-            full = run_one(structure, scenario, args, tag=tag + '__full_search', starts=[main['theta'], fit['theta']],
+-                           sample_options=options, prior_scale=prior_scale, effort=CHECK_EFFORT)
+-            fit, search = (full, 'full') if full['chi2'] < fit['chi2'] else (fit, 'full, no better')
++        with network_variant(network):
++            fit = run_one(structure, scenario, args, tag=tag, starts=[main['theta']],
++                          sample_options=options, prior_scale=prior_scale, effort=(128, 3, 30))
++            search = 'reduced'
++            if not fit['fits']:
++                # A variant is not called a failure on a reduced search: it is fitted again with the full one
++                full = run_one(structure, scenario, args, tag=tag + '__full_search', starts=[main['theta'], fit['theta']],
++                               sample_options=options, prior_scale=prior_scale, effort=CHECK_EFFORT)
++                fit, search = (full, 'full') if full['chi2'] < fit['chi2'] else (fit, 'full, no better')
+         rows.append({'variant': variant, 'scenario': scenario, 'search': search, 'chi2': fit['chi2'],
+                      'max |z|': fit['max_abs_z'], 'worst': fit['worst'], 'fits': fit['fits'], **fit['theta'],
+                      **{f'dG‡ {rxn}': b['dG_barrier_eV'] for rxn, b in fit['barriers'].items()}})
+@@ -909,7 +950,8 @@ def stage_traces(args) -> None:
+ STORAGE_C0_M = {'TMSPA': 0.050, 'H2O': 0.020, 'EC': 4.5}      # the sealed electrolyte of notebook 01, Block 8
+ STORAGE_T_K = 298.15
+ DS_RANGE_J_MOL_K = (-150.0, -100.0, -50.0, 0.0, 50.0)         # declared range of the activation entropy
+-T_OBSERVED_K = {'hydrolysis': 295.65, 'transfer': 295.65, 'condensation': 353.15, 'solvent_attack': 353.15}
++T_OBSERVED_K = {'hydrolysis': 295.65, 'transfer': 295.65, 'condensation': 353.15, 'solvent_attack': 353.15,
++                'exchange': 295.65}
+ EC_DEC_DENSITY_G_ML = 0.5 * (1.321 + 0.975)                   # as in notebook 03 §5.4
+ 
+ 
+@@ -1154,7 +1196,7 @@ def main():
+     parser.add_argument('--results', default=None, help='results directory (default notebooks/results/05)')
+     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
+     args = parser.parse_args()
+-    global RESULTS, CHECK_EFFORT, SCENARIOS, SCENARIO_ORDER, PAPER, FITTED_SAMPLES, RECOVERY
++    global RESULTS, CHECK_EFFORT, SCENARIOS, SCENARIO_ORDER, PAPER, FITTED_SAMPLES, RECOVERY, SENSITIVITY_NAMES
+     if args.results:
+         RESULTS = Path(args.results).resolve()
+     config = apply_fit_config(RESULTS)
+@@ -1162,6 +1204,10 @@ def main():
+     SCENARIO_ORDER = tuple(sc for sc in SCENARIO_ORDER if sc in config['scenarios'])
+     PAPER = tuple(config['paper_observations'])
+     RECOVERY = config['recovery']
++    SENSITIVITY_NAMES = tuple(config['sensitivities'] or FOURTH_FIT_SENSITIVITIES)
++    unknown = [name for name in SENSITIVITY_NAMES if name not in SENSITIVITIES]
++    if unknown:
++        raise SystemExit(f"{config['source']}: unknown sensitivities {unknown} (known: {list(SENSITIVITIES)})")
+     FITTED_SAMPLES = LAB_FITTED_SAMPLES + PAPER
+     if args.quick:
+         args.scale, args.profile_nfev = 0.05, 3
+@@ -1171,8 +1217,9 @@ def main():
+     warnings.filterwarnings('ignore', category=RuntimeWarning)
+     RESULTS.mkdir(parents=True, exist_ok=True)
+     log(f'--- stage {args.stage} (workers {args.workers}) ---')
+-    log(f"setup ({config['source']}): {config['medium'].label()}; readings {', '.join(SCENARIOS)}; "
+-        f"paper observations {', '.join(PAPER) or 'none'}")
++    log(f"setup ({config['source']}): {config['medium'].label()}; network {config['network']}; readings "
++        f"{', '.join(SCENARIOS)}; paper observations {', '.join(PAPER) or 'none'}; samples changed for the run: "
++        f"{', '.join(config['sample_overrides']) or 'none'}")
+     t0 = time.perf_counter()
+     STAGES[args.stage](args)
+     log(f'--- stage {args.stage} done in {(time.perf_counter() - t0) / 60:.1f} min ---')
+diff --git a/tests/test_medium.py b/tests/test_medium.py
+index 22b2dfe..5f39c50 100644
+--- a/tests/test_medium.py
++++ b/tests/test_medium.py
+@@ -1,4 +1,5 @@
+-"""Tests for the solvation medium (kinetics/data/medium.py) and the setup of a fit run (kinetics/fitting/config.py).
++"""Tests for the solvation medium (kinetics/data/medium.py), the network variants (kinetics/data/network.py) and the
++setup of a fit run (kinetics/fitting/config.py, with the run-wide changes to the samples of kinetics/fitting/residuals.py).
+ 
+ Source: Y. Alcaraz Galván; expected mixture energies as in P. Broqvist's tmspa_reaction_network_model notebook
+ (EC:DEC linear, 2026-10-08 snapshot: R1 −5.8, R2 −4.2, R3 −1.4, R4 +2.3 kcal/mol)
+@@ -109,9 +110,106 @@ def test_pre_history_override_fixes_the_age():
+         assert all(d <= 8.0 * 3600.0 + 1e-6 for _, _, d in sample['heated'])
+ 
+ 
++def test_network_variants():
++    from kinetics.data.network import (EXTRA_REACTIONS, build_network, get_active_network_variant,
++                                       set_active_network_variant)
++    from kinetics.fitting.candidates import FIXED_BARRIERS_EV, get_structure
++    assert get_active_network_variant() == 'R1-R9' and set(build_network()) == {f'R{i}' for i in range(1, 10)}
++    thermo = calculate_network_thermo(298.15, network=build_network('R1-R9+N10-N15'))['dG_rxn_eV']
++    # each added step is a combination of R1-R9 (Peter's notebook), so its ΔG is that combination exactly
++    for rxn, combination in {'N10': {'R2': 1, 'R1': -1}, 'N11': {'R9': 1, 'R8': -1}, 'N12': {'R2': 1, 'R7': 1},
++                             'N13': {'R2': 1, 'R3': -1}, 'N14': {'R3': 1, 'R1': -1}, 'N15': {'R1': 1, 'R6': 1}}.items():
++        assert abs(thermo[rxn] - sum(c * thermo[r] for r, c in combination.items())) < 1e-9, rxn
++    try:
++        set_active_network_variant('R1-R9+N10-N15')
++        split, plain = get_structure('M3-split'), get_structure('M3')
++        assert split.network()['N15']['class'] == 'hydrolysis_R1' and split.network()['N12']['class'] == 'hydrolysis_R23'
++        assert plain.network()['N15']['class'] == plain.network()['N12']['class'] == 'hydrolysis'
++        names = [p.name for p in split.parameters()]
++        assert names == ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack',
++                         'dG R1', 'dG R2', 'dG R3', 'dG R4'], names          # no new free parameter
++        theta = {'g hydrolysis_R1': 1.4, 'g hydrolysis_R23': 0.95, 'g transfer': 0.7, 'g condensation': 1.3,
++                 'g solvent_attack': 1.23, 'dG R1': 0.1, 'dG R2': 0.1, 'dG R3': 0.1, 'dG R4': -0.1}
++        model = split.build(theta)['model']
++        assert model.family_params['exchange']['g_eV'] == FIXED_BARRIERS_EV['exchange']
++        rates = model.calculate_rates(295.65)
++        assert set(EXTRA_REACTIONS) <= set(rates.index)
++        # with the shifts of the freed energies, the combinations still hold
++        assert abs(rates.loc['N15', 'dG_rxn_eV'] - rates.loc['R1', 'dG_rxn_eV'] - rates.loc['R6', 'dG_rxn_eV']) < 1e-9
++        shared = get_structure('M0-Marcus').build({'g all reactions': 1.0})['model']
++        assert shared.family_params['exchange']['g_eV'] == FIXED_BARRIERS_EV['exchange']
++        set_active_network_variant('R1-R9+N10-N15, Peter barriers')
++        assert all(get_structure('M3-split').network()[r]['class'] == 'exchange' for r in EXTRA_REACTIONS)
++    finally:
++        set_active_network_variant(None)
++    assert get_structure('M3-split').network() == {**build_network(), 'R1': {**build_network()['R1'], 'class': 'hydrolysis_R1'},
++                                                   'R2': {**build_network()['R2'], 'class': 'hydrolysis_R23'},
++                                                   'R3': {**build_network()['R3'], 'class': 'hydrolysis_R23'}}
++
++
++def test_heating_before_the_first_spectrum():
++    from kinetics.fitting.residuals import build_sample_history, merge_sample_overrides
++    hour = 3600.0
++    sample = {'kind': 'lab', 'name': 'tube', 'pre_segments': [], 'age_h': 5.0, 'T_rt_K': 296.0,
++              'heated': [(-9 * hour, 303.15, 8 * hour), (hour, 313.15, hour)], 'blocks': [{'t_spec_s': np.array([0.0, 3 * hour])}]}
++    segments, times = build_sample_history(sample)
++    # the 30 °C step is cut at mixing (age 5 h): 4 h at 30 °C, 1 h at room temperature, then the step after the spectrum
++    assert [(round(T, 2), round(d / hour, 6)) for T, d in segments] == [(303.15, 4.0), (296.0, 1.0), (296.0, 1.0),
++                                                                        (313.15, 1.0), (296.0, 1.0)]
++    assert np.allclose(times[0] / hour, [5.0, 8.0])
++    segments, _ = build_sample_history(sample, age_h=24.0)
++    assert [(round(T, 2), round(d / hour, 6)) for T, d in segments][:3] == [(296.0, 15.0), (303.15, 8.0), (296.0, 1.0)]
++    base = {'2 % H2O': {'heated_episodes': [[1.0, 30.0, 8.0]]}}
++    merged = merge_sample_overrides(base, {'2 % H2O': {'added_M': {'TMSOH': 1e-6}}, 'other': {'hold_h': 2.0}})
++    assert merged == {'2 % H2O': {'heated_episodes': [[1.0, 30.0, 8.0]], 'added_M': {'TMSOH': 1e-6}}, 'other': {'hold_h': 2.0}}
++    assert merge_sample_overrides(base, {'2 % H2O': {'heated_episodes': None}})['2 % H2O']['heated_episodes'] is None
++    assert base == {'2 % H2O': {'heated_episodes': [[1.0, 30.0, 8.0]]}}                 # the run's own are not changed
++    cooled = {'kind': 'lab', 'name': 'tube', 'blocks': [{'t_spec_s': np.array([0.0, 20 * hour, 40 * hour])}],
++              'heated': [(5 * hour, 323.15, 8 * hour), (30 * hour, 343.15, 8 * hour)]}
++    from kinetics.fitting.residuals import _cool_before_spectra
++    # 50 °C ends at 13 h, 7 h before the spectrum at 20 h: kept; 70 °C ends at 38 h, 2 h before 40 h: moved 1 h earlier
++    assert [(round(s / hour, 6), round(d / hour, 6)) for s, _, d in _cool_before_spectra(cooled, 3.0)] == [(5.0, 8.0), (29.0, 8.0)]
++
++
++def test_fit_config_network_and_samples():
++    from kinetics.data.network import get_active_network_variant
++    from kinetics.fitting.config import check_fit_setup
++    from kinetics.fitting.residuals import get_sample_overrides
++    steps = {'2 % H2O': {'heated_episodes': [[13.3, 30.0, 8.0]]}}
++    with tempfile.TemporaryDirectory() as folder:
++        assert load_fit_config(folder)['network'] == 'R1-R9' and load_fit_config(folder)['sensitivities'] is None
++        with open(os.path.join(folder, 'fit_config.json'), 'w', encoding='utf-8') as f:
++            json.dump({'network': 'R1-R9+N10-N15', 'sample_overrides': steps}, f)
++        try:
++            apply_fit_config(folder)
++            assert get_active_network_variant() == 'R1-R9+N10-N15' and get_sample_overrides() == steps
++            check_fit_setup({'network': 'R1-R9+N10-N15', 'sample_overrides': steps})
++            for stored in ({}, {'network': 'R1-R9+N10-N15', 'sample_overrides': {}}):
++                try:
++                    check_fit_setup(stored)          # a fit of fits 1-4, or one made without the steps
++                except ValueError:
++                    pass
++                else:
++                    raise AssertionError(f'{stored} must not run in this setup')
++        finally:
++            apply_fit_config(os.path.join(folder, 'nowhere'))    # back to the default setup
++        assert get_active_network_variant() == 'R1-R9' and get_sample_overrides() == {}
++        with open(os.path.join(folder, 'fit_config.json'), 'w', encoding='utf-8') as f:
++            json.dump({'network': 'R1-R99'}, f)
++        try:
++            load_fit_config(folder)
++        except ValueError:
++            pass
++        else:
++            raise AssertionError('an unknown network must be refused')
++
++
+ if __name__ == "__main__":
+     test_default_medium_is_the_old_database()
+     test_linear_ec_dec_mixture()
+     test_fit_config_round_trip()
+     test_pre_history_override_fixes_the_age()
++    test_network_variants()
++    test_heating_before_the_first_spectrum()
++    test_fit_config_network_and_samples()
+     print("All medium and fit-setup tests passed.")

@@ -1,0 +1,25 @@
+[15:50:40] --- stage steps (workers 16) ---
+[15:50:40] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/fit8_M1-steps_S4-at-age/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; network R1-R9+N10-N15; energy box ±3 standard errors; main structure M1; readings 10 min, 1 h, 8 h; paper observations none; samples changed for the run: 2 % H2O, TMSPa alone
+[15:50:40] step S1   10 min TMSOH, glovebox      chi2      0.00  max |z|   0.03  FITS  [condensation 1.184, solvent_attack 1.223]  (cached)
+[15:50:41] step S1.tube 10 min TMSOH, probe         chi2      0.68  max |z|   0.53  FITS  [condensation 1.129, solvent_attack 1.222]  (cached)
+[15:50:41] step S2   10 min TMSPa + TMSOH (A)    chi2      1.81  max |z|   0.98  FITS  [transfer 0.904]  (cached)
+[15:50:43] step S3   10 min TMSPa alone          chi2      6.73  max |z|   1.56  FITS  [hydrolysis 1.062]  (cached)
+[15:50:46] step S2b  10 min TMSPa + TMSOH (A)    chi2      1.81  max |z|   0.98  FITS  [transfer 0.904]  (cached)
+[15:50:50] step S4   10 min 0.5 % H2O            chi2     15.53  max |z|   3.88  fails  [hydrolysis 1.140]  (438 evaluations, 2 s)
+[15:50:54] step S5   10 min 2 % H2O              chi2   5314.33  max |z|  51.62  fails  [nothing free]  (1 evaluations, 0 s)
+[15:50:57] step S1   1 h    TMSOH, glovebox      chi2      0.00  max |z|   0.03  FITS  [condensation 1.184, solvent_attack 1.223]  (cached)
+[15:50:57] step S1.tube 1 h    TMSOH, probe         chi2      0.67  max |z|   0.53  FITS  [condensation 1.129, solvent_attack 1.222]  (cached)
+[15:50:58] step S2   1 h    TMSPa + TMSOH (A)    chi2      1.79  max |z|   0.97  FITS  [transfer 0.943]  (cached)
+[15:51:00] step S3   1 h    TMSPa alone          chi2      6.77  max |z|   1.56  FITS  [hydrolysis 1.102]  (cached)
+[15:51:02] step S2b  1 h    TMSPa + TMSOH (A)    chi2      1.79  max |z|   0.97  FITS  [transfer 0.943]  (cached)
+[15:51:06] step S4   1 h    0.5 % H2O            chi2     15.38  max |z|   3.81  fails  [hydrolysis 1.184]  (428 evaluations, 2 s)
+[15:51:10] step S5   1 h    2 % H2O              chi2   9371.99  max |z|  55.10  fails  [nothing free]  (1 evaluations, 0 s)
+[15:51:12] step S1   8 h    TMSOH, glovebox      chi2      0.00  max |z|   0.03  FITS  [condensation 1.184, solvent_attack 1.223]  (cached)
+[15:51:13] step S1.tube 8 h    TMSOH, probe         chi2      0.65  max |z|   0.52  FITS  [condensation 1.130, solvent_attack 1.222]  (cached)
+[15:51:13] step S2   8 h    TMSPa + TMSOH (A)    chi2      1.77  max |z|   0.96  FITS  [transfer 0.995]  (cached)
+[15:51:15] step S3   8 h    TMSPa alone          chi2     35.86  max |z|   4.40  fails  [hydrolysis 1.144]  (cached)
+[15:51:17] step S2b  8 h    TMSPa + TMSOH (A)    chi2      1.77  max |z|   0.96  FITS  [transfer 0.995]  (cached)
+[15:51:21] step S4   8 h    0.5 % H2O            chi2     15.23  max |z|   3.77  fails  [hydrolysis 1.236]  (418 evaluations, 2 s)
+[15:51:24] step S5   8 h    2 % H2O              chi2  19931.21  max |z|  99.20  fails  [nothing free]  (1 evaluations, 0 s)
+[15:51:26] predicted tubes, largest |z| per step and reading: S1 10 min 60.2; S1.tube 10 min 60.2; S2 10 min 119.1; S3 10 min 51.6; S2b 10 min 51.6; S4 10 min 103.1; S5 10 min 19.1; S1 1 h 60.2; S1.tube 1 h 60.2; S2 1 h 119.4; S3 1 h 55.1; S2b 1 h 55.1; S4 1 h 128.9; S5 1 h 21.9; S1 8 h 60.2; S1.tube 8 h 60.2; S2 8 h 121.1; S3 8 h 99.2; S2b 8 h 99.2; S4 8 h 136.0; S5 8 h 27.8
+[15:51:26] --- stage steps done in 0.8 min ---

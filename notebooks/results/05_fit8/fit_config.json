@@ -1,0 +1,448 @@
+{
+ "fit": "eighth fit",
+ "solvation": {
+  "snapshot": "tank_api_snapshot_2026-10-08.json",
+  "volume_fractions": {
+   "EC": 0.5,
+   "DEC": 0.5
+  },
+  "rule": "linear"
+ },
+ "network": "R1-R9+N10-N15",
+ "sample_overrides": {
+  "2 % H2O": {
+   "heated_episodes": [
+    [
+     13.3022,
+     30.0,
+     8.0
+    ],
+    [
+     21.3022,
+     40.0,
+     8.0
+    ],
+    [
+     62.9886,
+     50.0,
+     8.0
+    ],
+    [
+     86.9961,
+     60.0,
+     8.0
+    ],
+    [
+     109.8881,
+     70.0,
+     8.0
+    ],
+    [
+     135.9867,
+     80.0,
+     8.0
+    ]
+   ]
+  },
+  "TMSPa alone": {
+   "added_M": {
+    "H2O": 0.0656
+   },
+   "unknown_M": {}
+  }
+ },
+ "scenarios": [
+  "10 min",
+  "free"
+ ],
+ "free_age_bounds_h": [
+  0.16666666666666666,
+  168.0
+ ],
+ "paper_observations": [],
+ "energy_box_sigma": 3.0,
+ "structures": {
+  "main": "M5-first",
+  "extended": [
+   "M1",
+   "M5",
+   "M5-first",
+   "M1+BEP",
+   "M5+BEP",
+   "M5-first+BEP"
+  ]
+ },
+ "effort": {
+  "M1": [
+   4096,
+   32,
+   40
+  ],
+  "M5": [
+   8192,
+   32,
+   40
+  ],
+  "M5-first": [
+   8192,
+   32,
+   40
+  ]
+ },
+ "start_from": "/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit7",
+ "night": {
+  "structures": [
+   "M1",
+   "M1+BEP",
+   "M5",
+   "M5+BEP",
+   "M5-first",
+   "M5-first+BEP"
+  ],
+  "profiled": [
+   "M1",
+   "M1+BEP",
+   "M5",
+   "M5+BEP",
+   "M5-first",
+   "M5-first+BEP"
+  ],
+  "profile_fitting_only": false,
+  "refined": [
+   "10 min",
+   "free"
+  ],
+  "loo_fitting_only": true,
+  "loo_effort": [
+   1024,
+   8,
+   40
+  ],
+  "sensitivity_readings": [],
+  "indistinguishability": false,
+  "tolerance_check": {},
+  "trace_refits": true,
+  "recovery_required": false,
+  "recovery": false
+ },
+ "sensitivities": [
+  "floor x0",
+  "floor x2",
+  "covariance x0.5",
+  "covariance x2",
+  "heating as recorded",
+  "cooling 3 h",
+  "water free",
+  "Peter barriers",
+  "glovebox 4 h",
+  "glovebox 16 h"
+ ],
+ "recovery": {
+  "cases": {
+   "M1 10 min": {
+    "structure": "M1",
+    "scenario": "10 min",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis",
+     "g transfer",
+     "g condensation",
+     "g solvent_attack"
+    ],
+    "effort": [
+     4096,
+     32,
+     40
+    ]
+   },
+   "M1 free": {
+    "structure": "M1",
+    "scenario": "free",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis",
+     "g transfer",
+     "g condensation",
+     "g solvent_attack"
+    ],
+    "effort": [
+     4096,
+     32,
+     40
+    ]
+   },
+   "M1+BEP 10 min": {
+    "structure": "M1+BEP",
+    "scenario": "10 min",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis",
+     "g transfer",
+     "g condensation",
+     "g solvent_attack"
+    ],
+    "effort": [
+     4096,
+     32,
+     40
+    ]
+   },
+   "M1+BEP free": {
+    "structure": "M1+BEP",
+    "scenario": "free",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis",
+     "g transfer",
+     "g condensation",
+     "g solvent_attack"
+    ],
+    "effort": [
+     4096,
+     32,
+     40
+    ]
+   },
+   "M5 10 min": {
+    "structure": "M5",
+    "scenario": "10 min",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis",
+     "g transfer",
+     "g condensation",
+     "g solvent_attack",
+     "dG R1",
+     "dG R2",
+     "dG R3",
+     "dG R4",
+     "dG R8",
+     "dG R9"
+    ],
+    "effort": [
+     4096,
+     16,
+     40
+    ]
+   },
+   "M5 free": {
+    "structure": "M5",
+    "scenario": "free",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis",
+     "g transfer",
+     "g condensation",
+     "g solvent_attack",
+     "dG R1",
+     "dG R2",
+     "dG R3",
+     "dG R4",
+     "dG R8",
+     "dG R9"
+    ],
+    "effort": [
+     4096,
+     16,
+     40
+    ]
+   },
+   "M5+BEP 10 min": {
+    "structure": "M5+BEP",
+    "scenario": "10 min",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis",
+     "g transfer",
+     "g condensation",
+     "g solvent_attack",
+     "dG R1",
+     "dG R2",
+     "dG R3",
+     "dG R4",
+     "dG R8",
+     "dG R9"
+    ],
+    "effort": [
+     4096,
+     16,
+     40
+    ]
+   },
+   "M5+BEP free": {
+    "structure": "M5+BEP",
+    "scenario": "free",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis",
+     "g transfer",
+     "g condensation",
+     "g solvent_attack",
+     "dG R1",
+     "dG R2",
+     "dG R3",
+     "dG R4",
+     "dG R8",
+     "dG R9"
+    ],
+    "effort": [
+     4096,
+     16,
+     40
+    ]
+   },
+   "M5-first 10 min": {
+    "structure": "M5-first",
+    "scenario": "10 min",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis_R1",
+     "g hydrolysis_R23",
+     "g transfer_R5",
+     "g transfer_R67",
+     "g condensation",
+     "g solvent_attack",
+     "dG R1",
+     "dG R2",
+     "dG R3",
+     "dG R4",
+     "dG R8",
+     "dG R9"
+    ],
+    "effort": [
+     4096,
+     16,
+     40
+    ]
+   },
+   "M5-first free": {
+    "structure": "M5-first",
+    "scenario": "free",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis_R1",
+     "g hydrolysis_R23",
+     "g transfer_R5",
+     "g transfer_R67",
+     "g condensation",
+     "g solvent_attack",
+     "dG R1",
+     "dG R2",
+     "dG R3",
+     "dG R4",
+     "dG R8",
+     "dG R9"
+    ],
+    "effort": [
+     4096,
+     16,
+     40
+    ]
+   },
+   "M5-first+BEP 10 min": {
+    "structure": "M5-first+BEP",
+    "scenario": "10 min",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis_R1",
+     "g hydrolysis_R23",
+     "g transfer_R5",
+     "g transfer_R67",
+     "g condensation",
+     "g solvent_attack",
+     "dG R1",
+     "dG R2",
+     "dG R3",
+     "dG R4",
+     "dG R8",
+     "dG R9"
+    ],
+    "effort": [
+     4096,
+     16,
+     40
+    ]
+   },
+   "M5-first+BEP free": {
+    "structure": "M5-first+BEP",
+    "scenario": "free",
+    "truth": "fit",
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis_R1",
+     "g hydrolysis_R23",
+     "g transfer_R5",
+     "g transfer_R67",
+     "g condensation",
+     "g solvent_attack",
+     "dG R1",
+     "dG R2",
+     "dG R3",
+     "dG R4",
+     "dG R8",
+     "dG R9"
+    ],
+    "effort": [
+     4096,
+     16,
+     40
+    ]
+   }
+  }
+ },
+ "why": [
+  "2026-10-23, after the seventh fit (05_fit7, readings 0, 5 and 10 min): the user takes 10 min as the earliest the first acquisition can follow the addition of TMSPA ('t = 0 makes no sense'), and wants free ages below one week as the second reading. The seventh fit is a separate run and is not changed by this one",
+  "scenarios: '10 min' (every unknown age 10 min) and 'free' with free_age_bounds_h 10 min to 7 days: the age of the 2 % tube is a fit parameter, each unheated tube takes the age in the range that favours the model, the other heated tubes sit on the lower bound (10 min). In the first fit the 2 % tube sat on a 7 day upper bound in every free-age fit: watch the bound",
+  "structures, solvation, network, energy box and sample_overrides: as in the seventh fit (M1, M5, M5-first, each with Marcus and with P. Broqvist's '+BEP' rule)",
+  "effort: the full search in both readings (M1 4096 points and 32 starts, M5 and M5-first 8192 and 32; '+BEP' as its Marcus form), started also from the fits of the seventh fit (start_from; at free ages its fits without their ages)",
+  "night, only what tells whether a fit is reliable (the user: 'reduce unnecessary tests'): recovery of every structure in both readings (the fit as truth, 2 seeds) and profiles of every parameter, with extra points at the interval edges; leave-one-out only where a structure fits; no sensitivities, no indistinguishability, no tolerance check (passed in the seventh fit); traces (the trace rule of the selection) and predictions (data not fitted) as in the seventh fit",
+  "night 'recovery' false: run_chain.sh runs the recovery as its own stage, every case its own process, side by side with the profiles; the night and recovery stages called again at the end read every result back and write the tables"
+ ]
+}

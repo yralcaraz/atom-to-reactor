@@ -1,0 +1,119 @@
+{
+  "fit": "thermodynamic fit 1: the solvation energies of the species of R1-R4 from the spectra at equilibrium, one tube at a time",
+  "solvation": {
+    "snapshot": "tank_api_snapshot_2026-10-08.json",
+    "volume_fractions": {
+      "EC": 0.5,
+      "DEC": 0.5
+    },
+    "rule": "linear"
+  },
+  "network": "R1-R9+N10-N15",
+  "sample_overrides": {
+    "TMSPa alone": {
+      "added_M": {
+        "H2O": 0.0656
+      },
+      "unknown_M": {}
+    }
+  },
+  "thermo": {
+    "xi": [
+      1.0,
+      2.0,
+      3.0
+    ],
+    "free_species": [
+      "TMSPA",
+      "H2O",
+      "BMSPA",
+      "TMSOH",
+      "MMSPA",
+      "H3PO4",
+      "HMDSO",
+      "EC",
+      "TMSOEG",
+      "CO2",
+      "TMSOdiEG"
+    ],
+    "reactions": [
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "R6",
+      "R7",
+      "R8",
+      "R9",
+      "N10",
+      "N11",
+      "N12",
+      "N13",
+      "N14",
+      "N15"
+    ],
+    "nuclei": {
+      "fit": [
+        "31P",
+        "13C",
+        "1H",
+        "29Si"
+      ],
+      "check": []
+    },
+    "rule": {
+      "min_spectra": 2,
+      "min_span_h": 24.0,
+      "max_abs_z": 3.0,
+      "floor": false
+    },
+    "overrides": {
+      "0.5 % H2O": {
+        "WW-NG-S1 TMSPa+H2O in EC-DEC_31P-1-1.jdf": true
+      },
+      "TMSPa alone": {
+        "NG230525_5v%TMSPa in EC_DEC_Proton-1-2.jdf": true,
+        "NG230525_5v%TMSPa in EC_DEC_31P-1-2.jdf": true
+      },
+      "TMSPa + TMSOH (A)": {
+        "NG230525_5v% TMSPa+5v%TMSOH in EC_DEC_after 10d_Proton-1-1.jdf": true,
+        "230515_5v%TMSPa+2v%TMSOH in EC_DEC_31P-1-2.jdf": true,
+        "NG230525_5v%TMSPa+2v%TMSOH in EC_DEC_Carbon-1-2.jdf": true
+      },
+      "TMSPa + TMSOH (B)": {
+        "NG230529_5v%TMSPa in 2v%TMSOH EC_DEC_fresh_31P-1-1.jdf": true
+      },
+      "TMSOH, probe": {
+        "WW-NG 5%TMSOH EC-DEC after heating 80oC_29Si-1-1.jdf": true
+      },
+      "TMSOH, glovebox": {
+        "WW-NG 5v% TMSOH in EC-DEC stirred at 80oC in glovebox w DMSO-d6 insert_Carbon-1-1.jdf": true,
+        "WW-NG 5v% TMSOH in EC-DEC stirred at 80oC in glovebox w DMSO-d6 insert_29Si-1-1.jdf": true
+      }
+    },
+    "effort": [
+      256,
+      8,
+      40
+    ],
+    "profile_nfev": 20,
+    "steps": "cumulative",
+    "order": [
+      "TMSOH, probe",
+      "TMSOH, glovebox",
+      "TMSPa + TMSOH (A)",
+      "TMSPa + TMSOH (B)",
+      "TMSPa alone",
+      "0.5 % H2O",
+      "2 % H2O"
+    ]
+  },
+  "why": [
+    "notebook 06 §1 and §5: the solvation energy E_solv,i of each species of R1-R4 free within ±ξ·SD_i (SD_i: standard error of its MD run), no other constraint; χ² of the shares of the spectra at equilibrium, error model of the kinetic fit. ξ = 1, 2 and 3 fitted, as the readings of M1",
+    "medium, network and the water of 'TMSPa alone' (65.6 mM) as in fit8_M1-steps_S1-tube, the run notebook 06 §2 reads; the heating of '2 % H2O' does not enter (no time in this fit)",
+    "spectra: every usable spectrum of every tube (notebook 05 rev08 §2, kinetics.data.lab_spectra); at equilibrium by the rule of kinetics.fitting.thermo_fit (room temperature, quantitative, a plateau of at least two spectra a day apart, |z| ≤ 3 without the floor). Result of the points stage on 29 Oct: '2 % H2O' (6 rounds of 31P, 13C and 1H; 29Si from 96.6 h) and 'TMSOH, probe' (13C before and after heating); no other tube",
+    "nuclei: 31P and 13C fitted (the readings of the kinetic fit); 1H and 29Si scored after every step, not fitted (29Si read by height, 1H with TMSOH and HMDSO in one window)",
+    "steps, as M1 one tube at a time: T1 'TMSOH, probe' (only R4 runs: TMSOH, HMDSO, H2O free); T2 '2 % H2O' (the phosphates free, the species of R4 from T1); T3 both tubes, every species free, from T2"
+  ]
+}

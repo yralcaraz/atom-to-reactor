@@ -1,0 +1,683 @@
+diff --git a/kinetics/fitting/candidates.py b/kinetics/fitting/candidates.py
+index 4a9fc65..d22e593 100644
+--- a/kinetics/fitting/candidates.py
++++ b/kinetics/fitting/candidates.py
+@@ -17,9 +17,11 @@ It turns a parameter vector into a self-contained ModelSpec (own network, own sp
+     M3-split    M1-split with the same freed energies
+     M3-first    M3 with the first step of TMSPA (no P–OH yet) apart in every family: R1 (with N15) in
+                 hydrolysis and R5 in transfer; R2–R3 and R6–R7 share one class each (sixth fit)
+-    M5-first    the same barriers, with the reaction energies of every independent reaction free: R1–R4, R8 and
+-                R9 (sixth fit)
++    M5          M1 with the reaction energies of every independent reaction free: R1–R4, R8 and R9 (seventh fit)
++    M5-first    the same barriers as M3-first, with the reaction energies of every independent reaction free:
++                R1–R4, R8 and R9 (sixth fit)
+     '+W'        any of them with a common available fraction of the added water (M4 of notebook 03)
++    '+BEP'      any of them with P. Broqvist's barrier rule instead of Marcus (seventh fit, see with_peter_bep)
+ 
+ Two kinds of parameter come from the sample set and not from the structure: the age of the sample heated after
+ its first spectrum (free scenario), and the amount at mixing of a species a recipe does not fix ('c0 H2O TMSPa
+@@ -39,6 +41,11 @@ and is not fitted. Their ΔG come from the species energies, freed shifts includ
+ Sixth fit: the box of a freed energy can be set for a whole run to ±k standard errors of its computed value
+ (set_energy_box_sigma, fit_config.json 'energy_box_sigma'); the Gaussian constraint stays inside it.
+ 
++Seventh fit: P. Broqvist's rule, ΔG‡ = E₀ for a downhill step and E₀ + |ΔG_rxn| for an uphill one, is the capped
++BEP of `reference_bep` with α = 1 in place of 0.5. With α = 1 it no longer depends on the direction a step is
++written (the reverse barrier is E₀ when the forward one is E₀ + ΔG_rxn), so M0-BEP (α = 0.5) is not its special
++case. Any structure takes it through the suffix '+BEP'.
++
+ The search box of each barrier is DECLARED: it is narrower than the 0.60–1.70 eV scanned in notebook 03 where
+ no observation allows the excluded part and the solver crawls there (solvent attack below 1.10 eV).
+ 
+@@ -79,6 +86,8 @@ FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'transfer', 'tr
+ # (N10, N11, N13, N14). DECLARED: the value P. Broqvist gives every step he has no data for (class "other" of his
+ # tmspa_reaction_network_model notebook); at room temperature it takes about a year in our tubes
+ FIXED_BARRIERS_EV = {'exchange': 1.15}
++PETER_BEP_SUFFIX = '+BEP'                # structure name suffix of P. Broqvist's barrier rule (with_peter_bep)
++PETER_BEP_ALPHA = 1.0                    # his slope: an uphill step costs E₀ plus all of its ΔG_rxn
+ 
+ 
+ @dataclass(frozen=True)
+@@ -100,7 +109,8 @@ class FitStructure:
+     split: dict = field(default_factory=dict)    # {new class: reactions} taken out of their family
+     freed: tuple = ()                            # reactions whose ΔG_rxn is free
+     water: bool = False                          # a common available fraction of the added water
+-    shape: str = None                            # barrier shape that replaces the base model's (smooth models only)
++    shape: str = None                            # barrier shape that replaces the base model's
++    shape_params: dict = field(default_factory=dict)   # parameters of that shape ('+BEP': {'alpha': 1.0})
+     parent: str = None                           # the structure this one extends (nesting)
+ 
+     # --- parameters -------------------------------------------------------------------------------
+@@ -164,6 +174,7 @@ class FitStructure:
+         if self.shape is not None:
+             for entry in params.values():
+                 entry['shape'] = self.shape
++                entry.update(self.shape_params)
+         if self.shared_barrier:
+             for entry in params.values():
+                 entry.pop('E0_eV', None)
+@@ -183,6 +194,7 @@ class FitStructure:
+             entry['g_eV'] = FIXED_BARRIERS_EV[c]
+             if self.shape is not None:
+                 entry['shape'] = self.shape
++                entry.update(self.shape_params)
+         shifts, prior, prior_rows = {}, np.zeros(0), []
+         if self.freed:
+             d = np.array([float(theta[f'dG {r}']) for r in self.freed])
+@@ -213,6 +225,15 @@ class FitStructure:
+         """The same structure with another smooth barrier shape (e.g. 'agmon_levine')."""
+         return replace(self, name=f'{self.name} ({shape})', label=f'{self.label}; barrier shape {shape}', shape=shape)
+ 
++    def with_peter_bep(self) -> 'FitStructure':
++        """The same structure with P. Broqvist's barrier rule in every class, the declared exchange steps included:
++        capped BEP with α = 1, ΔG‡ = max(E₀, E₀ + ΔG_rxn). Its barriers are fitted as E₀ under the same names
++        ('g <class>'). It extends the '+BEP' version of this structure's parent."""
++        return replace(self, name=f'{self.name}{PETER_BEP_SUFFIX}',
++                       label=f"{self.label}; P. Broqvist's barrier rule instead of Marcus (capped BEP, α = 1)",
++                       shape='bep_cap', shape_params={'alpha': PETER_BEP_ALPHA},
++                       parent=f'{self.parent}{PETER_BEP_SUFFIX}' if self.parent else None)
++
+ 
+ _ENERGY_TOOLS = {}
+ _ENERGY_BOX_SIGMA = [None]
+@@ -322,6 +343,9 @@ FIT_STRUCTURES = {
+     'M3-first': replace(_M1, name='M3-first', split=SPLIT_FIRST_STEP, freed=FREED_REACTIONS, parent='M3-split',
+                        label='first step of TMSPA apart in hydrolysis (R1) and transfer (R5); ΔG_rxn of R1–R4 free '
+                              'within their covariance'),
++    'M5': replace(_M1, name='M5', freed=FREED_INDEPENDENT, parent='M1',
++                  label='one Marcus barrier per family; ΔG_rxn of every independent reaction (R1–R4, R8, R9) free '
++                        'within their covariance'),
+     'M5-first': replace(_M1, name='M5-first', split=SPLIT_FIRST_STEP, freed=FREED_INDEPENDENT, parent='M3-first',
+                           label='first step of TMSPA apart in hydrolysis (R1) and transfer (R5); ΔG_rxn of every '
+                                 'independent reaction (R1–R4, R8, R9) free within their covariance'),
+@@ -355,9 +379,12 @@ def embed_parent_theta(structure, parent_theta: dict) -> dict:
+ 
+ 
+ def get_structure(structure) -> FitStructure:
+-    """FitStructure from a registry name; 'NAME+W' adds the available-water fraction; a FitStructure passes through."""
++    """FitStructure from a registry name; 'NAME+W' adds the available-water fraction, 'NAME+BEP' P. Broqvist's
++    barrier rule; a FitStructure passes through."""
+     if isinstance(structure, FitStructure):
+         return structure
++    if structure.endswith(PETER_BEP_SUFFIX):
++        return get_structure(structure[:-len(PETER_BEP_SUFFIX)]).with_peter_bep()
+     if structure.endswith('+W'):
+         return get_structure(structure[:-2]).with_water()
+     try:
+diff --git a/kinetics/fitting/config.py b/kinetics/fitting/config.py
+index 72471e1..ed1bc7c 100644
+--- a/kinetics/fitting/config.py
++++ b/kinetics/fitting/config.py
+@@ -11,6 +11,7 @@ themselves; see scripts/run_fit.recovery_cases). Sixth fit: the box of the freed
+ ('energy_box_sigma', kinetics.fitting.candidates), and for scripts/run_fit.py the structures of the run
+ ('structures': main and extended), their search ('effort'), the fits whose parameters start the search
+ ('start_from': an earlier results directory) and the parts of the night and traces stages that run ('night').
++Seventh fit: the readings of near-zero ages ('0 min', '5 min', '10 min'), which only a run that lists them uses.
+ A results directory without the file is a run of the default setup, that of the first three fits: neat EC from
+ the 2026-09-24 snapshot, R1–R9, the four readings and E1.
+ 
+@@ -31,11 +32,13 @@ from kinetics.data.network import (
+     DEFAULT_NETWORK_VARIANT, NETWORK_VARIANTS, get_active_network_variant, set_active_network_variant,
+ )
+ from kinetics.fitting.candidates import set_energy_box_sigma
+-from kinetics.fitting.residuals import PAPER_OBSERVATIONS, SCENARIOS, get_sample_overrides, set_sample_overrides
++from kinetics.fitting.residuals import (
++    DEFAULT_SCENARIOS, PAPER_OBSERVATIONS, SCENARIOS, get_sample_overrides, set_sample_overrides,
++)
+ 
+ FIT_CONFIG_FILE = 'fit_config.json'
+ DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'network': DEFAULT_NETWORK_VARIANT, 'sample_overrides': {},
+-                      'scenarios': list(SCENARIOS), 'paper_observations': list(PAPER_OBSERVATIONS),
++                      'scenarios': list(DEFAULT_SCENARIOS), 'paper_observations': list(PAPER_OBSERVATIONS),
+                       'sensitivities': None, 'recovery': {}, 'energy_box_sigma': None, 'structures': None,
+                       'effort': {}, 'start_from': None, 'night': {}}
+ 
+diff --git a/kinetics/fitting/residuals.py b/kinetics/fitting/residuals.py
+index 8d1e6da..63c31f2 100644
+--- a/kinetics/fitting/residuals.py
++++ b/kinetics/fitting/residuals.py
+@@ -9,6 +9,9 @@ recorded, so every result is computed under a scenario:
+     'short', 'middle', 'long'   every unknown age is 1 h, 1 day or 7 days
+     'free'                      each unknown age lies between 1 h and 30 days and takes the value that favours
+                                 the model (the reading notebook 03 uses when an observation picks its best time)
++    '0 min', '5 min', '10 min'  every unknown age is 0, 5 or 10 minutes: TMSPA added just before the first
++                                acquisition (seventh fit; '0 min' is P. Broqvist's t = 0 at the first NMR). Only
++                                the runs that list them in fit_config.json use them (DEFAULT_SCENARIOS)
+ 
+ A recipe can hold a species whose amount at mixing is not known (the water of the tube mixed without water):
+ the sample lists it under 'unknown_M' with its range, a fit takes it as a parameter, and every function that
+@@ -46,11 +49,13 @@ from kinetics.data.experimental import load_experimental_data
+ from kinetics.data.observables import DEFAULT_ERROR_FLOOR, RT_MAX_C, calculate_replicate_scatter, list_spectrum_sets
+ from kinetics.reactor.protocol import simulate_history
+ 
+-SCENARIO_AGES_H = {'short': 1.0, 'middle': 24.0, 'long': 168.0}
++SCENARIO_AGES_H = {'short': 1.0, 'middle': 24.0, 'long': 168.0, '0 min': 0.0, '5 min': 5.0 / 60.0, '10 min': 10.0 / 60.0}
+ # Range of an unknown age in the free scenario: 1 h to 30 days. DECLARED. The upper limit was 7 days in the
+ # first fit, where the 2 % water sample sat on it in every free-age fit
+ FREE_AGE_BOUNDS_H = (1.0, 720.0)
+-SCENARIOS = ('short', 'middle', 'long', 'free')
++SCENARIOS = ('short', 'middle', 'long', 'free', '0 min', '5 min', '10 min')
++# The readings of a run without fit_config.json (first three fits); the near-zero ages are opt-in (seventh fit)
++DEFAULT_SCENARIOS = ('short', 'middle', 'long', 'free')
+ # In the free scenario: samples whose age is found inside each evaluation (one spectrum set, no heating), the
+ # sample whose age is a fit parameter (heated after its first spectrum), and the rest (age at the lower bound)
+ FREE_AGE_PARAMETER_SAMPLE = '2 % H2O'
+diff --git a/scripts/run_fit.py b/scripts/run_fit.py
+index 2144d61..6b565bb 100644
+--- a/scripts/run_fit.py
++++ b/scripts/run_fit.py
+@@ -58,6 +58,16 @@ for the two new structures, a reduced one elsewhere, started also from the fifth
+ indistinguishability, no tolerance check, no refits with a trace) and two recovery cases of the main structure
+ (1 day and free ages).
+ 
++Seventh fit (notebooks/results/05_fit7/fit_config.json; MET 2026-10-22, simple M1 fit at near-zero ages): the
++ages taken as 0, 5 and 10 minutes (readings '0 min', '5 min', '10 min'); the chain M1 ⊂ M5 ⊂ M5-first (M5: the
++barriers of M1, the energies of M5-first), each with Marcus and with P. Broqvist's barrier rule (suffix '+BEP':
++capped BEP with α = 1); everything else as in the sixth fit. The night, traces and predictions stages analyse
++every structure the setup lists ('night': 'structures'; before, the main structure only), in the readings it
++allows, also where a structure fails; a recovery case can take the run's own fit as its truth ('truth': 'fit').
++`--structures` limits one call of extended, recovery, night, traces and predictions to some structures of the
++setup, so that M1 is fitted and analysed before the larger structures start; the stages called again without it
++read those results back.
++
+ Source: Y. Alcaraz Galván
+ """
+ 
+@@ -92,7 +102,7 @@ from kinetics.fitting import (
+     calculate_prediction_band, refine_profile_edges, simulate_synthetic_shares, summarize_residuals,
+     tabulate_reaction_barriers, tabulate_residuals, write_fit_result,
+ )
+-from kinetics.fitting.candidates import get_energy_box_sigma
++from kinetics.fitting.candidates import PETER_BEP_SUFFIX, get_energy_box_sigma
+ from kinetics.fitting.estimation import RECIPE_FACTORS
+ from kinetics.fitting.residuals import PAPER_OBSERVATIONS, get_sample_overrides
+ from kinetics.thermo.reaction import calculate_network_thermo
+@@ -109,7 +119,8 @@ PAPER = PAPER_OBSERVATIONS               # paper observations added to every sam
+ # M0, M1 and M1-split did not fit in the first run (chi2 above 280) and get a light search; the first run missed
+ # the minimum of the freed-energy structures twice, so M3 and M3-split get four times the screen and twice the starts
+ EFFORT = {'M0-BEP': (32, 2, 20), 'M0-Marcus': (32, 2, 20), 'M1': (128, 4, 30), 'M1-split': (128, 4, 30),
+-          'M3': (8192, 32, 40), 'M3-split': (8192, 32, 40), 'M3-first': (8192, 32, 40), 'M5-first': (8192, 32, 40)}
++          'M3': (8192, 32, 40), 'M3-split': (8192, 32, 40), 'M3-first': (8192, 32, 40), 'M5': (8192, 32, 40),
++          'M5-first': (8192, 32, 40)}
+ # Check fits of the main structure on changed data (trace of TMSOH, full search of a sensitivity variant): they
+ # start from the main fit, so they keep the search of the first run
+ CHECK_EFFORT = (2048, 16, 40)
+@@ -216,13 +227,20 @@ def recovery_cases() -> dict:
+     """RECOVERY_TRUTHS with the run's changes: 'cases' {case: {structure, scenario, truth, seeds, profiled, effort}}
+     replaces the cases of RECOVERY_TRUTHS (sixth fit), 'truths' {case: {name: value}} replaces the truth of a case,
+     and 'effort': 'fits' gives every case at least the search of the fits of its structure (EFFORT), so the check
+-    tests the search the fits actually ran with."""
++    tests the search the fits actually ran with. A truth 'fit' (seventh fit) is the run's own fit of that structure
++    and reading, as it was the first time the case ran (kept in recovery/<case>_truth.json, so a fit replaced later
++    by a profile minimum does not change it). With --structures, only the cases of those structures."""
+     base = RECOVERY_TRUTHS
+     if RECOVERY.get('cases'):
+         base = {label: (c['structure'], c['scenario'], c['truth'], tuple(c['seeds']), list(c['profiled']),
+                         tuple(c['effort'])) for label, c in RECOVERY['cases'].items()}
++    if ONLY:
++        base = {label: case for label, case in base.items() if case[0] in ONLY}
+     cases = {}
+     for label, (structure, scenario, truth, seeds, profiled, effort) in base.items():
++        if truth == 'fit':
++            truth = cached(RESULTS / 'recovery' / f'{label}_truth.json',
++                           lambda: load_fit_result(str(fit_path(structure, scenario)))['theta'])
+         truth = {**truth, **RECOVERY.get('truths', {}).get(label, {})}
+         if RECOVERY.get('effort') == 'fits':
+             effort = tuple(max(a, b) for a, b in zip(effort, EFFORT[structure]))
+@@ -285,14 +303,22 @@ def stage_recovery(args) -> None:
+ # ------------------------------------------------------------------------------
+ FIRST_PASS_SOLVER = {'method': 'BDF', 'rtol': 1e-6, 'atol': 1e-10, 'max_rhs_calls': 30000}   # search tolerance of the first pass
+ PARENTS = {'M1': ('M0-Marcus',), 'M1-split': ('M1',), 'M3': ('M1',), 'M3-split': ('M1-split', 'M3'),
+-           'M3-first': ('M3-split',), 'M5-first': ('M3-first',)}
+-SCENARIO_ORDER = ('middle', 'short', 'long', 'free')
+-SIZE_ORDER = ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split', 'M3-first', 'M5-first')
++           'M3-first': ('M3-split',), 'M5': ('M1',), 'M5-first': ('M3-first', 'M5')}
++# P. Broqvist's rule (seventh fit): a '+BEP' structure extends the '+BEP' versions of the parents of its Marcus form
++PARENTS.update({f'{child}{PETER_BEP_SUFFIX}': tuple(f'{p}{PETER_BEP_SUFFIX}' for p in parents)
++                for child, parents in list(PARENTS.items())})
++# The near-zero ages first: the fits at 5 and 10 min start from those at 0 min (seventh fit)
++SCENARIO_ORDER = ('0 min', '5 min', '10 min', 'middle', 'short', 'long', 'free')
++SIZE_ORDER = ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split', 'M3-first', 'M5', 'M5-first')   # + the run's own (main)
+ MAIN_STRUCTURE = 'M3-split'          # the largest structure: every other one is a special case of it; set in main
+ EXTENDED_STRUCTURES = ('M1-split', 'M3', 'M3-split')     # the structures of the extended stage; set in main
+ READINGS = {}                        # {structure: readings} of the extended stage when not all (sixth fit); set in main
+ START_FROM = None                    # an earlier results directory whose fits also start the search; set in main
+ NIGHT = {}                           # the parts of the night and traces stages that run (fit_config.json 'night')
++# The structures the night, traces and predictions stages analyse (fit_config.json 'night': 'structures'; default
++# the main structure), and those one call is limited to (--structures; None: every structure of the setup)
++ANALYSED = ()
++ONLY = None
+ 
+ 
+ def base_name(structure: str) -> str:
+@@ -397,10 +423,12 @@ def earlier_run_starts(structure: str, scenario: str) -> list:
+ 
+ 
+ def run_structure(structure: str, scenario: str, args, extra_starts=()) -> dict:
+-    """Fit of a registered structure, started also from its parents in this scenario, from its own other scenarios
+-    and from the fits of an earlier run (START_FROM)."""
++    """Fit of a registered structure, started also from its parents in this scenario, from its own other scenarios,
++    from the fits of an earlier run (START_FROM) and, with P. Broqvist's rule, from its Marcus form (same parameter
++    names, so only a starting point)."""
+     starts = list(extra_starts) + earlier_run_starts(structure, scenario)
+-    for parent in PARENTS.get(structure, ()):
++    marcus = structure[:-len(PETER_BEP_SUFFIX)] if structure.endswith(PETER_BEP_SUFFIX) else None
++    for parent in PARENTS.get(structure, ()) + ((marcus,) if marcus else ()):
+         if fit_path(parent, scenario).exists():
+             parent_fit = load_fit_result(str(fit_path(parent, scenario)))
+             starts.append(embed_parent_theta(structure, parent_fit['theta']))
+@@ -426,7 +454,7 @@ def select_consistent(fits: dict, verdicts: dict = None):
+     free ages; failing that, the smallest that fits a common-age scenario. A fit that the trace rule rejects
+     (verdicts: {(structure, scenario): passes}) is not eligible; one without a verdict is."""
+     rejected = {key for key, passes in (verdicts or {}).items() if not passes}
+-    for kind, scenarios in (('free ages', ('free',)), ('common age', ('short', 'middle', 'long'))):
++    for kind, scenarios in (('free ages', ('free',)), ('common age', ('short', 'middle', 'long', '0 min', '5 min', '10 min'))):
+         for structure in SIZE_ORDER:
+             fitting = [sc for sc in scenarios if (structure, sc) in fits and fits[(structure, sc)]['fits']
+                        and (structure, sc) not in rejected]
+@@ -722,8 +750,10 @@ def run_leave_one_out(structure: str, scenario: str, args) -> dict:
+     def compute():
+         fit = load_fit_result(str(fit_path(structure, scenario)))
+         sets = {name: sample_set(scenario, exclude=(name,)) for name in FITTED_SAMPLES}
+-        results = fit_leave_one_out(structure, sets, fit, n_screen=max(int(128 * args.scale), 0), n_starts=2, max_nfev=30,
+-                                    seed=args.seed, workers=args.workers)
++        # search of each refit: (screen points, starts, iterations); the setup can raise it ('night': 'loo_effort')
++        n_screen, n_starts, max_nfev = NIGHT.get('loo_effort', (128, 2, 30))
++        results = fit_leave_one_out(structure, sets, fit, n_screen=max(int(n_screen * args.scale), 0), n_starts=n_starts,
++                                    max_nfev=max_nfev, seed=args.seed, workers=args.workers)
+         rows = []
+         for name, r in results.items():
+             barriers = tabulate_reaction_barriers(get_structure(structure), {**fit['theta'], **r['theta']})
+@@ -792,11 +822,13 @@ def network_variant(variant: str = None):
+ 
+ def run_sensitivities(structure: str, scenario: str, args) -> pd.DataFrame:
+     main = load_fit_result(str(fit_path(structure, scenario)))
+-    rows = [{'variant': 'as fitted', 'scenario': scenario, 'search': 'full', 'chi2': main['chi2'], 'max |z|': main['max_abs_z'],
+-             'worst': main['worst'], 'fits': main['fits'], **main['theta'],
++    rows = [{'structure': structure, 'variant': 'as fitted', 'scenario': scenario, 'search': 'full', 'chi2': main['chi2'],
++             'max |z|': main['max_abs_z'], 'worst': main['worst'], 'fits': main['fits'], **main['theta'],
+              **{f'dG‡ {rxn}': b['dG_barrier_eV'] for rxn, b in main['barriers'].items()}}]
+     for variant in SENSITIVITY_NAMES:
+         options, prior_scale = SENSITIVITIES[variant]
++        if prior_scale != 1.0 and not get_structure(structure).freed:
++            continue                                         # no freed energy: the covariance changes nothing
+         options = dict(options)
+         network = options.pop('network', None)
+         tag = f'__{variant}'.replace(' ', '_')
+@@ -809,7 +841,7 @@ def run_sensitivities(structure: str, scenario: str, args) -> pd.DataFrame:
+                 full = run_one(structure, scenario, args, tag=tag + '__full_search', starts=[main['theta'], fit['theta']],
+                                sample_options=options, prior_scale=prior_scale, effort=CHECK_EFFORT)
+                 fit, search = (full, 'full') if full['chi2'] < fit['chi2'] else (fit, 'full, no better')
+-        rows.append({'variant': variant, 'scenario': scenario, 'search': search, 'chi2': fit['chi2'],
++        rows.append({'structure': structure, 'variant': variant, 'scenario': scenario, 'search': search, 'chi2': fit['chi2'],
+                      'max |z|': fit['max_abs_z'], 'worst': fit['worst'], 'fits': fit['fits'], **fit['theta'],
+                      **{f'dG‡ {rxn}': b['dG_barrier_eV'] for rxn, b in fit['barriers'].items()}})
+     return pd.DataFrame(rows)
+@@ -872,33 +904,49 @@ def run_water_profile(scenario: str, args) -> dict:
+ 
+ 
+ def stage_night(args) -> None:
++    """Every part acts on the analysed structures (ANALYSED: the main structure unless the setup lists others,
++    seventh fit) in the readings the setup allows. Keys of 'night' in fit_config.json, with their defaults (the
++    behaviour of fits 1-6): 'profiled' ([main, 'M1']), 'profile_fitting_only' (False), 'refined' (['middle',
++    'free']: readings whose profiles get extra points at the interval edges), 'loo_fitting_only' (True), 'loo_effort'
++    ([128, 2, 30]), 'sensitivity_readings' (['middle', 'free']), 'indistinguishability' (True), 'tolerance_check'
++    (True: the main structure at 1 day; or {structure: [reading, [two parameters]]}), 'recovery_required' (True: a
++    failed recovery stops the night)."""
+     # 0. The recovery check once more, with the code as it now stands (the first run is kept in recovery_first_run/)
+     if not stage_recovery(args):
+-        raise SystemExit('the synthetic recovery failed: the night run stops here')
++        if NIGHT.get('recovery_required', True):
++            raise SystemExit('the synthetic recovery failed: the night run stops here')
++        log('the synthetic recovery failed; the night goes on (setup: recovery_required false)')
+     fits = load_main_fits()
+     selected = select_consistent(fits, load_trace_verdicts(fits))
++    refined = NIGHT.get('refined', ['middle', 'free'])
+     # The structures profiled, each in every reading or ({structure: [readings]}, sixth fit) in the listed ones
+     profiled = NIGHT.get('profiled', [MAIN_STRUCTURE, 'M1'])
+     profiled = dict(profiled) if isinstance(profiled, dict) else {name: list(SCENARIO_ORDER) for name in profiled}
+     if selected and selected[0] not in profiled:
+         profiled[selected[0]] = list(SCENARIO_ORDER)
+-    log(f'night: profiles of {profiled}; leave-one-out, sensitivities and indistinguishability on {MAIN_STRUCTURE}')
++    if ONLY:
++        profiled = {name: readings for name, readings in profiled.items() if name in ONLY}
++    log(f"night: profiles of {profiled}; leave-one-out and sensitivities on {', '.join(ANALYSED)}")
+     # 1. Profiles of the main structure, then of the baseline structure (sixth fit: only where the structure fits)
+     walked = [(structure, scenario) for structure, readings in profiled.items() for scenario in SCENARIO_ORDER
+-              if scenario in readings and (not NIGHT.get('profile_fitting_only') or fits[(structure, scenario)]['fits'])]
++              if scenario in readings and (structure, scenario) in fits
++              and (not NIGHT.get('profile_fitting_only') or fits[(structure, scenario)]['fits'])]
+     for structure, scenario in walked:
+-        run_profiles(structure, scenario, args, refine=scenario in ('middle', 'free'))
+-    replaced = [adopt_profile_minimum(structure, scenario, args, refine=scenario in ('middle', 'free'))
++        run_profiles(structure, scenario, args, refine=scenario in refined)
++    replaced = [adopt_profile_minimum(structure, scenario, args, refine=scenario in refined)
+                 for structure, scenario in walked]
+     if any(replaced):
+         summarize_fits()
+         fits = load_main_fits()
+-    # 2. Which sample drives what, in the scenarios the structure fits
+-    for scenario in SCENARIO_ORDER:
+-        if fits[(MAIN_STRUCTURE, scenario)]['fits']:
+-            run_leave_one_out(MAIN_STRUCTURE, scenario, args)
+-        else:
+-            log(f'leave-one-out {MAIN_STRUCTURE} {scenario}: skipped, the structure does not fit this scenario')
++    # 2. Which sample drives what, in the scenarios the structure fits (seventh fit: in every reading)
++    for structure in ANALYSED:
++        for scenario in SCENARIO_ORDER:
++            if (structure, scenario) not in fits:
++                continue
++            if fits[(structure, scenario)]['fits'] or not NIGHT.get('loo_fitting_only', True):
++                run_leave_one_out(structure, scenario, args)
++            else:
++                log(f'leave-one-out {structure} {scenario}: skipped, the structure does not fit this scenario')
+     # 3. Structures the data cannot tell apart
+     if NIGHT.get('indistinguishability', True):
+         rows = []
+@@ -907,25 +955,35 @@ def stage_night(args) -> None:
+             run_water_profile(scenario, args)
+         pd.DataFrame(rows).to_csv(RESULTS / 'indistinguishability.csv', index=False)
+     # 4. Sensitivity to the declared error floor, the covariance and the times the files do not fix
+-    pd.concat([run_sensitivities(MAIN_STRUCTURE, scenario, args) for scenario in ('middle', 'free')
+-               if not NIGHT.get('profile_fitting_only') or fits[(MAIN_STRUCTURE, scenario)]['fits']],
+-              ignore_index=True).to_csv(RESULTS / 'sensitivities.csv', index=False)
+-    if not NIGHT.get('tolerance_check', True):
+-        summarize_night()
+-        return
++    readings = NIGHT.get('sensitivity_readings', ['middle', 'free'])
++    tables = [run_sensitivities(structure, scenario, args) for structure in ANALYSED for scenario in SCENARIO_ORDER
++              if scenario in readings and (structure, scenario) in fits
++              and (not NIGHT.get('profile_fitting_only') or fits[(structure, scenario)]['fits'])]
++    if tables:
++        pd.concat(tables, ignore_index=True).to_csv(RESULTS / 'sensitivities.csv', index=False)
+     # 5. Solver tolerance: two profiles repeated at rtol 1e-8
+-    names = ['g solvent_attack', 'g hydrolysis_R23']
+-    loose = run_profiles(MAIN_STRUCTURE, 'middle', args, refine=True)['intervals'].set_index('parameter')
+-    tight = run_profiles(MAIN_STRUCTURE, 'middle', args, refine=True, names=names, tag='__rtol1e-8',
+-                         solver=REPORT_SOLVER)['intervals'].set_index('parameter')
+-    check = pd.DataFrame({'low, rtol 1e-6': loose.loc[names, 'low'], 'low, rtol 1e-8': tight.loc[names, 'low'],
+-                          'high, rtol 1e-6': loose.loc[names, 'high'], 'high, rtol 1e-8': tight.loc[names, 'high'],
+-                          'status, rtol 1e-6': loose.loc[names, 'status'], 'status, rtol 1e-8': tight.loc[names, 'status']})
+-    check.to_csv(RESULTS / 'tolerance_check.csv')
+-    worst = np.nanmax(np.abs(np.concatenate([check['low, rtol 1e-6'] - check['low, rtol 1e-8'],
+-                                             check['high, rtol 1e-6'] - check['high, rtol 1e-8'], [0.0]])))
+-    same = bool((check['status, rtol 1e-6'] == check['status, rtol 1e-8']).all())
+-    log(f"tolerance check: interval edges move by at most {worst:.4f} eV from rtol 1e-6 to 1e-8; same status: {same}")
++    checks = NIGHT.get('tolerance_check', True)
++    if checks is True:
++        checks = {MAIN_STRUCTURE: ['middle', ['g solvent_attack', 'g hydrolysis_R23']]}
++    rows = []
++    for structure, (scenario, names) in (checks or {}).items():
++        if structure not in ANALYSED or (structure, scenario) not in fits:
++            continue
++        loose = run_profiles(structure, scenario, args, refine=True)['intervals'].set_index('parameter')
++        tight = run_profiles(structure, scenario, args, refine=True, names=names, tag='__rtol1e-8',
++                             solver=REPORT_SOLVER)['intervals'].set_index('parameter')
++        check = pd.DataFrame({'structure': structure, 'scenario': scenario,
++                              'low, rtol 1e-6': loose.loc[names, 'low'], 'low, rtol 1e-8': tight.loc[names, 'low'],
++                              'high, rtol 1e-6': loose.loc[names, 'high'], 'high, rtol 1e-8': tight.loc[names, 'high'],
++                              'status, rtol 1e-6': loose.loc[names, 'status'], 'status, rtol 1e-8': tight.loc[names, 'status']})
++        worst = np.nanmax(np.abs(np.concatenate([check['low, rtol 1e-6'] - check['low, rtol 1e-8'],
++                                                 check['high, rtol 1e-6'] - check['high, rtol 1e-8'], [0.0]])))
++        same = bool((check['status, rtol 1e-6'] == check['status, rtol 1e-8']).all())
++        log(f"tolerance check {structure} {scenario}: interval edges move by at most {worst:.4f} eV from rtol 1e-6 "
++            f"to 1e-8; same status: {same}")
++        rows.append(check)
++    if rows:
++        pd.concat(rows).to_csv(RESULTS / 'tolerance_check.csv')
+     summarize_night()
+ 
+ 
+@@ -964,7 +1022,10 @@ def summarize_night() -> None:
+ # ------------------------------------------------------------------------------
+ # traces: does a fit survive a trace of TMSOH at mixing?
+ # ------------------------------------------------------------------------------
+-WATER_SAMPLES = ('0.5 % H2O', '2 % H2O')                      # the samples mixed with water (trajectory table)
++WATER_SAMPLES = ('0.5 % H2O', '2 % H2O')                      # the samples mixed with water
++# the tubes of the trajectory table: those mixed with water, and (seventh fit) the two whose first spectrum comes
++# minutes after mixing at the near-zero ages
++TRAJECTORY_SAMPLES = WATER_SAMPLES + ('TMSPa alone', 'TMSPa + TMSOH (A)')
+ TRACE_SCAN_M = (0.0, 1e-9, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3)
+ TRACE_REFIT_M = {'1uM': 1e-6, '1mM': 1e-3}
+ 
+@@ -978,37 +1039,40 @@ def stage_traces(args) -> None:
+     parameters; it does not enter the rule."""
+     rows = []
+ 
+-    def record(scenario, level, how, problem, theta, **extra):
++    def record(structure, scenario, level, how, problem, theta, **extra):
+         x = problem.vector(theta)
+         table = problem.table(x)
+         worst = table.loc[table['z'].abs().idxmax()]
+-        barriers = tabulate_reaction_barriers(get_structure(MAIN_STRUCTURE), theta)
+-        rows.append({'scenario': scenario, 'TMSOH at mixing (M)': level, 'parameters': how, 'chi2': problem.chi2(x),
+-                     'max |z|': float(abs(worst['z'])), 'worst': f"{worst['sample']}: {worst['quantity']}",
++        barriers = tabulate_reaction_barriers(get_structure(structure), theta)
++        rows.append({'structure': structure, 'scenario': scenario, 'TMSOH at mixing (M)': level, 'parameters': how,
++                     'chi2': problem.chi2(x), 'max |z|': float(abs(worst['z'])),
++                     'worst': f"{worst['sample']}: {worst['quantity']}",
+                      'fits': bool(abs(worst['z']) <= 3.0), **extra, **theta,
+                      **{f'dG‡ {rxn}': b['dG_barrier_eV'] for rxn, b in barriers.items()}})
+         pd.DataFrame(rows).to_csv(RESULTS / 'trace_sensitivity.csv', index=False)
+ 
+-    fits = {scenario: load_fit_result(str(fit_path(MAIN_STRUCTURE, scenario)))
+-            for scenario in SCENARIO_ORDER if fit_path(MAIN_STRUCTURE, scenario).exists()}
+-    for scenario, fit in fits.items():
+-        for level in TRACE_SCAN_M:
+-            problem = FitProblem(MAIN_STRUCTURE, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
+-            record(scenario, level, 'as fitted without it', problem, fit['theta'])
+-        scan = [r for r in rows if r['scenario'] == scenario]
+-        log(f'trace scan {MAIN_STRUCTURE} {scenario}: chi2 ' + ', '.join(
+-            f"{r['chi2']:.1f} at {r['TMSOH at mixing (M)']:.0e} M" for r in scan))
+-    if not NIGHT.get('trace_refits', True):
+-        return
+-    starts = [{k: v for k, v in fit['theta'].items() if not k.startswith('log10 age')} for fit in fits.values()]
+-    for label, level in TRACE_REFIT_M.items():
++    # every analysed structure (the main one unless the setup lists others, seventh fit)
++    for structure in ANALYSED:
++        fits = {scenario: load_fit_result(str(fit_path(structure, scenario)))
++                for scenario in SCENARIO_ORDER if fit_path(structure, scenario).exists()}
+         for scenario, fit in fits.items():
+-            if not fit['fits']:
+-                continue
+-            new = run_one(MAIN_STRUCTURE, scenario, args, tag=f'__TMSOH_{label}', starts=[fit['theta']] + starts,
+-                          sample_options=trace_options(level), effort=CHECK_EFFORT)
+-            problem = FitProblem(MAIN_STRUCTURE, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
+-            record(scenario, level, 'fitted again', problem, new['theta'], evaluations=new['n_evaluations'])
++            for level in TRACE_SCAN_M:
++                problem = FitProblem(structure, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
++                record(structure, scenario, level, 'as fitted without it', problem, fit['theta'])
++            scan = [r for r in rows if r['structure'] == structure and r['scenario'] == scenario]
++            log(f'trace scan {structure} {scenario}: chi2 ' + ', '.join(
++                f"{r['chi2']:.1f} at {r['TMSOH at mixing (M)']:.0e} M" for r in scan))
++        if not NIGHT.get('trace_refits', True):
++            continue
++        starts = [{k: v for k, v in fit['theta'].items() if not k.startswith('log10 age')} for fit in fits.values()]
++        for label, level in TRACE_REFIT_M.items():
++            for scenario, fit in fits.items():
++                if not fit['fits']:
++                    continue
++                new = run_one(structure, scenario, args, tag=f'__TMSOH_{label}', starts=[fit['theta']] + starts,
++                              sample_options=trace_options(level), effort=CHECK_EFFORT)
++                problem = FitProblem(structure, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
++                record(structure, scenario, level, 'fitted again', problem, new['theta'], evaluations=new['n_evaluations'])
+ 
+ 
+ # ------------------------------------------------------------------------------
+@@ -1153,15 +1217,16 @@ def check_paper_observations(structure: str, theta: dict) -> list:
+ 
+ 
+ def tabulate_sample_trajectories(structure: str, scenario: str, fit: dict, trace_M: float = 1e-6) -> pd.DataFrame:
+-    """Phosphate shares of the two water samples against the time since mixing, at room temperature, for one fit:
+-    from the recipe alone and with trace_M of TMSOH at mixing. Rows of kind 'measured' place the measured shares
+-    at the age this fit gives the sample."""
++    """Phosphate shares of the TMSPA tubes (TRAJECTORY_SAMPLES) against the time since mixing, at room temperature,
++    for one fit: from the recipe alone and with trace_M of TMSOH at mixing. Rows of kind 'measured' place the
++    measured shares at the age this fit gives the sample. The clock starts at 36 s, so the first minutes of the
++    near-zero ages (seventh fit) are drawn."""
+     from kinetics.fitting.residuals import SHARE_SPECIES, _shares_from_state
+     model = get_structure(structure).build(fit['theta'])['model']
+-    times = 3600.0 * np.geomspace(0.1, 2000.0, 240)
++    times = 3600.0 * np.geomspace(0.01, 2000.0, 300)
+     windows, rows = list(SHARE_SPECIES['31P']), []
+     for sample in sample_set(scenario):
+-        if sample['name'] not in WATER_SAMPLES:
++        if sample['name'] not in TRAJECTORY_SAMPLES:
+             continue
+         for level in (0.0, trace_M):
+             c0 = {**sample['c0_M'], 'TMSOH': sample['c0_M'].get('TMSOH', 0.0) + level}
+@@ -1184,7 +1249,10 @@ def stage_predictions(args) -> None:
+     selected = select_consistent(fits, load_trace_verdicts(fits))
+     log('selection rule: ' + ('no structure fits any scenario and passes the trace rule' if selected is None else
+                               f'{selected[0]} in the {selected[1]} scenario ({selected[2]})'))
+-    structures = [MAIN_STRUCTURE, 'M1'] + ([selected[0]] if selected and selected[0] not in (MAIN_STRUCTURE, 'M1') else [])
++    # the analysed structures (the main one unless the setup lists others), M1 and the selected one
++    structures = list(dict.fromkeys(list(ANALYSED) + ['M1'] + ([selected[0]] if selected else [])))
++    if ONLY:
++        structures = [name for name in structures if name in ONLY]
+     hold_out, alone, paper, storage, protocol, traces, trajectories, later = [], [], [], [], [], [], [], []
+     stages, _ = build_protocol_schedule()
+     recipe = calculate_recipe_molarities()
+@@ -1198,7 +1266,7 @@ def stage_predictions(args) -> None:
+             later.append(check_later_spectra(structure, scenario, fits[(structure, scenario)])
+                          .assign(structure=structure, scenario=scenario))
+             checked = {'the fit': theta}
+-            for label in TRACE_REFIT_M if structure == MAIN_STRUCTURE else ():
++            for label in TRACE_REFIT_M if structure in ANALYSED else ():
+                 if fit_path(structure, scenario, f'__TMSOH_{label}').exists():
+                     checked[f'fitted with TMSOH {label} at mixing'] = load_fit_result(
+                         str(fit_path(structure, scenario, f'__TMSOH_{label}')))['theta']
+@@ -1217,10 +1285,10 @@ def stage_predictions(args) -> None:
+                             'TMSPA left after 1 year, best fit': best['tmspa_left_1y']})
+             log(f"storage {structure} {scenario}: 90 % of the water gone after {best['t90_water_h']:.3g} h "
+                 f"(accepted sets: {band['low']:.3g} to {band['high']:.3g} h, n = {len(thetas)})")
+-            if structure == MAIN_STRUCTURE:
++            if structure in ANALYSED:
+                 trajectories.append(tabulate_sample_trajectories(structure, scenario, fits[(structure, scenario)]))
+             # The same prediction with a trace of TMSOH at mixing: the fit as it is, and the fit made with that trace
+-            for label, level in TRACE_REFIT_M.items() if structure == MAIN_STRUCTURE else ():
++            for label, level in TRACE_REFIT_M.items() if structure in ANALYSED else ():
+                 seeded = calculate_storage_times(built['model'], level)
+                 row = {'structure': structure, 'scenario': scenario, 'TMSOH at mixing (M)': level,
+                        't90 water (h), no trace': best['t90_water_h'], 't90 water (h), fit as it is': seeded['t90_water_h']}
+@@ -1262,9 +1330,12 @@ def main():
+     parser.add_argument('--profile-nfev', type=int, default=15, help='least-squares iterations per profile point')
+     parser.add_argument('--results', default=None, help='results directory (default notebooks/results/05)')
+     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
++    parser.add_argument('--structures', default=None,
++                        help='extended, recovery, night, traces and predictions: only these structures of the setup, '
++                             'comma-separated (e.g. "M1,M1+BEP")')
+     args = parser.parse_args()
+     global RESULTS, CHECK_EFFORT, SCENARIOS, SCENARIO_ORDER, PAPER, FITTED_SAMPLES, RECOVERY, SENSITIVITY_NAMES, \
+-        MAIN_STRUCTURE, EXTENDED_STRUCTURES, START_FROM, NIGHT, READINGS
++        MAIN_STRUCTURE, EXTENDED_STRUCTURES, START_FROM, NIGHT, READINGS, SIZE_ORDER, ANALYSED, ONLY
+     if args.results:
+         RESULTS = Path(args.results).resolve()
+     config = apply_fit_config(RESULTS)
+@@ -1281,9 +1352,20 @@ def main():
+         MAIN_STRUCTURE = config['structures']['main']
+         EXTENDED_STRUCTURES = tuple(config['structures']['extended'])
+         READINGS = {name: tuple(readings) for name, readings in config['structures'].get('readings', {}).items()}
++    # the summaries read the fits of every structure of the run, '+BEP' ones included (seventh fit)
++    SIZE_ORDER += tuple(name for name in (MAIN_STRUCTURE,) + EXTENDED_STRUCTURES if name not in SIZE_ORDER)
+     EFFORT.update({name: tuple(effort) for name, effort in config['effort'].items()})
+     START_FROM = (REPO / config['start_from']).resolve() if config['start_from'] else None
+     NIGHT = dict(config['night'])
++    ANALYSED = tuple(NIGHT.get('structures', [MAIN_STRUCTURE]))
++    if args.structures:
++        ONLY = tuple(name.strip() for name in args.structures.split(','))
++        known = EXTENDED_STRUCTURES + ANALYSED
++        unknown = [name for name in ONLY if name not in known]
++        if unknown:
++            raise SystemExit(f'--structures: {unknown} are not structures of the setup ({list(dict.fromkeys(known))})')
++        EXTENDED_STRUCTURES = tuple(name for name in EXTENDED_STRUCTURES if name in ONLY)
++        ANALYSED = tuple(name for name in ANALYSED if name in ONLY)
+     if args.quick:
+         args.scale, args.profile_nfev = 0.05, 3
+         for name in EFFORT:
+@@ -1297,6 +1379,8 @@ def main():
+         f"{MAIN_STRUCTURE}; readings "
+         f"{', '.join(SCENARIOS)}; paper observations {', '.join(PAPER) or 'none'}; samples changed for the run: "
+         f"{', '.join(config['sample_overrides']) or 'none'}")
++    if ONLY:
++        log(f"this call is limited to {', '.join(ONLY)}")
+     t0 = time.perf_counter()
+     STAGES[args.stage](args)
+     log(f'--- stage {args.stage} done in {(time.perf_counter() - t0) / 60:.1f} min ---')
+diff --git a/tests/test_estimation.py b/tests/test_estimation.py
+index a1b7e91..f2eeb77 100644
+--- a/tests/test_estimation.py
++++ b/tests/test_estimation.py
+@@ -7,7 +7,7 @@ Covers:
+ 4. Solver tolerance: search and report settings agree far inside the measurement error.
+ 5. Structures, the optimiser and profiles: known parameters are recovered from synthetic shares, a parameter the
+    samples cannot see is reported as not determined, the water a recipe does not fix is recovered, nesting never
+-   raises χ².
++   raises χ². Seventh fit: the near-zero ages, M5 and P. Broqvist's barrier rule.
+ 6. With the lab file present: the windows of notebook 03 give its barrier intervals through the new forward path.
+ 
+ Source: Y. Alcaraz Galván; expected intervals read from notebooks/results/03 (computed from the Tank
+@@ -342,6 +342,56 @@ def test_structures_build_models():
+     print('  ✓ structures: parameter lists, registered models reproduced, split and freed energies, constraint')
+ 
+ 
++def test_seventh_fit_setup():
++    from kinetics.data.network import set_active_network_variant
++    from kinetics.fitting import DEFAULT_FIT_CONFIG
++    from kinetics.fitting.candidates import FIXED_BARRIERS_EV
++    observables = build_synthetic_observables()
++    # Near-zero ages: readings a run must list; a run without fit_config.json keeps the four of the first fits
++    assert DEFAULT_FIT_CONFIG['scenarios'] == ['short', 'middle', 'long', 'free']
++    for scenario, age_h in (('0 min', 0.0), ('5 min', 5.0 / 60.0), ('10 min', 10.0 / 60.0)):
++        samples = {s['name']: s for s in build_sample_set(observables, scenario)}
++        assert all(s['age_h'] == age_h for s in samples.values() if s['age_mode'] == 'fixed')
++        assert samples['2 % H2O']['age_mode'] == 'fixed', 'at a common age the heated tube has no age parameter'
++    zero = build_sample_set(observables, '0 min')
++    segments, times = build_sample_history(next(s for s in zero if s['name'] == '2 % H2O'))
++    assert segments[0][1] == 0.0 and abs(sum(d for _, d in segments) / 3600.0 - 145.0) < 1e-9
++    assert np.allclose(times[0] / 3600.0, [0.1, 33.0, 72.0, 96.0, 120.0, 145.0]), 'the first spectrum at its own offset'
++    residuals, details = calculate_residuals(MID, zero, return_details=True)
++    assert all(d['ok'] for d in details.values()) and np.all(np.isfinite(residuals))
++    # M5: the barriers of M1 and the energies of M5-first, nested between them
++    def rates_of(structure, theta):
++        return get_structure(structure).build(theta)['model'].calculate_rates(300.0)
++
++    m1 = [p.name for p in get_structure('M1').parameters()]
++    assert [p.name for p in get_structure('M5').parameters()] == m1 + ['dG R1', 'dG R2', 'dG R3', 'dG R4', 'dG R8', 'dG R9']
++    level1_theta = {'g hydrolysis': 0.80, 'g transfer': 0.80, 'g condensation': 1.30, 'g solvent_attack': 1.32}
++    m5 = embed_parent_theta('M5', level1_theta)
++    assert np.allclose(rates_of('M5', m5)['k_f'].values, rates_of('M1', level1_theta)['k_f'].values, rtol=1e-12)
++    m5.update({'g hydrolysis': 1.2, 'dG R2': 0.1, 'dG R8': -0.05})
++    first = embed_parent_theta('M5-first', m5)
++    assert np.allclose(rates_of('M5-first', first)['k_f'].values, rates_of('M5', m5)['k_f'].values, rtol=1e-12)
++    # P. Broqvist's rule: ΔG‡ = E₀ downhill and E₀ + ΔG_rxn uphill, whichever way a step is written; M0-BEP keeps α = 0.5
++    try:
++        set_active_network_variant('R1-R9+N10-N15')
++        for name in ('M1', 'M5', 'M5-first'):
++            peter = get_structure(f'{name}+BEP')
++            assert [p.name for p in peter.parameters()] == [p.name for p in get_structure(name).parameters()]
++        assert get_structure('M5-first+BEP').parent == 'M3-first+BEP'
++        model = get_structure('M5-first+BEP').build({**first, 'dG R1': 0.2, 'dG R4': -0.1})['model']
++        assert model.family_params['exchange']['g_eV'] == FIXED_BARRIERS_EV['exchange']
++        rates = model.calculate_rates(300.0)
++        x, g = rates['dG_rxn_eV'], rates['g_eV']
++        assert (x > 0).any() and (x < 0).any() and set(rates['barrier_model']) == {'bep_cap'}
++        assert np.allclose(rates['dG_barrier_f_eV'], np.maximum(g, g + x), atol=1e-12)
++        assert np.allclose(rates['dG_barrier_r_eV'], np.maximum(g, g - x), atol=1e-12), 'the reverse step: the same rule'
++        m0 = rates_of('M0-BEP', {'g all reactions': 1.0})
++        assert np.allclose(m0['dG_barrier_f_eV'], np.maximum(m0['g_eV'], m0['g_eV'] + 0.5 * m0['dG_rxn_eV']), atol=1e-12)
++    finally:
++        set_active_network_variant(None)
++    print("  ✓ seventh fit: near-zero ages opt-in, M5 nested between M1 and M5-first, P. Broqvist's barrier rule")
++
++
+ def test_interval_finder():
+     v = np.linspace(-3.0, 3.0, 25)
+     parabola = pd.DataFrame({'parameter': 'p', 'value': 1.0 + 0.1 * v, 'chi2': 5.0 + v ** 2})
+@@ -604,6 +654,7 @@ if __name__ == "__main__":
+     test_free_ages_and_tables()
+     test_search_and_report_tolerances_agree()
+     test_structures_build_models()
++    test_seventh_fit_setup()
+     test_interval_finder()
+     test_fit_recovers_and_reports_blind_spots()
+     test_unknown_water_is_recovered()

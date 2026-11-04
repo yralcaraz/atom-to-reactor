@@ -1,0 +1,851 @@
+diff --git a/kinetics/data/observables.py b/kinetics/data/observables.py
+index 0daed7d..e58a10a 100644
+--- a/kinetics/data/observables.py
++++ b/kinetics/data/observables.py
+@@ -21,7 +21,9 @@ phosphate. Only the raw route fills them (the tables of notebook 03 do not hold
+     calculate_replicate_scatter  scatter of repeated spectra of one sample against their stated noise
+ 
+ What the files do not record is kept explicit: the time from mixing to a sample's first spectrum ('age') is
+-unknown for every sample, and the heating episodes carry a 'basis' saying where each number comes from.
++unknown for every sample, and the heating episodes carry a 'basis' saying where each number comes from. A
++species of a recipe whose amount is not known is listed under 'unknown_M' with the range a fit may give it
++(the water of the tube mixed without water).
+ 
+ Source: Y. Alcaraz Galván; sample histories transcribed from the acquisition times of the experimental NMR
+ spectra, as recorded in notebooks 03 and 04
+@@ -53,6 +55,8 @@ DEFAULT_ERROR_FLOOR = {'31P': {'absolute': 0.01, 'relative': 0.05},
+ 
+ # Samples, named as in notebook 03 (§2.1). 'recipe' is resolved by _recipe_molarities.
+ # role: 'fit' enters the fit; 'hold_out' is predicted, never fitted; 'check' is compared after the fit.
++# 'unknown_M': species of the recipe whose concentration at mixing is not known, with the range [M] a fit may
++# give it (DECLARED). The fit takes one parameter per entry, on top of the recipe.
+ LAB_SAMPLES = {
+     '0.5 % H2O': {
+         'label': '5 vol% TMSPa + 0.5 vol% H2O in EC/DEC', 'nucleus': '31P', 'role': 'fit',
+@@ -86,10 +90,11 @@ LAB_SAMPLES = {
+         'recipe': ('tmspa_tmsoh',), 'flags': ['16 scans: standard errors of 0.08 to 0.18 on the shares'],
+     },
+     'TMSPa alone': {
+-        'label': '5 vol% TMSPa in EC/DEC, no water added', 'nucleus': '31P', 'role': 'check',
+-        'recipe': ('tmspa',),
++        'label': '5 vol% TMSPa in EC/DEC, no water added', 'nucleus': '31P', 'role': 'fit',
++        'recipe': ('tmspa',), 'unknown_M': {'H2O': (0.0, 0.3)},
+         'flags': ['TMSPA converts to BMSPA in 10 days without added water: the water content is unknown '
+-                  '(notebook 03 §5.4)'],
++                  '(notebook 03 §5.4). Fitted since the third fit, with the water at mixing as a parameter '
++                  '(docs/plan-fit_improvement.md); a check in the first two fits'],
+     },
+     'TMSOH, probe': {
+         'label': '5 vol% TMSOH in EC/DEC, heated in the NMR probe', 'nucleus': '13C', 'role': 'fit',
+@@ -320,6 +325,8 @@ def build_lab_observables(shares_P: pd.DataFrame, shares_C: pd.DataFrame, *, bui
+             'spectra': spectra,
+             'flags': list(spec['flags']),
+         }
++        if spec.get('unknown_M'):
++            out[name]['unknown_M'] = {sp: [float(low), float(high)] for sp, (low, high) in spec['unknown_M'].items()}
+         if spec['nucleus'] == '13C':
+             out[name]['flags'].append(C13_FLAG)
+         for nucleus, more in spec.get('more_nuclei', {}).items():
+@@ -404,7 +411,8 @@ def describe_lab_observables(observables: dict) -> pd.DataFrame:
+             'role': s['role'], 'campaign': s['campaign'],
+             'spectra': ' + '.join(f'{len(spectra)} {nucleus}' + (f' ({role})' if role != s['role'] else '')
+                                   for nucleus, role, spectra in list_spectrum_sets(s)),
+-            'solutes at t = 0': ', '.join(f'{sp} {1000 * c:.0f} mM' for sp, c in s['c0_M'].items() if sp != 'EC'),
++            'solutes at t = 0': ', '.join([f'{sp} {1000 * c:.0f} mM' for sp, c in s['c0_M'].items() if sp != 'EC']
++                                          + [f'{sp} unknown' for sp in s.get('unknown_M', {})]),
+             'T of the spectra (°C)': ', '.join(str(v) for v in T),
+             'time since first spectrum (h)': f'{min(t):.2f}' if len(t) == 1 else f'{min(t):.2f} to {max(t):.1f}',
+             'before the first spectrum': pre or 'unknown (age)',
+diff --git a/kinetics/fitting/candidates.py b/kinetics/fitting/candidates.py
+index e5b0a34..ba19878 100644
+--- a/kinetics/fitting/candidates.py
++++ b/kinetics/fitting/candidates.py
+@@ -12,6 +12,10 @@ It turns a parameter vector into a self-contained ModelSpec (own network, own sp
+     M3-split    M1-split with the same freed energies
+     '+W'        any of them with a common available fraction of the added water (M4 of notebook 03)
+ 
++Two kinds of parameter come from the sample set and not from the structure: the age of the sample heated after
++its first spectrum (free scenario), and the amount at mixing of a species a recipe does not fix ('c0 H2O TMSPa
++alone': the water of the tube mixed without water, third fit).
++
+ build_fitted_model turns a fit result into a ModelSpec that reactors take like a registered model.
+ 
+ Freed energies are parameters d_j = ΔG_rxn,j − computed value for R1–R4. They are applied as species shifts,
+@@ -42,6 +46,7 @@ BARRIER_BOX_EV = {
+ }
+ ENERGY_BOX_EV = (-0.75, 0.75)            # about three standard errors of the computed ΔG_rxn
+ WATER_BOX = (0.05, 1.0)
++RECIPE_PREFIX = 'c0 '                    # 'c0 <species> <sample>': amount at mixing of a species the recipe does not fix
+ FREED_REACTIONS = ('R1', 'R2', 'R3', 'R4')
+ SPLIT_HYDROLYSIS = {'hydrolysis_R1': ('R1',), 'hydrolysis_R23': ('R2', 'R3')}
+ FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'transfer', 'condensation', 'solvent_attack')
+@@ -50,7 +55,7 @@ FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'transfer', 'co
+ @dataclass(frozen=True)
+ class FitParameter:
+     name: str
+-    kind: str               # 'barrier' | 'energy' | 'water' | 'age'
++    kind: str               # 'barrier' | 'energy' | 'water' | 'recipe' | 'age'
+     target: str             # family (or 'all reactions'), reaction id, 'H2O' or sample name
+     lower: float
+     upper: float
+@@ -80,12 +85,16 @@ class FitStructure:
+         return sorted(families, key=FAMILY_ORDER.index)
+ 
+     def parameters(self, samples: list = ()) -> list:
+-        """The free parameters, in the order of the parameter vector. A sample whose age is a fit parameter
+-        (free scenario) adds log10(age in hours)."""
++        """The free parameters, in the order of the parameter vector. A sample with a species its recipe does
++        not fix adds that amount at mixing [M]; a sample whose age is a fit parameter (free scenario) adds
++        log10(age in hours)."""
+         out = [FitParameter(f'g {c}', 'barrier', c, *BARRIER_BOX_EV[c], 'eV') for c in self.barrier_classes()]
+         out += [FitParameter(f'dG {r}', 'energy', r, *ENERGY_BOX_EV, 'eV') for r in self.freed]
+         if self.water:
+             out.append(FitParameter('water fraction', 'water', 'H2O', *WATER_BOX, '1'))
++        for sample in samples:
++            for species, (low, high) in sample.get('unknown_M', {}).items():
++                out.append(FitParameter(f"{RECIPE_PREFIX}{species} {sample['name']}", 'recipe', sample['name'], low, high, 'M'))
+         for sample in samples:
+             if sample['age_mode'] == 'parameter':
+                 out.append(FitParameter(f"log10 age {sample['name']}", 'age', sample['name'],
+@@ -111,8 +120,8 @@ class FitStructure:
+         """Everything an evaluation needs from a parameter set {name: value}.
+ 
+         Returns 'model' (a ModelSpec that carries its network and species shifts), 'ages' {sample: hours},
+-        'water_fraction', and for the freed energies 'prior' (whitened residuals) and 'prior_rows' (one row per
+-        reaction: shift, standard error, z).
++        'water_fraction', 'added_M' {sample: {species: mol/L at mixing on top of the recipe}}, and for the freed
++        energies 'prior' (whitened residuals) and 'prior_rows' (one row per reaction: shift, standard error, z).
+         """
+         spec = get_model(self.base_model)
+         params = {fam: dict(p) for fam, p in spec.family_params.items()}
+@@ -144,8 +153,13 @@ class FitStructure:
+                         network=self.network() if self.split else None, species_shifts_eV=shifts)
+         ages = {name[len('log10 age '):]: float(10.0 ** value) for name, value in theta.items()
+                 if name.startswith('log10 age ')}
++        added = {}
++        for name, value in theta.items():
++            if name.startswith(RECIPE_PREFIX):
++                species, sample = name[len(RECIPE_PREFIX):].split(' ', 1)
++                added.setdefault(sample, {})[species] = float(value)
+         return {'model': model, 'ages': ages, 'water_fraction': float(theta.get('water fraction', 1.0)),
+-                'prior': prior, 'prior_rows': prior_rows}
++                'added_M': added, 'prior': prior, 'prior_rows': prior_rows}
+ 
+     def with_water(self) -> 'FitStructure':
+         """The same structure with a free available fraction of the added water."""
+@@ -254,8 +268,8 @@ def embed_parent_theta(structure, parent_theta: dict) -> dict:
+     """Parameter set of `structure` that reproduces a fit of the structure it extends.
+ 
+     A split class takes the barrier of its family, every family takes a shared barrier, freed energies start
+-    at their computed values (shift 0) and all the water is available. Parameters the structure does not have
+-    in common with its parent and that cannot be derived (ages) are left out.
++    at their computed values (shift 0) and all the water is available. Ages and amounts at mixing belong to the
++    sample set: they are passed on as they are.
+     """
+     structure = get_structure(structure)
+     out = {}
+@@ -272,7 +286,7 @@ def embed_parent_theta(structure, parent_theta: dict) -> dict:
+             out[p.name] = 0.0
+         elif p.kind == 'water':
+             out[p.name] = 1.0
+-    out.update({k: v for k, v in parent_theta.items() if k.startswith('log10 age ')})
++    out.update({k: v for k, v in parent_theta.items() if k.startswith(('log10 age ', RECIPE_PREFIX))})
+     return out
+ 
+ 
+diff --git a/kinetics/fitting/estimation.py b/kinetics/fitting/estimation.py
+index aabd9e8..2e861fa 100644
+--- a/kinetics/fitting/estimation.py
++++ b/kinetics/fitting/estimation.py
+@@ -2,7 +2,8 @@
+ 
+ The objective is the χ² of kinetics.fitting.residuals (measured shares, one-sided paper limits) plus, for
+ freed reaction energies, their distance from the computed values in the metric of the computed covariance.
+-Unknown ages are a scenario of the sample set, not a prior.
++Unknown ages are a scenario of the sample set, not a prior. An amount at mixing that a recipe does not fix is a
++parameter with a declared range (kinetics.fitting.candidates).
+ 
+     FitProblem                     a structure and a sample set: parameters, box, residual vector
+     fit_structure                  Sobol screen of the box, then bounded least squares from the best points
+@@ -48,6 +49,7 @@ DELTA_CHI2_95 = 3.84
+ DIFF_STEP = 1.0e-3
+ BARRIER_OFFSETS_EV = (-0.30, -0.20, -0.15, -0.10, -0.075, -0.05, -0.025, 0.025, 0.05, 0.075, 0.10, 0.15, 0.20, 0.30)
+ ENERGY_OFFSETS_SE = (-2.0, -1.5, -1.0, -0.75, -0.5, -0.25, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0)
++RECIPE_FACTORS = (0.25, 0.5, 0.67, 0.8, 0.9, 1.1, 1.25, 1.5, 2.0, 4.0)      # multiples of the best amount at mixing
+ 
+ 
+ class FitProblem:
+@@ -94,7 +96,8 @@ class FitProblem:
+     def residuals(self, x) -> np.ndarray:
+         built = self.build(x)
+         data = calculate_residuals(built['model'], self.samples, ages=built['ages'],
+-                                   water_fraction=built['water_fraction'], solver=self.solver)
++                                   water_fraction=built['water_fraction'], added_M=built.get('added_M'),
++                                   solver=self.solver)
+         return np.concatenate([data, built['prior']])
+ 
+     def chi2(self, x) -> float:
+@@ -105,7 +108,8 @@ class FitProblem:
+         """Standardised residuals of every measured quantity and of the freed energies, at this problem's solver."""
+         built = self.build(x)
+         table = tabulate_residuals(built['model'], self.samples, ages=built['ages'],
+-                                   water_fraction=built['water_fraction'], solver=self.solver)
++                                   water_fraction=built['water_fraction'], added_M=built.get('added_M'),
++                                   solver=self.solver)
+         if built['prior_rows']:
+             table = pd.concat([table, pd.DataFrame(built['prior_rows'])], ignore_index=True)
+         return table
+@@ -235,7 +239,8 @@ def fit_structure(problem: FitProblem, *, n_screen: int = 512, n_starts: int = 1
+ # ------------------------------------------------------------------------------
+ def build_profile_grid(problem: FitProblem, theta: dict, name: str) -> np.ndarray:
+     """Grid of one parameter around its best value: fixed offsets for a barrier (±0.30 eV), multiples of the
+-    standard error for a freed energy (±2 SE), the whole box for the water fraction and an age."""
++    standard error for a freed energy (±2 SE), multiples of the best value for an amount at mixing, the whole
++    box for the water fraction and an age."""
+     parameter = next(p for p in problem.all_parameters if p.name == name)
+     best = theta[name]
+     if parameter.kind == 'barrier':
+@@ -244,6 +249,8 @@ def build_profile_grid(problem: FitProblem, theta: dict, name: str) -> np.ndarra
+         sigma = next(row['sigma'] for row in problem.build(problem.vector(theta))['prior_rows']
+                      if parameter.target in row['quantity'])
+         grid = best + sigma * np.array(ENERGY_OFFSETS_SE)
++    elif parameter.kind == 'recipe' and best > 1e-6:
++        grid = best * np.array(RECIPE_FACTORS)
+     else:
+         grid = np.linspace(parameter.lower, parameter.upper, 13)
+     grid = grid[(grid >= parameter.lower - 1e-12) & (grid <= parameter.upper + 1e-12)]
+@@ -478,7 +485,7 @@ def simulate_synthetic_shares(structure, theta: dict, samples: list, *, seed: in
+     """
+     built = get_structure(structure).build(theta)
+     _, details = calculate_residuals(built['model'], samples, ages=built['ages'], water_fraction=built['water_fraction'],
+-                                     solver=solver or REPORT_SOLVER, return_details=True)
++                                     added_M=built.get('added_M'), solver=solver or REPORT_SOLVER, return_details=True)
+     rng = np.random.default_rng(seed) if seed is not None else None
+     out = copy_sample_set(samples)
+     for sample in out:
+diff --git a/kinetics/fitting/residuals.py b/kinetics/fitting/residuals.py
+index c81fa55..42cc967 100644
+--- a/kinetics/fitting/residuals.py
++++ b/kinetics/fitting/residuals.py
+@@ -10,6 +10,10 @@ recorded, so every result is computed under a scenario:
+     'free'                      each unknown age lies between 1 h and 30 days and takes the value that favours
+                                 the model (the reading notebook 03 uses when an observation picks its best time)
+ 
++A recipe can hold a species whose amount at mixing is not known (the water of the tube mixed without water):
++the sample lists it under 'unknown_M' with its range, a fit takes it as a parameter, and every function that
++simulates a sample takes the amounts as added_M = {sample: {species: mol/L}}, on top of the recipe.
++
+ Error model of a share: noise ⊕ baseline spread ⊕ a declared floor. Repeated room-temperature spectra of one
+ block (the 2 % water sample) are one composition and n − 1 measurements of "no drift": the baseline spread and
+ the floor are common to them, the noise (times the Birge ratio of their scatter) is independent.
+@@ -120,6 +124,7 @@ def _lab_sample(name: str, record: dict, observables: dict, error_floor: dict, f
+         'heated': sorted((3600.0 * h['start_h'], h['T_C'] + ZERO_CELSIUS_K, 3600.0 * h['duration_h'])
+                          for h in record['heated']),
+         'blocks': blocks, 'age_mode': 'none', 'age_h': None,
++        'unknown_M': {sp: (float(low), float(high)) for sp, (low, high) in record.get('unknown_M', {}).items()},
+     }
+ 
+ 
+@@ -233,24 +238,29 @@ def _paper_value(sample: dict, C_end: np.ndarray, idx: dict) -> float:
+     return float(OBSERVABLES[sample['observable']][1](np.maximum(C_end, 0.0), idx, c0))
+ 
+ 
+-def _initial_composition(sample: dict, water_fraction: float) -> dict:
++def _initial_composition(sample: dict, water_fraction: float, added: dict = None) -> dict:
++    """Composition at mixing: the recipe, the available share of its water, and `added` {species: mol/L} on top
++    (the amounts of the species the recipe does not fix)."""
+     c0 = dict(sample['c0_M'])
+     if sample['wet'] and water_fraction != 1.0:
+         c0['H2O'] = water_fraction * c0['H2O']
++    for species, amount in (added or {}).items():
++        c0[species] = c0.get(species, 0.0) + max(float(amount), 0.0)
+     return c0
+ 
+ 
+ def calculate_predicted_shares(sample: dict, model, *, age_h: float = None, water_fraction: float = 1.0,
+-                               solver: dict = None):
++                               added_M: dict = None, solver: dict = None):
+     """Shares the model predicts for one lab sample, one array (spectra × windows) per block, or the value of
+     a paper observable. The blocks of a sample are read off one simulation.
+ 
++    added_M: {species: mol/L} present at mixing in this sample on top of its recipe.
+     Returns None when the simulation fails or runs out of its call budget.
+     """
+     solver = solver or SEARCH_SOLVER
+     segments, times = build_sample_history(sample, age_h)
+-    sim = simulate_history(_initial_composition(sample, water_fraction), segments, np.concatenate(times), model=model,
+-                           **solver)
++    sim = simulate_history(_initial_composition(sample, water_fraction, added_M), segments, np.concatenate(times),
++                           model=model, **solver)
+     if not sim['success']:
+         return None
+     if sample['kind'] == 'paper':
+@@ -286,7 +296,7 @@ def _count(sample: dict) -> int:
+     return 1 if sample['kind'] == 'paper' else sum(block['measured'].size for block in sample['blocks'])
+ 
+ 
+-def _profile_age(sample: dict, model, water_fraction: float, solver: dict):
++def _profile_age(sample: dict, model, water_fraction: float, solver: dict, added: dict = None):
+     """Age in FREE_AGE_BOUNDS_H that minimises the χ² of one unheated sample: one simulation, every age.
+ 
+     The model is run once to the oldest age; the spectrum times of every candidate age lie on that trajectory.
+@@ -296,7 +306,7 @@ def _profile_age(sample: dict, model, water_fraction: float, solver: dict):
+     ages_h = np.geomspace(*FREE_AGE_BOUNDS_H, N_AGE_GRID)
+     t_spec = np.concatenate([block['t_spec_s'] for block in sample['blocks']])
+     times = (3600.0 * ages_h[:, None] + t_spec[None, :]).ravel()
+-    sim = simulate_history(_initial_composition(sample, water_fraction),
++    sim = simulate_history(_initial_composition(sample, water_fraction, added),
+                            [(sample['T_rt_K'], float(times.max()))], times, model=model, **solver)
+     if not sim['success']:
+         return None, None
+@@ -319,37 +329,41 @@ def _profile_age(sample: dict, model, water_fraction: float, solver: dict):
+     return float(ages_h[j]), shares[j]
+ 
+ 
+-def _evaluate_sample(sample: dict, model, ages: dict, water_fraction: float, solver: dict) -> tuple:
++def _evaluate_sample(sample: dict, model, ages: dict, water_fraction: float, solver: dict, added_M: dict = None) -> tuple:
+     """(predicted, age used) of one sample; predicted is None on failure."""
++    added = (added_M or {}).get(sample['name'])
+     if sample['age_mode'] == 'profile':
+         age_h = (ages or {}).get(sample['name'])
+         if age_h is None:
+-            age_h, predicted = _profile_age(sample, model, water_fraction, solver)
++            age_h, predicted = _profile_age(sample, model, water_fraction, solver, added)
+             return predicted, age_h
+     elif sample['age_mode'] == 'parameter':
+         age_h = ages[sample['name']]
+     else:
+         age_h = sample['age_h']
+-    return calculate_predicted_shares(sample, model, age_h=age_h, water_fraction=water_fraction, solver=solver), age_h
++    return calculate_predicted_shares(sample, model, age_h=age_h, water_fraction=water_fraction, added_M=added,
++                                      solver=solver), age_h
+ 
+ 
+ # ------------------------------------------------------------------------------
+ # Residuals of a model over a sample set
+ # ------------------------------------------------------------------------------
+ def calculate_residuals(model, samples: list, *, ages: dict = None, water_fraction: float = 1.0,
+-                        solver: dict = None, return_details: bool = False):
++                        added_M: dict = None, solver: dict = None, return_details: bool = False):
+     """Whitened residuals of the model over the samples, in the order of the sample set; χ² is their sum of squares.
+ 
+     ages: {sample name: age in hours} for the sample whose age is a fit parameter in the free scenario (and,
+     optionally, fixed ages for the samples whose age would otherwise be found inside the evaluation).
+     water_fraction: share of the added water that is available, applied to the samples mixed with water.
++    added_M: {sample name: {species: mol/L}} present at mixing on top of the recipe (the species a recipe does
++    not fix, see 'unknown_M' of a sample). A sample without an entry starts from its recipe alone.
+     A sample whose simulation fails contributes PENALTY for each of its values.
+     With return_details: also {sample: {'predicted', 'age_h', 'ok'}}, 'predicted' holding one array per block.
+     """
+     solver = solver or SEARCH_SOLVER
+     blocks, details = [], {}
+     for sample in samples:
+-        predicted, age_h = _evaluate_sample(sample, model, ages, water_fraction, solver)
++        predicted, age_h = _evaluate_sample(sample, model, ages, water_fraction, solver, added_M)
+         if predicted is None:
+             blocks.append(np.full(_count(sample), PENALTY))
+         elif sample['kind'] == 'paper':
+@@ -361,7 +375,8 @@ def calculate_residuals(model, samples: list, *, ages: dict = None, water_fracti
+     return (residuals, details) if return_details else residuals
+ 
+ 
+-def find_free_age(model, samples: list, *, water_fraction: float = 1.0, solver: dict = None, n_grid: int = 9) -> dict:
++def find_free_age(model, samples: list, *, water_fraction: float = 1.0, added_M: dict = None, solver: dict = None,
++                  n_grid: int = 9) -> dict:
+     """{sample: age in hours} for the sample whose age is a fit parameter, chosen to minimise its χ² for this model.
+ 
+     Each sample's residuals depend on its own age only, so that sample is treated alone: a coarse grid in
+@@ -375,7 +390,7 @@ def find_free_age(model, samples: list, *, water_fraction: float = 1.0, solver:
+ 
+         def chi2(log_age):
+             r = calculate_residuals(model, [sample], ages={sample['name']: float(np.exp(log_age))},
+-                                    water_fraction=water_fraction, solver=solver)
++                                    water_fraction=water_fraction, added_M=added_M, solver=solver)
+             return float(np.sum(r ** 2))
+ 
+         grid = np.log(np.geomspace(*FREE_AGE_BOUNDS_H, n_grid))
+@@ -432,7 +447,7 @@ def _rows_of_block(name: str, block: dict, predicted: np.ndarray, t_h: np.ndarra
+ 
+ 
+ def tabulate_residuals(model, samples: list, *, ages: dict = None, water_fraction: float = 1.0,
+-                       solver: dict = None) -> pd.DataFrame:
++                       added_M: dict = None, solver: dict = None) -> pd.DataFrame:
+     """Standardised residuals z = (predicted − measured) / σ, one row per measured quantity.
+ 
+     kind 'share': one window of one spectrum. For a block of repeated spectra: 'mean' (its composition,
+@@ -442,8 +457,8 @@ def tabulate_residuals(model, samples: list, *, ages: dict = None, water_fractio
+     The fit rule reads this table: a structure fits when no |z| exceeds 3.
+     """
+     solver = solver or REPORT_SOLVER
+-    _, details = calculate_residuals(model, samples, ages=ages, water_fraction=water_fraction, solver=solver,
+-                                     return_details=True)
++    _, details = calculate_residuals(model, samples, ages=ages, water_fraction=water_fraction, added_M=added_M,
++                                     solver=solver, return_details=True)
+     rows = []
+     for sample in samples:
+         d = details[sample['name']]
+diff --git a/scripts/run_fit.py b/scripts/run_fit.py
+index 41ed583..df6c8fc 100644
+--- a/scripts/run_fit.py
++++ b/scripts/run_fit.py
+@@ -17,8 +17,14 @@ needs a new directory: in one that holds results the old fits are returned as th
+ 
+ Rules fixed before any fit: scenarios 'short' (1 h), 'middle' (1 d), 'long' (7 d)
+ and 'free' (each unknown age between 1 h and 30 d; 7 d in the first fit); a structure fits a scenario if no
+-standardised residual exceeds 3; the first consistent parameter set is that of the smallest structure that fits, a common-age scenario
+-taking precedence over free ages.
++standardised residual exceeds 3.
++
++Rules of the third fit (docs/plan-fit_improvement.md), which replace the selection rule of the first two:
++- the tube mixed without water is fitted, with its water at mixing as a parameter ('c0 H2O TMSPa alone');
++- trace rule: a fit is accepted only if its own parameter set, unchanged, still fits with 1 µM and with 1 mM
++  TMSOH at mixing in every tube whose recipe holds TMSPA and no TMSOH;
++- the consistent parameter set is that of the smallest structure that fits and passes the trace rule, free
++  ages taking precedence over a common age (the first two fits took the common age first).
+ 
+ Source: Y. Alcaraz Galván
+ """
+@@ -50,6 +56,7 @@ from kinetics.fitting import (
+     calculate_prediction_band, refine_profile_edges, simulate_synthetic_shares, summarize_residuals,
+     tabulate_reaction_barriers, tabulate_residuals, write_fit_result,
+ )
++from kinetics.fitting.estimation import RECIPE_FACTORS
+ from kinetics.microkinetics.models import MODELS, get_model
+ from kinetics.reactor import (
+     build_protocol_schedule, calculate_recipe_molarities, calculate_remaining_fraction, find_crossing_time,
+@@ -100,7 +107,8 @@ def stage_registered(args) -> None:
+     rows, tables = [], []
+     for name in MODELS:
+         for scenario in SCENARIOS:
+-            samples, model = sample_set(scenario), get_model(name)
++            # A registered model has no value for an amount a recipe does not fix: those samples are left out
++            samples, model = [s for s in sample_set(scenario) if not s.get('unknown_M')], get_model(name)
+             ages = find_free_age(model, samples, solver=REPORT_SOLVER)
+             residuals = calculate_residuals(model, samples, ages=ages, solver=REPORT_SOLVER)
+             table = tabulate_residuals(model, samples, ages=ages)
+@@ -137,15 +145,24 @@ def stage_throughput(args) -> None:
+ # ------------------------------------------------------------------------------
+ # recovery: can this pipeline find known parameters in data like ours?
+ # ------------------------------------------------------------------------------
++WATER_ALONE = 'c0 H2O TMSPa alone'       # the water at mixing of the tube mixed without water, a parameter [M]
+ RECOVERY_TRUTHS = {
+     'A': ('M1-split', 'middle', {'g hydrolysis_R1': 1.28, 'g hydrolysis_R23': 1.05, 'g transfer': 1.05,
+-                                 'g condensation': 1.25, 'g solvent_attack': 1.315}, (1, 2, 3),
++                                 'g condensation': 1.25, 'g solvent_attack': 1.315, WATER_ALONE: 0.06}, (1, 2, 3),
+           ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack'], (512, 12, 40)),
+     'B': ('M3-split', 'middle', {'g hydrolysis_R1': 1.30, 'g hydrolysis_R23': 1.00, 'g transfer': 0.90,
+                                  'g condensation': 1.25, 'g solvent_attack': 1.315,
+-                                 'dG R1': 0.0, 'dG R2': 0.12, 'dG R3': 0.17, 'dG R4': 0.0}, (1, 2),
++                                 'dG R1': 0.0, 'dG R2': 0.12, 'dG R3': 0.17, 'dG R4': 0.0, WATER_ALONE: 0.06}, (1, 2),
+           ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack', 'dG R2', 'dG R3'],
+           (1024, 8, 40)),
++    # Third fit: free ages, a transfer barrier the water-free tube can see, and its water unknown. The truth is
++    # close to the screening result of docs/plan-fit_improvement.md
++    'C': ('M3-split', 'free', {'g hydrolysis_R1': 1.15, 'g hydrolysis_R23': 0.96, 'g transfer': 0.75,
++                               'g condensation': 1.33, 'g solvent_attack': 1.31,
++                               'dG R1': 0.43, 'dG R2': 0.20, 'dG R3': 0.26, 'dG R4': -0.27, WATER_ALONE: 0.06,
++                               'log10 age 2 % H2O': 2.5}, (1, 2),
++          ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack', 'dG R2', 'dG R3',
++           WATER_ALONE], (1024, 8, 40)),
+ }
+ 
+ 
+@@ -213,7 +230,8 @@ def fit_path(structure: str, scenario: str, tag: str = '') -> Path:
+ 
+ 
+ def complete_start(problem: FitProblem, theta: dict):
+-    """A start for this problem from a parameter set that may lack its age or water fraction; None if it lacks more."""
++    """A start for this problem from a parameter set that may lack its age, water fraction or an amount at mixing;
++    None if it lacks more."""
+     out = dict(theta)
+     for p in problem.parameters:
+         if p.name not in out:
+@@ -221,6 +239,8 @@ def complete_start(problem: FitProblem, theta: dict):
+                 out[p.name] = p.upper
+             elif p.kind == 'water':
+                 out[p.name] = 1.0
++            elif p.kind == 'recipe':
++                out[p.name] = float(np.clip(0.05, p.lower, p.upper))
+             else:
+                 return None
+     return out
+@@ -297,18 +317,74 @@ def load_main_fits() -> dict:
+     return out
+ 
+ 
+-def select_consistent(fits: dict):
+-    """(structure, scenario, kind) by the rule fixed before fitting, or None: the smallest structure that fits a
+-    common-age scenario; failing that, the smallest that fits with free ages."""
+-    for kind, scenarios in (('common age', ('short', 'middle', 'long')), ('free ages', ('free',))):
++def select_consistent(fits: dict, verdicts: dict = None):
++    """(structure, scenario, kind) by the rule of the third fit, or None: the smallest structure that fits with
++    free ages; failing that, the smallest that fits a common-age scenario. A fit that the trace rule rejects
++    (verdicts: {(structure, scenario): passes}) is not eligible; one without a verdict is."""
++    rejected = {key for key, passes in (verdicts or {}).items() if not passes}
++    for kind, scenarios in (('free ages', ('free',)), ('common age', ('short', 'middle', 'long'))):
+         for structure in SIZE_ORDER:
+-            fitting = [sc for sc in scenarios if (structure, sc) in fits and fits[(structure, sc)]['fits']]
++            fitting = [sc for sc in scenarios if (structure, sc) in fits and fits[(structure, sc)]['fits']
++                       and (structure, sc) not in rejected]
+             if fitting:
+                 best = min(fitting, key=lambda sc: fits[(structure, sc)]['chi2'])
+                 return structure, best, kind
+     return None
+ 
+ 
++# Trace rule (third fit). A TMSPA stock holds some hydrolysis product, so a parameter set must not depend on a
++# start that is pure: unchanged, it has to fit with each of these amounts of TMSOH at mixing. DECLARED levels
++TRACE_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa alone')       # the fitted tubes whose recipe holds TMSPA and no TMSOH
++TRACE_RULE_M = (1e-6, 1e-3)
++TRACE_RULE_MAX_Z = 3.0
++
++
++def trace_options(level_M: float) -> dict:
++    return {'overrides': {name: {'added_M': {'TMSOH': level_M}} for name in TRACE_SAMPLES}}
++
++
++def tabulate_trace_verdicts(fits: dict) -> pd.DataFrame:
++    """One row per fit that fits: χ² and largest |z| of its parameter set, unchanged, with each trace of TMSOH at
++    mixing, and 'passes' (it still fits with every one). Written to trace_verdict.csv; a row whose fit has not
++    changed is read back from that file."""
++    path = RESULTS / 'trace_verdict.csv'
++    columns = ['structure', 'scenario', 'chi2', 'max |z|'] + [f'{what} with {level:.0e} M' for level in TRACE_RULE_M
++                                                              for what in ('chi2', 'max |z|')] + ['passes']
++    known = pd.read_csv(path) if path.exists() else pd.DataFrame(columns=columns)
++    rows = []
++    for (structure, scenario), fit in fits.items():
++        if not fit['fits']:
++            continue
++        old = known[(known['structure'] == structure) & (known['scenario'] == scenario)]
++        if len(old) and abs(float(old['chi2'].iloc[0]) - fit['chi2']) < 1e-6:
++            rows.append(old.iloc[0].to_dict())
++            continue
++        row = {'structure': structure, 'scenario': scenario, 'chi2': fit['chi2'], 'max |z|': fit['max_abs_z']}
++        for level in TRACE_RULE_M:
++            problem = FitProblem(structure, sample_set(scenario, **trace_options(level)), solver=REPORT_SOLVER)
++            x = problem.vector(fit['theta'])
++            row[f'chi2 with {level:.0e} M'] = problem.chi2(x)
++            row[f'max |z| with {level:.0e} M'] = float(problem.table(x)['z'].abs().max())
++        row['passes'] = bool(all(row[f'max |z| with {level:.0e} M'] <= TRACE_RULE_MAX_Z for level in TRACE_RULE_M))
++        rows.append(row)
++        log(f"trace rule {structure} {scenario}: " + ', '.join(
++            f"chi2 {row[f'chi2 with {level:.0e} M']:.1f} and max |z| {row[f'max |z| with {level:.0e} M']:.2f} with {level:.0e} M"
++            for level in TRACE_RULE_M) + f" (chi2 {fit['chi2']:.1f} without): {'PASSES' if row['passes'] else 'REJECTED'}")
++    table = pd.DataFrame(rows, columns=columns)
++    table.to_csv(path, index=False)
++    return table
++
++
++def load_trace_verdicts(fits: dict = None) -> dict:
++    """{(structure, scenario): passes} from trace_verdict.csv, computed first for `fits` when given."""
++    if fits is not None:
++        table = tabulate_trace_verdicts(fits)
++    else:
++        path = RESULTS / 'trace_verdict.csv'
++        table = pd.read_csv(path) if path.exists() else pd.DataFrame()
++    return {(r['structure'], r['scenario']): str(r['passes']) == 'True' for _, r in table.iterrows()}
++
++
+ def summarize_fits() -> pd.DataFrame:
+     fits = load_main_fits()
+     if not fits:
+@@ -322,8 +398,8 @@ def summarize_fits() -> pd.DataFrame:
+               ignore_index=True).to_csv(RESULTS / 'fits_residuals.csv', index=False)
+     pd.DataFrame([{'structure': st, 'scenario': sc, 'reaction': r, **b} for (st, sc), fit in fits.items()
+                   for r, b in fit['barriers'].items()]).to_csv(RESULTS / 'fits_barriers.csv', index=False)
+-    selected = select_consistent(fits)
+-    log('selection rule: ' + ('no structure fits any scenario' if selected is None else
++    selected = select_consistent(fits, load_trace_verdicts(fits))
++    log('selection rule: ' + ('no structure fits any scenario and passes the trace rule' if selected is None else
+                               f'{selected[0]} in the {selected[1]} scenario ({selected[2]})'))
+     return table
+ 
+@@ -416,7 +492,8 @@ NIGHT_ENERGY_OFFSETS_SE = (-2.0, -1.0, -0.5, -0.25, 0.25, 0.5, 1.0, 2.0)
+ 
+ def night_grids(problem: FitProblem, theta: dict, names: list) -> dict:
+     """Profile grids of the night run: 10 offsets for a barrier, 8 for a freed energy (the library default has
+-    14 and 12), the whole box in 13 steps for an age or the water fraction. Interval edges are refined afterwards."""
++    14 and 12), multiples of the best value for an amount at mixing, the whole box in 13 steps for an age or the
++    water fraction. Interval edges are refined afterwards."""
+     sigma = {row['quantity']: row['sigma'] for row in problem.build(problem.vector(theta))['prior_rows']}
+     grids = {}
+     for p in problem.all_parameters:
+@@ -426,6 +503,8 @@ def night_grids(problem: FitProblem, theta: dict, names: list) -> dict:
+             grid = theta[p.name] + np.array(NIGHT_BARRIER_OFFSETS_EV)
+         elif p.kind == 'energy':
+             grid = theta[p.name] + next(v for k, v in sigma.items() if p.target in k) * np.array(NIGHT_ENERGY_OFFSETS_SE)
++        elif p.kind == 'recipe' and theta[p.name] > 1e-6:
++            grid = theta[p.name] * np.array(RECIPE_FACTORS)
+         else:
+             grid = np.linspace(p.lower, p.upper, 13)
+         grid = grid[(grid >= p.lower - 1e-12) & (grid <= p.upper + 1e-12)]
+@@ -529,7 +608,7 @@ def adopt_profile_minimum(structure: str, scenario: str, args, *, refine: bool)
+     return True
+ 
+ 
+-FITTED_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe', 'TMSOH, glovebox', 'E1')
++FITTED_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox', 'E1')
+ 
+ 
+ def run_leave_one_out(structure: str, scenario: str, args) -> dict:
+@@ -650,7 +729,7 @@ def stage_night(args) -> None:
+     if not stage_recovery(args):
+         raise SystemExit('the synthetic recovery failed: the night run stops here')
+     fits = load_main_fits()
+-    selected = select_consistent(fits)
++    selected = select_consistent(fits, load_trace_verdicts(fits))
+     profiled = [MAIN_STRUCTURE, 'M1'] + ([selected[0]] if selected and selected[0] not in (MAIN_STRUCTURE, 'M1') else [])
+     log(f'night: profiles of {profiled}; leave-one-out, sensitivities and indistinguishability on {MAIN_STRUCTURE}')
+     # 1. Profiles of the main structure, then of the baseline structure
+@@ -728,20 +807,18 @@ def summarize_night() -> None:
+ # ------------------------------------------------------------------------------
+ # traces: does a fit survive a trace of TMSOH at mixing?
+ # ------------------------------------------------------------------------------
+-WATER_SAMPLES = ('0.5 % H2O', '2 % H2O')                      # the fitted samples whose recipe holds no TMSOH
++WATER_SAMPLES = ('0.5 % H2O', '2 % H2O')                      # the samples mixed with water (trajectory table)
+ TRACE_SCAN_M = (0.0, 1e-9, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3)
+ TRACE_REFIT_M = {'1uM': 1e-6, '1mM': 1e-3}
+ 
+ 
+-def trace_options(level_M: float) -> dict:
+-    return {'overrides': {name: {'added_M': {'TMSOH': level_M}} for name in WATER_SAMPLES}}
+-
+-
+ def stage_traces(args) -> None:
+-    """Every fit starts the two water samples from the recipe alone, with no TMSOH at mixing. A TMSPA stock holds
+-    some hydrolysis product, so each fit of the main structure is (a) evaluated unchanged with a trace of TMSOH
++    """Every fit starts the TMSPA tubes from the recipe alone, with no TMSOH at mixing. A TMSPA stock holds some
++    hydrolysis product, so each fit of the main structure is (a) evaluated unchanged with a trace of TMSOH
+     added at mixing and (b) fitted again with 1 µM and with 1 mM of it. A fit that (a) destroys rests on an
+-    induction time seeded by the reaction itself; (b) says whether the scenario can still be fitted."""
++    induction time seeded by the reaction itself: the trace rule rejects it (tabulate_trace_verdicts, which reads
++    the 1 µM and 1 mM points of (a) for every fit). (b) says whether the scenario can still be fitted with other
++    parameters; it does not enter the rule."""
+     rows = []
+ 
+     def record(scenario, level, how, problem, theta, **extra):
+@@ -822,7 +899,8 @@ def accepted_thetas(structure: str, scenario: str) -> list:
+ def check_hold_out(structure: str, scenario: str, theta: dict) -> pd.DataFrame:
+     built = get_structure(structure).build(theta)
+     samples = sample_set(scenario, roles=('hold_out',), paper=())
+-    return tabulate_residuals(built['model'], samples, ages=built['ages'], water_fraction=built['water_fraction'])
++    return tabulate_residuals(built['model'], samples, ages=built['ages'], water_fraction=built['water_fraction'],
++                              added_M=built['added_M'])
+ 
+ 
+ def check_later_spectra(structure: str, scenario: str, fit: dict) -> pd.DataFrame:
+@@ -833,7 +911,7 @@ def check_later_spectra(structure: str, scenario: str, fit: dict) -> pd.DataFram
+     if not samples:
+         return pd.DataFrame()
+     return tabulate_residuals(built['model'], samples, ages={**fit['ages'], **built['ages']},
+-                              water_fraction=built['water_fraction'])
++                              water_fraction=built['water_fraction'], added_M=built['added_M'])
+ 
+ 
+ CO_PRODUCTS = ('none', 'TMSOH', 'HMDSO')
+@@ -841,6 +919,8 @@ CO_PRODUCTS = ('none', 'TMSOH', 'HMDSO')
+ 
+ def check_tmspa_alone(structure: str, theta: dict, co_products: str = 'none') -> dict:
+     """TMSPa without added water: the water content with which the model turns the first spectrum into the second.
++    Since the third fit this tube is fitted from its recipe, with its water as a parameter; this is the earlier
++    check, kept as a second reading that starts from the measured first spectrum instead of an age.
+ 
+     The first spectrum already shows hydrolysed phosphate, so silyl groups had left it by then. co_products says
+     where they are at that time: 'none' (not in the solution), 'TMSOH' or 'HMDSO'. The files do not tell.
+@@ -941,7 +1021,9 @@ def tabulate_sample_trajectories(structure: str, scenario: str, fit: dict, trace
+ 
+ def stage_predictions(args) -> None:
+     fits = load_main_fits()
+-    selected = select_consistent(fits)
++    selected = select_consistent(fits, load_trace_verdicts(fits))
++    log('selection rule: ' + ('no structure fits any scenario and passes the trace rule' if selected is None else
++                              f'{selected[0]} in the {selected[1]} scenario ({selected[2]})'))
+     structures = [MAIN_STRUCTURE, 'M1'] + ([selected[0]] if selected and selected[0] not in (MAIN_STRUCTURE, 'M1') else [])
+     hold_out, alone, paper, storage, protocol, traces, trajectories, later = [], [], [], [], [], [], [], []
+     stages, _ = build_protocol_schedule()
+diff --git a/tests/test_estimation.py b/tests/test_estimation.py
+index 9e04fbd..a1b7e91 100644
+--- a/tests/test_estimation.py
++++ b/tests/test_estimation.py
+@@ -6,7 +6,8 @@ Covers:
+ 3. Residuals: scenarios, the replicate block, the one-sided paper term, ages found inside an evaluation.
+ 4. Solver tolerance: search and report settings agree far inside the measurement error.
+ 5. Structures, the optimiser and profiles: known parameters are recovered from synthetic shares, a parameter the
+-   samples cannot see is reported as not determined, nesting never raises χ².
++   samples cannot see is reported as not determined, the water a recipe does not fix is recovered, nesting never
++   raises χ².
+ 6. With the lab file present: the windows of notebook 03 give its barrier intervals through the new forward path.
+ 
+ Source: Y. Alcaraz Galván; expected intervals read from notebooks/results/03 (computed from the Tank
+@@ -150,7 +151,9 @@ def test_species_shifts():
+ def test_sample_set_and_histories():
+     observables = build_synthetic_observables()
+     middle = {s['name']: s for s in build_sample_set(observables, 'middle')}
+-    assert list(middle) == ['0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe', 'TMSOH, glovebox', 'E1']
++    assert list(middle) == ['0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox', 'E1']
++    assert middle['TMSPa alone']['unknown_M'] == {'H2O': (0.0, 0.3)} and not middle['2 % H2O']['unknown_M']
++    assert 'H2O' not in middle['TMSPa alone']['c0_M'] and not middle['TMSPa alone']['wet']
+     assert all(s['age_h'] == 24.0 for s in middle.values() if s['age_mode'] == 'fixed')
+     assert all(len(s['blocks']) == 1 for s in middle.values() if s['kind'] == 'lab'), 'one nucleus per tube in this set'
+     assert middle['TMSOH, glovebox']['age_mode'] == 'none' and middle['2 % H2O']['blocks'][0]['replicate']
+@@ -162,8 +165,8 @@ def test_sample_set_and_histories():
+     segments, times = build_sample_history(middle['TMSOH, glovebox'])
+     assert segments[0] == (353.15, 8 * 3600.0) and abs(times[0][0] / 3600.0 - 8.1) < 1e-9
+     free = {s['name']: s for s in build_sample_set(observables, 'free')}
+-    assert [free[n]['age_mode'] for n in ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe')] == \
+-        ['profile', 'parameter', 'profile', 'fixed']
++    assert [free[n]['age_mode'] for n in ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe')] == \
++        ['profile', 'parameter', 'profile', 'profile', 'fixed']
+     held = build_sample_set(observables, 'short', roles=('hold_out',), paper=())
+     assert [s['name'] for s in held] == ['TMSPa + TMSOH (B)']
+     assert 'E1' not in [s['name'] for s in build_sample_set(observables, 'short', exclude=('E1', '2 % H2O'))]
+@@ -188,8 +191,8 @@ def test_sample_set_and_histories():
+ 
+ def test_replicate_block_and_limits():
+     observables = build_synthetic_observables()
+-    samples = build_sample_set(observables, 'middle', exclude=('0.5 % H2O', 'TMSPa + TMSOH (A)', 'TMSOH, probe',
+-                                                               'TMSOH, glovebox', 'E1'))
++    samples = build_sample_set(observables, 'middle', exclude=('0.5 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone',
++                                                               'TMSOH, probe', 'TMSOH, glovebox', 'E1'))
+     tube = samples[0]
+     block = tube['blocks'][0]
+     assert block['replicate'] and block['birge'] == 1.0
+@@ -230,7 +233,7 @@ def test_free_ages_and_tables():
+     observables = build_synthetic_observables()
+     free = build_sample_set(observables, 'free')
+     residuals, details = calculate_residuals(MID, free, ages={'2 % H2O': 100.0}, return_details=True)
+-    assert residuals.size == 45 and all(d['ok'] for d in details.values())
++    assert residuals.size == 53 and all(d['ok'] for d in details.values())
+     # The age found inside the evaluation is the best of a brute-force scan
+     tube = next(s for s in free if s['name'] == 'TMSPa + TMSOH (A)')
+     from kinetics.fitting.residuals import _whiten_sample
+@@ -242,18 +245,29 @@ def test_free_ages_and_tables():
+     assert chi2_found <= min(scan) + 0.02, (chi2_found, min(scan), found)
+     # A fixed scenario is the free one evaluated at those ages
+     middle = build_sample_set(observables, 'middle')
+-    same = calculate_residuals(MID, free, ages={'2 % H2O': 24.0, '0.5 % H2O': 24.0, 'TMSPa + TMSOH (A)': 24.0})
++    same = calculate_residuals(MID, free, ages={'2 % H2O': 24.0, '0.5 % H2O': 24.0, 'TMSPa + TMSOH (A)': 24.0,
++                                                'TMSPa alone': 24.0})
+     fixed = calculate_residuals(MID, middle)
+-    probe = slice(32, 41)                                    # the probe sample sits at the lower bound in 'free'
++    probe = slice(40, 49)                                    # the probe sample sits at the lower bound in 'free'
+     assert np.allclose(np.delete(same, probe), np.delete(fixed, probe), atol=1e-9)
+     table = tabulate_residuals(MID, middle)
+     summary = summarize_residuals(calculate_residuals(MID, middle, solver=REPORT_SOLVER), table)
+-    assert set(table['kind']) == {'share', 'mean', 'drift', 'limit'} and len(table) == 49
+-    assert summary['n_residuals'] == 45 and summary['max_abs_z'] == table['z'].abs().max()
++    assert set(table['kind']) == {'share', 'mean', 'drift', 'limit'} and len(table) == 57
++    assert summary['n_residuals'] == 53 and summary['max_abs_z'] == table['z'].abs().max()
+     # Available water scales the water of the samples mixed with water only
+     dry = calculate_residuals(MID, middle, water_fraction=0.5)
+     assert not np.allclose(dry[:28], fixed[:28]) and np.allclose(dry[32:], fixed[32:])
+-    print('  ✓ free ages: the age found in one simulation matches a 200-point scan; tables and water fraction')
++    # An amount at mixing the recipe does not fix: it changes the residuals of its own sample only
++    alone = slice(32, 40)                                    # the tube mixed without water
++    wet = calculate_residuals(MID, middle, added_M={'TMSPa alone': {'H2O': 0.06}})
++    assert not np.allclose(wet[alone], fixed[alone]) and np.allclose(np.delete(wet, alone), np.delete(fixed, alone))
++    tube = next(s for s in middle if s['name'] == 'TMSPa alone')
++    direct = calculate_predicted_shares(tube, MID, added_M={'H2O': 0.06})[0]
++    by_table = tabulate_residuals(MID, middle, added_M={'TMSPa alone': {'H2O': 0.06}}, solver=SEARCH_SOLVER)
++    assert np.allclose(by_table[by_table['sample'] == 'TMSPa alone']['predicted'].to_numpy(), direct.ravel(), atol=1e-12)
++    assert direct[1, 0] < direct[0, 0] < 1.0, 'with water the tube loses TMSPA, more so 10 days later'
++    print('  ✓ free ages: the age found in one simulation matches a 200-point scan; tables, water fraction and '
++          'an amount at mixing the recipe does not fix')
+ 
+ 
+ # ------------------------------------------------------------------------------
+@@ -285,9 +299,13 @@ def test_structures_build_models():
+     free = build_sample_set(observables, 'free')
+     names = {name: [p.name for p in get_structure(name).parameters(free)] for name in
+              ('M0-BEP', 'M0-Marcus', 'M1', 'M1-split', 'M3', 'M3-split', 'M3-split+W')}
+-    assert names['M0-BEP'] == ['g all reactions', 'log10 age 2 % H2O']
++    assert names['M0-BEP'] == ['g all reactions', 'c0 H2O TMSPa alone', 'log10 age 2 % H2O']
+     assert names['M1-split'][:5] == ['g hydrolysis_R1', 'g hydrolysis_R23', 'g transfer', 'g condensation', 'g solvent_attack']
+-    assert names['M3-split+W'][5:] == ['dG R1', 'dG R2', 'dG R3', 'dG R4', 'water fraction', 'log10 age 2 % H2O']
++    assert names['M3-split+W'][5:] == ['dG R1', 'dG R2', 'dG R3', 'dG R4', 'water fraction', 'c0 H2O TMSPa alone',
++                                       'log10 age 2 % H2O']
++    recipe = next(p for p in get_structure('M1').parameters(free) if p.kind == 'recipe')
++    assert (recipe.lower, recipe.upper, recipe.unit, recipe.target) == (0.0, 0.3, 'M', 'TMSPa alone')
++    assert [p.name for p in get_structure('M1').parameters()] == ['g hydrolysis', 'g transfer', 'g condensation', 'g solvent_attack']
+     # M0 reproduces the registered models at their own barrier; M1 reproduces level1
+     for structure, registered, g in (('M0-BEP', 'reference_bep', 1.15), ('M0-Marcus', 'level1', 1.15)):
+         built = get_structure(structure).build({'g all reactions': g})
+@@ -296,14 +314,15 @@ def test_structures_build_models():
+     level1_theta = {'g hydrolysis': 0.80, 'g transfer': 0.80, 'g condensation': 1.30, 'g solvent_attack': 1.32}
+     built = get_structure('M1').build(level1_theta)
+     assert np.array_equal(built['model'].calculate_rates(300.0)['k_f'].values, get_model('level1').calculate_rates(300.0)['k_f'].values)
+-    assert built['prior'].size == 0 and built['ages'] == {} and built['water_fraction'] == 1.0
++    assert built['prior'].size == 0 and built['ages'] == {} and built['water_fraction'] == 1.0 and built['added_M'] == {}
+     # The split gives R2 and R3 one barrier; freed energies move the ladder and leave R8, R9 alone
+     theta = embed_parent_theta('M3-split', level1_theta)
+     assert theta['g hydrolysis_R1'] == theta['g hydrolysis_R23'] == 0.80 and theta['dG R2'] == 0.0
+     same = get_structure('M3-split').build(theta)
+     assert np.allclose(same['model'].calculate_rates(300.0)['k_f'].values, built['model'].calculate_rates(300.0)['k_f'].values,
+                        rtol=1e-12), 'a child at its parent\'s values is the parent'
+-    theta.update({'g hydrolysis_R23': 1.0, 'dG R2': 0.12, 'dG R3': 0.17, 'log10 age 2 % H2O': 2.0, 'water fraction': 0.5})
++    theta.update({'g hydrolysis_R23': 1.0, 'dG R2': 0.12, 'dG R3': 0.17, 'log10 age 2 % H2O': 2.0, 'water fraction': 0.5,
++                  'c0 H2O TMSPa alone': 0.06})
+     moved = get_structure('M3-split+W').build(theta)
+     rates, base = moved['model'].calculate_rates(300.0), built['model'].calculate_rates(300.0)
+     assert rates.loc['R2', 'g_eV'] == rates.loc['R3', 'g_eV'] == 1.0 and rates.loc['R1', 'g_eV'] == 0.80
+@@ -311,6 +330,9 @@ def test_structures_build_models():
+     assert abs(rates.loc['R6', 'dG_rxn_eV'] - base.loc['R6', 'dG_rxn_eV'] - 0.12) < 1e-9, 'R6 = R2 + R4 follows'
+     assert abs(rates.loc['R8', 'dG_rxn_eV'] - base.loc['R8', 'dG_rxn_eV']) < 1e-9
+     assert moved['ages'] == {'2 % H2O': 100.0} and moved['water_fraction'] == 0.5
++    assert moved['added_M'] == {'TMSPa alone': {'H2O': 0.06}}
++    carried = embed_parent_theta('M3-split', {**level1_theta, 'c0 H2O TMSPa alone': 0.04, 'log10 age 2 % H2O': 2.0})
++    assert carried['c0 H2O TMSPa alone'] == 0.04 and carried['log10 age 2 % H2O'] == 2.0, 'what belongs to the sample set is passed on'
+     cov = calculate_solvation_covariance(['R1', 'R2', 'R3', 'R4']).to_numpy()
+     d = np.array([0.0, 0.12, 0.17, 0.0])
+     assert abs(moved['prior'] @ moved['prior'] - d @ np.linalg.solve(cov, d)) < 1e-9, 'the constraint is the Mahalanobis distance'
+@@ -372,7 +394,7 @@ def test_fit_recovers_and_reports_blind_spots(workers=4):
+     come back inside their intervals (an open side counts as inside); the hydrolysis barrier, which they cannot
+     see, is 'not determined'."""
+     observables = build_synthetic_observables()
+-    tmsoh = build_sample_set(observables, 'middle', exclude=('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)'))
++    tmsoh = build_sample_set(observables, 'middle', exclude=('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone'))
+     truth = {'g hydrolysis': 1.25, 'g transfer': 1.00, 'g condensation': 1.22, 'g solvent_attack': 1.315}
+     exact = simulate_synthetic_shares('M1', truth, tmsoh)
+     assert np.max(np.abs(FitProblem('M1', exact).residuals([truth[k] for k in truth]))) < 1e-4, 'no noise: no residual'
+@@ -408,6 +430,33 @@ def test_fit_recovers_and_reports_blind_spots(workers=4):
+           "the unseen barrier is 'not determined'")
+ 
+ 
++def test_unknown_water_is_recovered(workers=4):
++    """The tube mixed without water, synthetic shares from a known water content: with the barriers known, the fit
++    returns that water inside a closed interval; with no water the model cannot explain the tube."""
++    observables = build_synthetic_observables()
++    tube = build_sample_set(observables, 'middle', exclude=tuple(n for n in observables['samples'] if n != 'TMSPa alone'),
++                            paper=())
++    assert [s['name'] for s in tube] == ['TMSPa alone']
++    barriers = {'g hydrolysis': 1.25, 'g transfer': 0.75, 'g condensation': 1.30, 'g solvent_attack': 1.315}
++    truth = {**barriers, 'c0 H2O TMSPa alone': 0.06}
++    exact = simulate_synthetic_shares('M1', truth, tube)
++    spectra = exact[0]['blocks'][0]['measured']
++    assert spectra[1, 0] < spectra[0, 0] - 0.1, 'the truth converts TMSPA between the two spectra'
++    problem = FitProblem('M1', exact, fixed=barriers)
++    assert problem.names == ['c0 H2O TMSPa alone'] and problem.chi2([0.06]) < 1e-6
++    assert problem.chi2([0.0]) > 100.0, 'without water nothing happens in this tube'
++    data = simulate_synthetic_shares('M1', truth, tube, seed=3)
++    problem = FitProblem('M1', data, fixed=barriers)
++    fit = fit_structure(problem, n_screen=32, n_starts=3, max_nfev=20, workers=workers)
++    assert fit['chi2'] <= problem.replace(solver=REPORT_SOLVER).chi2([0.06]) + 1e-6
++    profile = calculate_profile(problem, fit, ['c0 H2O TMSPa alone'], max_nfev=10, workers=workers)
++    ci = find_confidence_interval(profile, 'c0 H2O TMSPa alone')
++    assert ci['status'] == 'interval' and ci['low'] - 1e-3 <= 0.06 <= ci['high'] + 1e-3, ci
++    assert ci['high'] - ci['low'] < 0.06, ci
++    print(f"  ✓ unknown water: {1000 * fit['theta']['c0 H2O TMSPa alone']:.0f} mM found for 60 mM, "
++          f"interval {1000 * ci['low']:.0f} to {1000 * ci['high']:.0f} mM")
++
++
+ def test_nesting_never_raises_chi2(workers=4):
+     observables = build_synthetic_observables()
+     samples = build_sample_set(observables, 'middle', exclude=('2 % H2O', 'TMSOH, probe', 'E1'))
+@@ -557,6 +606,7 @@ if __name__ == "__main__":
+     test_structures_build_models()
+     test_interval_finder()
+     test_fit_recovers_and_reports_blind_spots()
++    test_unknown_water_is_recovered()
+     test_nesting_never_raises_chi2()
+     test_windows_reproduce_notebook_03_if_available()
+     print("All estimation tests passed.")

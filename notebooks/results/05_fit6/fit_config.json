@@ -1,0 +1,218 @@
+{
+ "fit": "sixth fit",
+ "solvation": {
+  "snapshot": "tank_api_snapshot_2026-10-08.json",
+  "volume_fractions": {
+   "EC": 0.5,
+   "DEC": 0.5
+  },
+  "rule": "linear"
+ },
+ "network": "R1-R9+N10-N15",
+ "sample_overrides": {
+  "2 % H2O": {
+   "heated_episodes": [
+    [
+     13.3022,
+     30.0,
+     8.0
+    ],
+    [
+     21.3022,
+     40.0,
+     8.0
+    ],
+    [
+     62.9886,
+     50.0,
+     8.0
+    ],
+    [
+     86.9961,
+     60.0,
+     8.0
+    ],
+    [
+     109.8881,
+     70.0,
+     8.0
+    ],
+    [
+     135.9867,
+     80.0,
+     8.0
+    ]
+   ]
+  },
+  "TMSPa alone": {
+   "added_M": {
+    "H2O": 0.0656
+   },
+   "unknown_M": {}
+  }
+ },
+ "scenarios": [
+  "short",
+  "middle",
+  "free"
+ ],
+ "paper_observations": [],
+ "energy_box_sigma": 3.0,
+ "structures": {
+  "main": "M5-first",
+  "extended": [
+   "M1-split",
+   "M3-split",
+   "M3-first",
+   "M5-first"
+  ],
+  "readings": {
+   "M3-split": [
+    "middle",
+    "free"
+   ],
+   "M3-first": [
+    "middle",
+    "free"
+   ]
+  }
+ },
+ "effort": {
+  "M3-split": [
+   4096,
+   16,
+   40
+  ],
+  "M3-first": [
+   8192,
+   32,
+   40
+  ],
+  "M5-first": [
+   8192,
+   32,
+   40
+  ],
+  "M5-first|short": [
+   2048,
+   8,
+   40
+  ]
+ },
+ "start_from": "notebooks/results/05_fit5",
+ "night": {
+  "profiled": {
+   "M5-first": [
+    "short",
+    "middle",
+    "free"
+   ],
+   "M3-first": [
+    "middle"
+   ]
+  },
+  "profile_fitting_only": true,
+  "indistinguishability": false,
+  "tolerance_check": false,
+  "trace_refits": false
+ },
+ "sensitivities": [
+  "heating as recorded",
+  "covariance x0.5",
+  "covariance x2",
+  "water free",
+  "Peter barriers",
+  "floor x0",
+  "floor x2"
+ ],
+ "recovery": {
+  "cases": {
+   "C6": {
+    "structure": "M5-first",
+    "scenario": "free",
+    "truth": {
+     "g hydrolysis_R1": 1.4,
+     "g hydrolysis_R23": 0.94,
+     "g transfer_R5": 0.66,
+     "g transfer_R67": 0.8,
+     "g condensation": 1.34,
+     "g solvent_attack": 1.23,
+     "dG R1": 0.23,
+     "dG R2": 0.25,
+     "dG R3": 0.17,
+     "dG R4": -0.31,
+     "dG R8": 0.0,
+     "dG R9": 0.0,
+     "log10 age 2 % H2O": 2.3
+    },
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis_R1",
+     "g hydrolysis_R23",
+     "g transfer_R5",
+     "g transfer_R67",
+     "g condensation",
+     "g solvent_attack",
+     "dG R2",
+     "dG R3"
+    ],
+    "effort": [
+     4096,
+     16,
+     40
+    ]
+   },
+   "C6-1day": {
+    "structure": "M5-first",
+    "scenario": "middle",
+    "truth": {
+     "g hydrolysis_R1": 1.4,
+     "g hydrolysis_R23": 0.94,
+     "g transfer_R5": 0.66,
+     "g transfer_R67": 0.8,
+     "g condensation": 1.34,
+     "g solvent_attack": 1.23,
+     "dG R1": 0.23,
+     "dG R2": 0.25,
+     "dG R3": 0.17,
+     "dG R4": -0.31,
+     "dG R8": 0.0,
+     "dG R9": 0.0
+    },
+    "seeds": [
+     1,
+     2
+    ],
+    "profiled": [
+     "g hydrolysis_R1",
+     "g hydrolysis_R23",
+     "g transfer_R5",
+     "g transfer_R67",
+     "g condensation",
+     "g solvent_attack",
+     "dG R2",
+     "dG R3"
+    ],
+    "effort": [
+     4096,
+     16,
+     40
+    ]
+   }
+  }
+ },
+ "why": [
+  "docs/reference-fit_results.md section 6.3 (decisions of 2026-10-22). Everything not listed here is as in the fifth fit: solvation EC/DEC 1:1 linear mixing of the MD of the 8 Oct snapshot (COSMO-RS is left for a later fit), network R1-R9+N10-N15, heating episodes of the 2 % tube, error model",
+  "energy_box_sigma: every freed reaction energy stays within 3 standard errors (MD) of its computed value; the Gaussian cost of the fifth fit is kept inside the box",
+  "structures: one rule for every reaction. Barriers: the first silyl group leaving TMSPA (no P-OH yet) is its own class in hydrolysis (R1, and N15 which follows it) and in transfer (R5); R2-R3 and R6-R7 share one class each. Energies: every independent reaction (R1-R4, R8, R9) has its offset; R5-R7 and N10-N15 follow through the species. Names MX-suffix (X: which energies are free; suffix: how the barriers are grouped): M5-first is the main structure, M3-first (energies of R1-R4) and M3-split (the fifth fit's) are fitted beside it at 1 day and free ages only. Every change from the fifth fit restricts the older structures (water fixed, narrower box), so one that failed there fails here: M3 is not fitted (it failed in the fifth fit, also with the wider prior of the review), and M3-split and M3-first are nested in M5-first, so at 1 h they fail if it fails. M0-BEP, M0-Marcus, M1 and M1-split are kept (minutes) for the ladder",
+  "sample_overrides TMSPa alone: no water was added and the literature gives only traces (RXN-01: Karl Fischer about 10 ppm), but the measured reaction is impossible without water. Its water is declared at the least the last spectrum needs (243 h after the first: 0.874 silyl groups gone per phosphorus, 131 mM, at least half a water each: 65.6 mM) instead of fitted. Sensitivity 'water free' fits it as in fits 3-5",
+  "scenarios: 1 h, 1 day and free ages (the user's choice; t = 0 or 10 min left out: 1 h already failed in every earlier fit)",
+  "effort and start_from: the full search of the fifth fit (8192 screen points, 32 starts) for M3-first and M5-first; a reduced one (4096, 16) for M3-split, which also starts from its own fifth-fit optimum; 2048 points and 8 starts for M5-first at 1 h, the reading that failed in every earlier fit. The fifth fit's parameters, embedded in each structure, are extra starting points only: no box or centre comes from them",
+  "night: profiles of the main structure where it fits, and of M3-first at 1 day (does the R5 barrier come out, and does the split move the others); leave-one-out and sensitivities of the main structure where it fits; no indistinguishability block, tolerance check or refits with a trace (all done in the fifth fit); the trace rule is still evaluated on the fits as they are",
+  "recovery: two cases of the main structure, free ages (C6) and 1 day (C6-1day), truth close to the fifth fit's answer, two data sets each, with the reduced search (4096, 16): weaker than the fits' own, so a pass is conservative. The second case uses the time saved by leaving M3 and the nested structures at 1 h out",
+  "sensitivities: heating as recorded (the only fifth-fit variant that moved chi2 by more than 3), the cost with sigma x0.5 and x2 (the 3 sigma box stays), water free, Peter barriers (N10-N15 all at 1.15 eV: the one exception left to one rule for every reaction), floor x0 and x2 (the fit/no-fit verdict rests on the declared error floor; without it the fifth fit failed)"
+ ]
+}

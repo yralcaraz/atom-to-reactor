@@ -1,0 +1,10 @@
+Third fit (docs/plan-fit_improvement.md), launched 2026-10-07 16:52:41 CEST in tmux session 'fit3' on UU-J56W1T3D
+code: branch fit/first-fit, commit e3b051b6c4e7e874af5be0e8191afa7eee68b073 plus the uncommitted changes in code_vs_commit.patch (kinetics/, scripts/, tests/)
+observables: a0ac7b14decd1842d3565627822c3abb  /home/yeray/data/atom_to_reactor_private/data/lab_observables.json
+  rebuilt from the raw spectra with scripts/build_observables.py --from-raw on 2026-10-07: shares identical to the second-fit file;
+  'TMSPa alone' has role 'fit' and unknown_M {'H2O': [0, 0.3]}. Second-fit file kept as lab_observables_second_fit_261006.json
+  (md5 a0c8bb8b967976e9697fa6f6a49fe9ce)
+changes against the second fit: the tube 'TMSPa alone' is fitted with its water at mixing as a parameter ('c0 H2O TMSPa alone');
+  trace rule (trace_verdict.csv); selection takes free ages first; recovery case C
+stages: registered recovery baselines extended night traces predictions (12 workers); refit and throughput skipped
+[22:15:48] chain restarted (user request); finished jobs are read from their files

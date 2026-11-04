@@ -1,0 +1,1231 @@
+{
+ "structure": "M3-split",
+ "parameters": [
+  "g hydrolysis_R1",
+  "g hydrolysis_R23",
+  "g transfer",
+  "g condensation",
+  "g solvent_attack",
+  "dG R1",
+  "dG R2",
+  "dG R3",
+  "dG R4",
+  "c0 H2O TMSPa alone",
+  "log10 age 2 % H2O"
+ ],
+ "fixed": {},
+ "theta": {
+  "g hydrolysis_R1": 1.3578218227475851,
+  "g hydrolysis_R23": 0.9490063017761824,
+  "g transfer": 0.6017678188970346,
+  "g condensation": 1.2933372313575886,
+  "g solvent_attack": 1.2268582756366913,
+  "dG R1": 0.15871175689042372,
+  "dG R2": 0.18177849818543912,
+  "dG R3": 0.11585193342600586,
+  "dG R4": -0.20572420542495973,
+  "c0 H2O TMSPa alone": 0.06073372402017347,
+  "log10 age 2 % H2O": 1.6580990520872234
+ },
+ "x": [
+  1.3578218227475851,
+  0.9490063017761824,
+  0.6017678188970346,
+  1.2933372313575886,
+  1.2268582756366913,
+  0.15871175689042372,
+  0.18177849818543912,
+  0.11585193342600586,
+  -0.20572420542495973,
+  0.06073372402017347,
+  1.6580990520872234
+ ],
+ "chi2": 35.5889627849623,
+ "n_residuals": 84,
+ "n_parameters": 11,
+ "max_abs_z": 1.938809648171082,
+ "worst": "computed energies: ΔG_rxn(R2) − computed",
+ "fits": true,
+ "table": {
+  "__table__": [
+   {
+    "sample": "0.5 % H2O",
+    "quantity": "TMSPA",
+    "kind": "share",
+    "t_h": 19.863611111111112,
+    "age_h": 1.0,
+    "measured": 0.929993239108732,
+    "predicted": 0.939194994848577,
+    "sigma": 0.095000339384831,
+    "z": 0.096860240704715
+   },
+   {
+    "sample": "0.5 % H2O",
+    "quantity": "BMSPA",
+    "kind": "share",
+    "t_h": 19.863611111111112,
+    "age_h": 1.0,
+    "measured": 0.060206745977826,
+    "predicted": 0.060668189503665,
+    "sigma": 0.022008445252025,
+    "z": 0.020966657142495
+   },
+   {
+    "sample": "0.5 % H2O",
+    "quantity": "MMSPA",
+    "kind": "share",
+    "t_h": 19.863611111111112,
+    "age_h": 1.0,
+    "measured": -0.012788836128245,
+    "predicted": 0.000136780856483,
+    "sigma": 0.023938143636297,
+    "z": 0.539959036970976
+   },
+   {
+    "sample": "0.5 % H2O",
+    "quantity": "H3PO4",
+    "kind": "share",
+    "t_h": 19.863611111111112,
+    "age_h": 1.0,
+    "measured": 0.02252833341213,
+    "predicted": 3.4791275e-08,
+    "sigma": 0.034226515140092,
+    "z": -0.658211872539316
+   },
+   {
+    "sample": "0.5 % H2O",
+    "quantity": "TMSOH",
+    "kind": "share",
+    "t_h": 19.93861111111111,
+    "age_h": 1.0,
+    "measured": -0.017043987292917,
+    "predicted": 2.63533061e-07,
+    "sigma": 0.060406517003,
+    "z": 0.282159138973902
+   },
+   {
+    "sample": "0.5 % H2O",
+    "quantity": "HMDSO",
+    "kind": "share",
+    "t_h": 19.93861111111111,
+    "age_h": 1.0,
+    "measured": 0.016961365359921,
+    "predicted": 0.021481070085555,
+    "sigma": 0.061583115236297,
+    "z": 0.073391946936947
+   },
+   {
+    "sample": "0.5 % H2O",
+    "quantity": "TMSOEG",
+    "kind": "share",
+    "t_h": 19.93861111111111,
+    "age_h": 1.0,
+    "measured": 0.000870347124866,
+    "predicted": 3.442e-12,
+    "sigma": 0.060527757216744,
+    "z": -0.014379305651581
+   },
+   {
+    "sample": "0.5 % H2O",
+    "quantity": "P-silyl",
+    "kind": "share",
+    "t_h": 19.93861111111111,
+    "age_h": 1.0,
+    "measured": 0.994801062204672,
+    "predicted": 0.978518666377942,
+    "sigma": 0.298714490403078,
+    "z": -0.054508222231733
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSPA (mean of 6 spectra)",
+    "kind": "mean",
+    "t_h": 123.25997141481066,
+    "age_h": 45.50918437777363,
+    "measured": -0.000765662665101,
+    "predicted": 2.3379784245e-05,
+    "sigma": 0.024003665911223,
+    "z": 0.032871747684871
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "BMSPA (mean of 6 spectra)",
+    "kind": "mean",
+    "t_h": 123.25997141481066,
+    "age_h": 45.50918437777363,
+    "measured": 0.037118874863205,
+    "predicted": 0.017016019295508,
+    "sigma": 0.021131718106399,
+    "z": -0.951311931499264
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "MMSPA (mean of 6 spectra)",
+    "kind": "mean",
+    "t_h": 123.25997141481066,
+    "age_h": 45.50918437777363,
+    "measured": 0.315994642634203,
+    "predicted": 0.315328813495625,
+    "sigma": 0.033615374599051,
+    "z": -0.019807280047296
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "H3PO4 (mean of 6 spectra)",
+    "kind": "mean",
+    "t_h": 123.25997141481066,
+    "age_h": 45.50918437777363,
+    "measured": 0.661593213609833,
+    "predicted": 0.667632045918377,
+    "sigma": 0.066558232627319,
+    "z": 0.090730058028404
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSPA drift, spectrum 1",
+    "kind": "drift",
+    "t_h": 45.58640659999585,
+    "age_h": 45.50918437777363,
+    "measured": -0.000305456514042,
+    "predicted": 5.3721283e-08,
+    "sigma": 0.016447157398396,
+    "z": 0.018575260631607
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "BMSPA drift, spectrum 1",
+    "kind": "drift",
+    "t_h": 45.58640659999585,
+    "age_h": 45.50918437777363,
+    "measured": 0.010338222996301,
+    "predicted": 2.4516809904e-05,
+    "sigma": 0.014063516710961,
+    "z": -0.733366084626547
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "MMSPA drift, spectrum 1",
+    "kind": "drift",
+    "t_h": 45.58640659999585,
+    "age_h": 45.50918437777363,
+    "measured": -0.004912709469829,
+    "predicted": 0.000178272918149,
+    "sigma": 0.012683427177254,
+    "z": 0.401388545606019
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "H3PO4 drift, spectrum 1",
+    "kind": "drift",
+    "t_h": 45.58640659999585,
+    "age_h": 45.50918437777363,
+    "measured": 0.003069523607814,
+    "predicted": -0.000203101943091,
+    "sigma": 0.01806042743821,
+    "z": -0.18120421358254
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSPA drift, spectrum 2",
+    "kind": "drift",
+    "t_h": 78.59557326666251,
+    "age_h": 45.50918437777363,
+    "measured": -0.009093641193599,
+    "predicted": 5.145954e-08,
+    "sigma": 0.004971153901284,
+    "z": 1.829292118835844
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "BMSPA drift, spectrum 2",
+    "kind": "drift",
+    "t_h": 78.59557326666251,
+    "age_h": 45.50918437777363,
+    "measured": -0.003661605318228,
+    "predicted": 2.3492645981e-05,
+    "sigma": 0.004266281385167,
+    "z": 0.86377283435227
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "MMSPA drift, spectrum 2",
+    "kind": "drift",
+    "t_h": 78.59557326666251,
+    "age_h": 45.50918437777363,
+    "measured": 0.003448676878488,
+    "predicted": 0.000170800299161,
+    "sigma": 0.003819464322561,
+    "z": -0.858203219746128
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "H3PO4 drift, spectrum 2",
+    "kind": "drift",
+    "t_h": 78.59557326666251,
+    "age_h": 45.50918437777363,
+    "measured": 0.004917027614622,
+    "predicted": -0.000194602898438,
+    "sigma": 0.005421931041222,
+    "z": -0.942769370211059
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSPA drift, spectrum 3",
+    "kind": "drift",
+    "t_h": 117.58779548888475,
+    "age_h": 45.50918437777363,
+    "measured": 0.001056379449513,
+    "predicted": 4.3323403e-08,
+    "sigma": 0.005172384135828,
+    "z": -0.204226155360969
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "BMSPA drift, spectrum 3",
+    "kind": "drift",
+    "t_h": 117.58779548888475,
+    "age_h": 45.50918437777363,
+    "measured": -0.003682609438276,
+    "predicted": 1.9808108454e-05,
+    "sigma": 0.004484647883529,
+    "z": 0.825575974498984
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "MMSPA drift, spectrum 3",
+    "kind": "drift",
+    "t_h": 117.58779548888475,
+    "age_h": 45.50918437777363,
+    "measured": -0.00118672061225,
+    "predicted": 0.000143913953934,
+    "sigma": 0.004003225761984,
+    "z": 0.332390588315193
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "H3PO4 drift, spectrum 3",
+    "kind": "drift",
+    "t_h": 117.58779548888475,
+    "age_h": 45.50918437777363,
+    "measured": 0.004992993648261,
+    "predicted": -0.000164023879547,
+    "sigma": 0.005699827509141,
+    "z": -0.904767296823802
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSPA drift, spectrum 4",
+    "kind": "drift",
+    "t_h": 141.59223993332918,
+    "age_h": 45.50918437777363,
+    "measured": 0.009425300236394,
+    "predicted": 3.8400947e-08,
+    "sigma": 0.004873014369394,
+    "z": -1.93417484968743
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "BMSPA drift, spectrum 4",
+    "kind": "drift",
+    "t_h": 141.59223993332918,
+    "age_h": 45.50918437777363,
+    "measured": -0.001223312036984,
+    "predicted": 1.7578670379e-05,
+    "sigma": 0.004250826216246,
+    "z": 0.291917534200831
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "MMSPA drift, spectrum 4",
+    "kind": "drift",
+    "t_h": 141.59223993332918,
+    "age_h": 45.50918437777363,
+    "measured": 0.000498098700015,
+    "predicted": 0.000127643467216,
+    "sigma": 0.003806990686435,
+    "z": -0.097309203859935
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "H3PO4 drift, spectrum 4",
+    "kind": "drift",
+    "t_h": 141.59223993332918,
+    "age_h": 45.50918437777363,
+    "measured": -0.004810503672134,
+    "predicted": -0.000145519032298,
+    "sigma": 0.005355295693576,
+    "z": 0.871097490551732
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSPA drift, spectrum 5",
+    "kind": "drift",
+    "t_h": 165.59390659999585,
+    "age_h": 45.50918437777363,
+    "measured": -0.001265398001475,
+    "predicted": 1.0905158e-08,
+    "sigma": 0.004899665236702,
+    "z": 0.258264360012802
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "BMSPA drift, spectrum 5",
+    "kind": "drift",
+    "t_h": 165.59390659999585,
+    "age_h": 45.50918437777363,
+    "measured": 0.002669158572459,
+    "predicted": 5.122064362e-06,
+    "sigma": 0.004214024797198,
+    "z": -0.632183396231628
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "MMSPA drift, spectrum 5",
+    "kind": "drift",
+    "t_h": 165.59390659999585,
+    "age_h": 45.50918437777363,
+    "measured": -0.000873972223684,
+    "predicted": 3.6705294275e-05,
+    "sigma": 0.003784076640902,
+    "z": 0.240660431693191
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "H3PO4 drift, spectrum 5",
+    "kind": "drift",
+    "t_h": 165.59390659999585,
+    "age_h": 45.50918437777363,
+    "measured": -0.00347436836134,
+    "predicted": -4.2096757552e-05,
+    "sigma": 0.005335614685411,
+    "z": 0.643275762242156
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSPA drift, spectrum 6",
+    "kind": "drift",
+    "t_h": 190.60390659999587,
+    "age_h": 45.50918437777363,
+    "measured": -0.000371994698065,
+    "predicted": -1.52319627e-07,
+    "sigma": 0.005050447769394,
+    "z": 0.073625625967516
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "BMSPA drift, spectrum 6",
+    "kind": "drift",
+    "t_h": 190.60390659999587,
+    "age_h": 45.50918437777363,
+    "measured": 0.004697041286556,
+    "predicted": -6.8945641027e-05,
+    "sigma": 0.004339733150695,
+    "z": -1.098221195194931
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "MMSPA drift, spectrum 6",
+    "kind": "drift",
+    "t_h": 190.60390659999587,
+    "age_h": 45.50918437777363,
+    "measured": -0.001601105714734,
+    "predicted": -0.00050505625986,
+    "sigma": 0.003902274585765,
+    "z": 0.280874508132189
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "H3PO4 drift, spectrum 6",
+    "kind": "drift",
+    "t_h": 190.60390659999587,
+    "age_h": 45.50918437777363,
+    "measured": -0.001235947479813,
+    "predicted": 0.000573895726759,
+    "sigma": 0.005518629094116,
+    "z": 0.327951593721257
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOH (mean of 6 spectra)",
+    "kind": "mean",
+    "t_h": 123.60571215555142,
+    "age_h": 45.50918437777363,
+    "measured": 0.063262775223072,
+    "predicted": 0.101569009032618,
+    "sigma": 0.067316269143292,
+    "z": 0.569048675707278
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "HMDSO (mean of 6 spectra)",
+    "kind": "mean",
+    "t_h": 123.60571215555142,
+    "age_h": 45.50918437777363,
+    "measured": 0.859297624062627,
+    "predicted": 0.780752451198941,
+    "sigma": 0.273742275276342,
+    "z": -0.286931102564978
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOEG (mean of 6 spectra)",
+    "kind": "mean",
+    "t_h": 123.60571215555142,
+    "age_h": 45.50918437777363,
+    "measured": -0.001399983162981,
+    "predicted": 0.001177236238424,
+    "sigma": 0.073847114989572,
+    "z": 0.034899391828216
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "P-silyl (mean of 6 spectra)",
+    "kind": "mean",
+    "t_h": 123.60571215555142,
+    "age_h": 45.50918437777363,
+    "measured": 0.096181341774107,
+    "predicted": 0.116500009733498,
+    "sigma": 0.07219584869785,
+    "z": 0.281438175821267
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOH drift, spectrum 1",
+    "kind": "drift",
+    "t_h": 45.63973993332918,
+    "age_h": 45.50918437777363,
+    "measured": -0.02929174049568,
+    "predicted": 7.2804431398e-05,
+    "sigma": 0.035739994582575,
+    "z": 0.821615819197512
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "HMDSO drift, spectrum 1",
+    "kind": "drift",
+    "t_h": 45.63973993332918,
+    "age_h": 45.50918437777363,
+    "measured": -0.015418893650492,
+    "predicted": 0.000973606879866,
+    "sigma": 0.062451012941458,
+    "z": 0.262485742957023
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOEG drift, spectrum 1",
+    "kind": "drift",
+    "t_h": 45.63973993332918,
+    "age_h": 45.50918437777363,
+    "measured": 0.05161528084942,
+    "predicted": -0.001097923177543,
+    "sigma": 0.039174593352563,
+    "z": -1.345596712454821
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "P-silyl drift, spectrum 1",
+    "kind": "drift",
+    "t_h": 45.63973993332918,
+    "age_h": 45.50918437777363,
+    "measured": -0.014042098713005,
+    "predicted": 5.2805662801e-05,
+    "sigma": 0.045017882399424,
+    "z": 0.313095677196618
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOH drift, spectrum 2",
+    "kind": "drift",
+    "t_h": 78.99640659999584,
+    "age_h": 45.50918437777363,
+    "measured": 0.01779155423328,
+    "predicted": 6.688836996e-05,
+    "sigma": 0.01914250038894,
+    "z": -0.925932636969422
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "HMDSO drift, spectrum 2",
+    "kind": "drift",
+    "t_h": 78.99640659999584,
+    "age_h": 45.50918437777363,
+    "measured": -0.011196628546638,
+    "predicted": 0.000899432682885,
+    "sigma": 0.03483811596933,
+    "z": 0.34720767449574
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOEG drift, spectrum 2",
+    "kind": "drift",
+    "t_h": 78.99640659999584,
+    "age_h": 45.50918437777363,
+    "measured": -0.018782542560727,
+    "predicted": -0.001014633961571,
+    "sigma": 0.023272589824034,
+    "z": 0.763469331668759
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "P-silyl drift, spectrum 2",
+    "kind": "drift",
+    "t_h": 78.99640659999584,
+    "age_h": 45.50918437777363,
+    "measured": 0.020013472277733,
+    "predicted": 4.9606705246e-05,
+    "sigma": 0.024295752000382,
+    "z": -0.821701899664309
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOH drift, spectrum 3",
+    "kind": "drift",
+    "t_h": 117.98890659999584,
+    "age_h": 45.50918437777363,
+    "measured": -0.012761410557308,
+    "predicted": 6.1494169784e-05,
+    "sigma": 0.031207748205627,
+    "z": 0.410888496106848
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "HMDSO drift, spectrum 3",
+    "kind": "drift",
+    "t_h": 117.98890659999584,
+    "age_h": 45.50918437777363,
+    "measured": -0.037354700606986,
+    "predicted": 0.000775178222465,
+    "sigma": 0.053969475102356,
+    "z": 0.70650823928038
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOEG drift, spectrum 3",
+    "kind": "drift",
+    "t_h": 117.98890659999584,
+    "age_h": 45.50918437777363,
+    "measured": 0.039197604848214,
+    "predicted": -0.000875750454928,
+    "sigma": 0.03506479775915,
+    "z": -1.142837200385247
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "P-silyl drift, spectrum 3",
+    "kind": "drift",
+    "t_h": 117.98890659999584,
+    "age_h": 45.50918437777363,
+    "measured": 0.002536906091565,
+    "predicted": 4.0371859199e-05,
+    "sigma": 0.039295482151114,
+    "z": -0.063532347631337
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOH drift, spectrum 4",
+    "kind": "drift",
+    "t_h": 142.01085104444027,
+    "age_h": 45.50918437777363,
+    "measured": -0.053481678132964,
+    "predicted": 3.5810486237e-05,
+    "sigma": 0.039948579353838,
+    "z": 1.339659369240105
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "HMDSO drift, spectrum 4",
+    "kind": "drift",
+    "t_h": 142.01085104444027,
+    "age_h": 45.50918437777363,
+    "measured": 0.048166589261086,
+    "predicted": 0.00049993357797,
+    "sigma": 0.073115717828878,
+    "z": -0.651934455388598
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOEG drift, spectrum 4",
+    "kind": "drift",
+    "t_h": 142.01085104444027,
+    "age_h": 45.50918437777363,
+    "measured": 0.043779932047856,
+    "predicted": -0.000566145799133,
+    "sigma": 0.04311722449624,
+    "z": -1.028500288808169
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "P-silyl drift, spectrum 4",
+    "kind": "drift",
+    "t_h": 142.01085104444027,
+    "age_h": 45.50918437777363,
+    "measured": -0.051773771432605,
+    "predicted": 3.1695531446e-05,
+    "sigma": 0.050927888881065,
+    "z": 1.017231778152745
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOH drift, spectrum 5",
+    "kind": "drift",
+    "t_h": 165.99390659999585,
+    "age_h": 45.50918437777363,
+    "measured": 0.006648908467594,
+    "predicted": -3.8348717159e-05,
+    "sigma": 0.034176891594055,
+    "z": -0.195666044302156
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "HMDSO drift, spectrum 5",
+    "kind": "drift",
+    "t_h": 165.99390659999585,
+    "age_h": 45.50918437777363,
+    "measured": 0.016251019842369,
+    "predicted": -0.00041938236462,
+    "sigma": 0.063600725300829,
+    "z": -0.262110253116429
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOEG drift, spectrum 5",
+    "kind": "drift",
+    "t_h": 165.99390659999585,
+    "age_h": 45.50918437777363,
+    "measured": -0.042804885187183,
+    "predicted": 0.000466324604447,
+    "sigma": 0.042306007065805,
+    "z": 1.022814791391745
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "P-silyl drift, spectrum 5",
+    "kind": "drift",
+    "t_h": 165.99390659999585,
+    "age_h": 45.50918437777363,
+    "measured": 0.023632425852502,
+    "predicted": -7.299726148e-06,
+    "sigma": 0.04292739860912,
+    "z": -0.550690848842337
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOH drift, spectrum 6",
+    "kind": "drift",
+    "t_h": 191.0044621555514,
+    "age_h": 45.50918437777363,
+    "measured": 0.012518811730545,
+    "predicted": -0.000239127561635,
+    "sigma": 0.028603079762511,
+    "z": -0.446033762731403
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "HMDSO drift, spectrum 6",
+    "kind": "drift",
+    "t_h": 191.0044621555514,
+    "age_h": 45.50918437777363,
+    "measured": 0.038910190583663,
+    "predicted": -0.003738351960181,
+    "sigma": 0.05475987488257,
+    "z": -0.778828341651651
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "TMSOEG drift, spectrum 6",
+    "kind": "drift",
+    "t_h": 191.0044621555514,
+    "age_h": 45.50918437777363,
+    "measured": -0.038117788484048,
+    "predicted": 0.004184965043179,
+    "sigma": 0.035370947595035,
+    "z": 1.19597456114422
+   },
+   {
+    "sample": "2 % H2O",
+    "quantity": "P-silyl drift, spectrum 6",
+    "kind": "drift",
+    "t_h": 191.0044621555514,
+    "age_h": 45.50918437777363,
+    "measured": -0.030652971726985,
+    "predicted": -0.000206191724843,
+    "sigma": 0.03777484184137,
+    "z": 0.806006816123771
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "quantity": "TMSPA",
+    "kind": "share",
+    "t_h": 720.0613888888889,
+    "age_h": 720.0,
+    "measured": 0.105394727871932,
+    "predicted": 0.053960001204555,
+    "sigma": 0.047769168172922,
+    "z": -1.076734819438057
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "quantity": "BMSPA",
+    "kind": "share",
+    "t_h": 720.0613888888889,
+    "age_h": 720.0,
+    "measured": 0.68730822668682,
+    "predicted": 0.705215581402964,
+    "sigma": 0.088920409941303,
+    "z": 0.201386326580865
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "quantity": "MMSPA",
+    "kind": "share",
+    "t_h": 720.0613888888889,
+    "age_h": 720.0,
+    "measured": 0.194086384440475,
+    "predicted": 0.232148588052566,
+    "sigma": 0.046439275486021,
+    "z": 0.81961234781856
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "quantity": "H3PO4",
+    "kind": "share",
+    "t_h": 720.0613888888889,
+    "age_h": 720.0,
+    "measured": 0.009922308243863,
+    "predicted": 0.008675829339915,
+    "sigma": 0.049930350294649,
+    "z": -0.024964353275951
+   },
+   {
+    "sample": "TMSPa alone",
+    "quantity": "TMSPA",
+    "kind": "share",
+    "t_h": 86.93370390360921,
+    "age_h": 86.88148168138699,
+    "measured": 0.806535837262025,
+    "predicted": 0.862411951746333,
+    "sigma": 0.095634213910339,
+    "z": 0.58426908320378
+   },
+   {
+    "sample": "TMSPa alone",
+    "quantity": "BMSPA",
+    "kind": "share",
+    "t_h": 86.93370390360921,
+    "age_h": 86.88148168138699,
+    "measured": 0.118466957500392,
+    "predicted": 0.136552884951638,
+    "sigma": 0.052824516235891,
+    "z": 0.342377531116093
+   },
+   {
+    "sample": "TMSPa alone",
+    "quantity": "MMSPA",
+    "kind": "share",
+    "t_h": 86.93370390360921,
+    "age_h": 86.88148168138699,
+    "measured": 0.049635303626233,
+    "predicted": 0.001033993077155,
+    "sigma": 0.047861790689207,
+    "z": -1.015451153189655
+   },
+   {
+    "sample": "TMSPa alone",
+    "quantity": "H3PO4",
+    "kind": "share",
+    "t_h": 86.93370390360921,
+    "age_h": 86.88148168138699,
+    "measured": 0.036173595954528,
+    "predicted": 1.170224874e-06,
+    "sigma": 0.041252001866709,
+    "z": -0.876864736080761
+   },
+   {
+    "sample": "TMSPa alone",
+    "quantity": "TMSPA",
+    "kind": "share",
+    "t_h": 329.75953723694255,
+    "age_h": 86.88148168138699,
+    "measured": 0.231644252880028,
+    "predicted": 0.240725544724214,
+    "sigma": 0.055283055911257,
+    "z": 0.164268991547137
+   },
+   {
+    "sample": "TMSPa alone",
+    "quantity": "BMSPA",
+    "kind": "share",
+    "t_h": 329.75953723694255,
+    "age_h": 86.88148168138699,
+    "measured": 0.687859912612982,
+    "predicted": 0.706565814038981,
+    "sigma": 0.083944002210038,
+    "z": 0.222837855397871
+   },
+   {
+    "sample": "TMSPa alone",
+    "quantity": "MMSPA",
+    "kind": "share",
+    "t_h": 329.75953723694255,
+    "age_h": 86.88148168138699,
+    "measured": 0.041558329978497,
+    "predicted": 0.052269499141713,
+    "sigma": 0.048775020457472,
+    "z": 0.219603581151861
+   },
+   {
+    "sample": "TMSPa alone",
+    "quantity": "H3PO4",
+    "kind": "share",
+    "t_h": 329.75953723694255,
+    "age_h": 86.88148168138699,
+    "measured": 0.034310421393041,
+    "predicted": 0.000439142095092,
+    "sigma": 0.043135753681418,
+    "z": -0.785225164908612
+   },
+   {
+    "sample": "TMSOH, probe",
+    "quantity": "TMSOH",
+    "kind": "share",
+    "t_h": 1.220277777777778,
+    "age_h": 1.0,
+    "measured": 0.963943245248599,
+    "predicted": 0.999955878727302,
+    "sigma": 0.289870994214963,
+    "z": 0.124236761171063
+   },
+   {
+    "sample": "TMSOH, probe",
+    "quantity": "HMDSO",
+    "kind": "share",
+    "t_h": 1.220277777777778,
+    "age_h": 1.0,
+    "measured": 0.017002434066569,
+    "predicted": 1.8372606547e-05,
+    "sigma": 0.064960828317658,
+    "z": -0.261450814281022
+   },
+   {
+    "sample": "TMSOH, probe",
+    "quantity": "TMSOEG",
+    "kind": "share",
+    "t_h": 1.220277777777778,
+    "age_h": 1.0,
+    "measured": 0.016361410760644,
+    "predicted": 2.5748666151e-05,
+    "sigma": 0.062248062529487,
+    "z": -0.262428442439546
+   },
+   {
+    "sample": "TMSOH, probe",
+    "quantity": "TMSOH",
+    "kind": "share",
+    "t_h": 139.71138888888888,
+    "age_h": 1.0,
+    "measured": 0.901392807248745,
+    "predicted": 0.983055039805842,
+    "sigma": 0.271561448258066,
+    "z": 0.300713643563625
+   },
+   {
+    "sample": "TMSOH, probe",
+    "quantity": "HMDSO",
+    "kind": "share",
+    "t_h": 139.71138888888888,
+    "age_h": 1.0,
+    "measured": 0.056034110436671,
+    "predicted": 0.006234739715311,
+    "sigma": 0.064715640952424,
+    "z": -0.769510584898171
+   },
+   {
+    "sample": "TMSOH, probe",
+    "quantity": "TMSOEG",
+    "kind": "share",
+    "t_h": 139.71138888888888,
+    "age_h": 1.0,
+    "measured": 0.030938178019806,
+    "predicted": 0.010710220478847,
+    "sigma": 0.062886637920065,
+    "z": -0.321657480984605
+   },
+   {
+    "sample": "TMSOH, probe",
+    "quantity": "TMSOH",
+    "kind": "share",
+    "t_h": 145.04666666666665,
+    "age_h": 1.0,
+    "measured": 0.931438713948404,
+    "predicted": 0.975110464615881,
+    "sigma": 0.280208713202896,
+    "z": 0.155854363585955
+   },
+   {
+    "sample": "TMSOH, probe",
+    "quantity": "HMDSO",
+    "kind": "share",
+    "t_h": 145.04666666666665,
+    "age_h": 1.0,
+    "measured": 0.063622719132554,
+    "predicted": 0.008991901426445,
+    "sigma": 0.066736733769403,
+    "z": -0.818601909630102
+   },
+   {
+    "sample": "TMSOH, probe",
+    "quantity": "TMSOEG",
+    "kind": "share",
+    "t_h": 145.04666666666665,
+    "age_h": 1.0,
+    "measured": 0.004938566919042,
+    "predicted": 0.015897633957674,
+    "sigma": 0.062458926373536,
+    "z": 0.175460381324711
+   },
+   {
+    "sample": "TMSOH, glovebox",
+    "quantity": "TMSOH",
+    "kind": "share",
+    "t_h": 8.085555555555555,
+    "age_h": null,
+    "measured": 0.417673645346297,
+    "predicted": 0.41709299442814,
+    "sigma": 0.127670679989732,
+    "z": -0.004548036543735
+   },
+   {
+    "sample": "TMSOH, glovebox",
+    "quantity": "HMDSO",
+    "kind": "share",
+    "t_h": 8.085555555555555,
+    "age_h": null,
+    "measured": 0.160556834914945,
+    "predicted": 0.171086180416642,
+    "sigma": 0.081718139482785,
+    "z": 0.128849550030636
+   },
+   {
+    "sample": "TMSOH, glovebox",
+    "quantity": "TMSOEG",
+    "kind": "share",
+    "t_h": 8.085555555555555,
+    "age_h": null,
+    "measured": 0.427057426127992,
+    "predicted": 0.411820825155218,
+    "sigma": 0.134834495878497,
+    "z": -0.113002246743326
+   },
+   {
+    "sample": "computed energies",
+    "quantity": "ΔG_rxn(R1) − computed",
+    "kind": "prior",
+    "t_h": null,
+    "age_h": null,
+    "measured": 0.0,
+    "predicted": 0.158711756890424,
+    "sigma": 0.103520649026929,
+    "z": 1.533141053328762
+   },
+   {
+    "sample": "computed energies",
+    "quantity": "ΔG_rxn(R2) − computed",
+    "kind": "prior",
+    "t_h": null,
+    "age_h": null,
+    "measured": 0.0,
+    "predicted": 0.181778498185439,
+    "sigma": 0.093757785018717,
+    "z": 1.938809648171082
+   },
+   {
+    "sample": "computed energies",
+    "quantity": "ΔG_rxn(R3) − computed",
+    "kind": "prior",
+    "t_h": null,
+    "age_h": null,
+    "measured": 0.0,
+    "predicted": 0.115851933426006,
+    "sigma": 0.080583297901467,
+    "z": 1.437666817355417
+   },
+   {
+    "sample": "computed energies",
+    "quantity": "ΔG_rxn(R4) − computed",
+    "kind": "prior",
+    "t_h": null,
+    "age_h": null,
+    "measured": 0.0,
+    "predicted": -0.20572420542496,
+    "sigma": 0.119983809733558,
+    "z": -1.714599710425941
+   }
+  ]
+ },
+ "ages": {
+  "0.5 % H2O": 1.0,
+  "2 % H2O": 45.50918437777363,
+  "TMSPa + TMSOH (A)": 720.0,
+  "TMSPa alone": 86.88148168138699,
+  "TMSOH, probe": 1.0
+ },
+ "local_optima": [
+  {
+   "theta": {
+    "g hydrolysis_R1": 1.3578258028783,
+    "g hydrolysis_R23": 0.9490162435500308,
+    "g transfer": 0.6017678246422379,
+    "g condensation": 1.2933314244948568,
+    "g solvent_attack": 1.2268584924328665,
+    "dG R1": 0.15876248811888016,
+    "dG R2": 0.1818371679967986,
+    "dG R3": 0.1158480757204875,
+    "dG R4": -0.20571212812714457,
+    "c0 H2O TMSPa alone": 0.06073369576015934,
+    "log10 age 2 % H2O": 1.658099068945661
+   },
+   "chi2": 35.589620534633994
+  },
+  {
+   "theta": {
+    "g hydrolysis_R1": 1.5295954482235845,
+    "g hydrolysis_R23": 0.9497501421889025,
+    "g transfer": 0.6984078287571907,
+    "g condensation": 1.2975490589558887,
+    "g solvent_attack": 1.2259070537205086,
+    "dG R1": 0.18073111215469762,
+    "dG R2": 0.20023243970250482,
+    "dG R3": 0.12053828442383485,
+    "dG R4": -0.21516083420312726,
+    "c0 H2O TMSPa alone": 0.06121279339013732,
+    "log10 age 2 % H2O": 1.8339500519888705
+   },
+   "chi2": 35.77523042939855
+  },
+  {
+   "theta": {
+    "g hydrolysis_R1": 1.5476744589042921,
+    "g hydrolysis_R23": 1.0686234406315187,
+    "g transfer": 0.908646601226051,
+    "g condensation": 1.0108760294413581,
+    "g solvent_attack": 1.226036712574596,
+    "dG R1": -0.02501394543217461,
+    "dG R2": -0.007400773688473472,
+    "dG R3": 0.05870009416193778,
+    "dG R4": 0.0606176097445712,
+    "c0 H2O TMSPa alone": 0.062460975835830386,
+    "log10 age 2 % H2O": 2.8573307980518248
+   },
+   "chi2": 149.56219263377514
+  },
+  {
+   "theta": {
+    "g hydrolysis_R1": 1.2336098278630214,
+    "g hydrolysis_R23": 1.4661006605010567,
+    "g transfer": 1.0016988512527205,
+    "g condensation": 1.0074548515362407,
+    "g solvent_attack": 1.1027375116187934,
+    "dG R1": -0.0004939344902021858,
+    "dG R2": 0.030046559236381665,
+    "dG R3": 0.02801706719258612,
+    "dG R4": -0.04528770163112006,
+    "c0 H2O TMSPa alone": 0.06381018062746714,
+    "log10 age 2 % H2O": 2.8573324960870314
+   },
+   "chi2": 282.8608845232102
+  },
+  {
+   "theta": {
+    "g hydrolysis_R1": 1.1984919132436143,
+    "g hydrolysis_R23": 0.9352579422340275,
+    "g transfer": 0.9010047355373272,
+    "g condensation": 1.2738813715190163,
+    "g solvent_attack": 1.2281387963636363,
+    "dG R1": 0.020521689031107182,
+    "dG R2": 0.21005981826268072,
+    "dG R3": 0.07926046850977697,
+    "dG R4": -0.16459378164353677,
+    "c0 H2O TMSPa alone": 0.055672348034199,
+    "log10 age 2 % H2O": 2.3722269542001375
+   },
+   "chi2": 515.8196544714637
+  }
+ ],
+ "at_bounds": [
+  "g transfer"
+ ],
+ "n_evaluations": 2020,
+ "seconds": 201.2762095819926,
+ "tmsoh_block": {
+  "g condensation": 1.129042154525072,
+  "g solvent_attack": 1.220980422450262
+ },
+ "scenario": "free",
+ "tag": "__floor_x2",
+ "label": "R1 separate from R2 and R3; ΔG_rxn of R1–R4 free within their covariance",
+ "barriers": {
+  "R1": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.3112624875549552,
+   "dG_rxn_eV": -0.09393091023043958,
+   "k_f": 2.736880303401718e-10
+  },
+  "R2": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 0.9488095709882064,
+   "dG_rxn_eV": -0.0003934819693967907,
+   "k_f": 0.00041284353850525436
+  },
+  "R3": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 0.9766484229434603,
+   "dG_rxn_eV": 0.05488742860772269,
+   "k_f": 0.00013843067666340024
+  },
+  "R5": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 0.504898388848088,
+   "dG_rxn_eV": -0.20223440281322663,
+   "k_f": 15236.601879609028
+  },
+  "R6": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 0.548646448617727,
+   "dG_rxn_eV": -0.10869697454735759,
+   "k_f": 2736.148790230808
+  },
+  "R7": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 0.5753561300132074,
+   "dG_rxn_eV": -0.053416063975064355,
+   "k_f": 959.0359598760753
+  },
+  "R4": {
+   "T_K": 353.15,
+   "dG_barrier_eV": 1.2397523155023793,
+   "dG_rxn_eV": -0.10830349258218376,
+   "k_f": 1.4940686878721965e-05
+  },
+  "R8": {
+   "T_K": 353.15,
+   "dG_barrier_eV": 1.283798020519697,
+   "dG_rxn_eV": 0.11258797425455495,
+   "k_f": 3.513965422915745e-06
+  },
+  "R9": {
+   "T_K": 353.15,
+   "dG_barrier_eV": 1.218936387537431,
+   "dG_rxn_eV": -0.01586943512917234,
+   "k_f": 2.9609642992904018e-05
+  }
+ },
+ "medium": {
+  "snapshot": "tank_api_snapshot_2026-10-08.json",
+  "volume_fractions": {
+   "EC": 0.5,
+   "DEC": 0.5
+  },
+  "rule": "linear"
+ },
+ "paper": []
+}

@@ -1,0 +1,92 @@
+{
+ "fit": "fifth fit",
+ "solvation": {
+  "snapshot": "tank_api_snapshot_2026-10-08.json",
+  "volume_fractions": {
+   "EC": 0.5,
+   "DEC": 0.5
+  },
+  "rule": "linear"
+ },
+ "network": "R1-R9+N10-N15",
+ "sample_overrides": {
+  "2 % H2O": {
+   "heated_episodes": [
+    [
+     13.3022,
+     30.0,
+     8.0
+    ],
+    [
+     21.3022,
+     40.0,
+     8.0
+    ],
+    [
+     62.9886,
+     50.0,
+     8.0
+    ],
+    [
+     86.9961,
+     60.0,
+     8.0
+    ],
+    [
+     109.8881,
+     70.0,
+     8.0
+    ],
+    [
+     135.9867,
+     80.0,
+     8.0
+    ]
+   ]
+  }
+ },
+ "scenarios": [
+  "middle",
+  "long",
+  "free"
+ ],
+ "paper_observations": [],
+ "sensitivities": [
+  "floor x0",
+  "floor x2",
+  "covariance x0.5",
+  "covariance x2",
+  "covariance x4",
+  "heating as recorded",
+  "30 C before NMR 1",
+  "cooling 3 h",
+  "Peter barriers",
+  "glovebox 4 h",
+  "glovebox 16 h"
+ ],
+ "why": [
+  "docs/reference-fit_improvements.md section 2. Everything not listed here is as in the fourth fit: solvation (EC/DEC 1:1 linear, 8 Oct snapshot), readings 1 day, 7 days and free ages, no paper observation, recovery setup",
+  "sample_overrides: the 2 % H2O tube heated 8 h at each step of its ramp (Gogoi 2024 Methods), steps placed on the clock of its first file (22 Jun 2022 18:04:30) by one rule: each step contains its in-situ spectrum, ends 1 h before the next room-temperature acquisition (or where the next step starts: 30 -> 40 C), and starts at its in-situ spectrum when that end would leave it out. NMR 1 ('22oC after 3oC') is read as the room-temperature spectrum before the ramp. Rows: [start h, T C, hours]",
+  "network: N10-N15 of P. Broqvist's generated network (combinations of R1-R9, no new species); N12 and N15 take the barrier class of R2 and R1, N10, N11, N13, N14 a fixed 1.15 eV (class 'exchange'); no new free parameter",
+  "sensitivities: the fourth fit's minus 'ramp held 8 h', 'article 8 h RT' and 'article 8 h RT + 30 C' (replaced by the base heating), plus 'heating as recorded' (the base of fits 1-4), '30 C before NMR 1' (the other reading of the file name), 'cooling 3 h' (3 h at room temperature before each round instead of the declared 1 h: chi2 of the fourth fit's parameters 91 -> 76) and 'Peter barriers' (N10-N15 all at 1.15 eV)",
+  "recovery: as the fourth fit after its restart (case C truth = the fourth fit's free-age answer, rounded; every case with the search of the fits)"
+ ],
+ "recovery": {
+  "effort": "fits",
+  "truths": {
+   "C": {
+    "g hydrolysis_R1": 1.5,
+    "g hydrolysis_R23": 0.95,
+    "g transfer": 0.7,
+    "g condensation": 1.3,
+    "g solvent_attack": 1.23,
+    "dG R1": 0.18,
+    "dG R2": 0.2,
+    "dG R3": 0.12,
+    "dG R4": -0.22,
+    "c0 H2O TMSPa alone": 0.06,
+    "log10 age 2 % H2O": 1.83
+   }
+  }
+ }
+}

@@ -1,0 +1,13 @@
+Second fit, launched 2026-10-06 16:37:38 CEST in tmux session 'fit' on UU-J56W1T3D
+code: branch fit/first-fit, commit 45729a90822aa66c766a41f04328b860042ce932 plus the uncommitted changes in code_vs_commit.patch
+observables: a0c8bb8b967976e9697fa6f6a49fe9ce  /home/yeray/data/atom_to_reactor_private/data/lab_observables.json
+  built from the raw spectra with scripts/build_observables.py --from-raw; first-fit file kept as lab_observables_first_fit_261004.json (md5 3e297aec4a452782447dccedf90e1526)
+stages: registered recovery baselines extended night traces predictions (12 workers); refit and throughput skipped
+restart 2026-10-07 12:21:42 CEST: stage night stopped at 03:41 in the sensitivity 'ramp held 8 h' (2 % H2O: heating episodes overlap;
+  the steps at 16.4 h and 21.3 h are 4.9 h apart). Fix: the 'heated_duration_h' override now holds an episode until the next one starts
+  at the latest (kinetics/fitting/residuals.py, test in tests/test_estimation.py). Code from here on: code_vs_commit_restart.patch.
+  Chain run again from the start; finished fits are read from the stored files.
+rename 2026-10-07 14:07:46 CEST: the registered model 'peter_reference' is now 'reference_bep' in the code (identifier and comments only; no
+  numerical change, the test suite passes). Stages started after this time import the renamed code. registered.csv and
+  registered_residuals.csv of this folder were written before and keep the old name; get_model and the notebooks map it
+  (LEGACY_MODEL_NAMES in kinetics/microkinetics/models.py). This change is not in code_vs_commit_restart.patch.

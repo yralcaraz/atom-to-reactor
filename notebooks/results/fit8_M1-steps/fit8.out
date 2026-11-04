@@ -1,0 +1,39 @@
+[11:00:42] --- stage registered (workers 16) ---
+[11:00:42] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/fit8_M1-steps/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; network R1-R9+N10-N15; energy box ±3 standard errors; main structure M1; readings 10 min, 1 h, 8 h; paper observations none; samples changed for the run: 2 % H2O, TMSPa alone
+[11:00:42] computed ΔG_rxn at 298 K (eV, ± standard error of the MD solvation): R1 -0.253 ± 0.104, R2 -0.182 ± 0.094, R3 -0.061 ± 0.081, R4 +0.097 ± 0.120, R5 -0.155 ± 0.111, R6 -0.085 ± 0.102, R7 +0.036 ± 0.090, R8 +0.113 ± 0.103, R9 -0.016 ± 0.106
+[11:00:42] registered reference_bep    10 min  chi2      49717.2  max |z|    114.6  (2 % H2O: H3PO4 drift, spectrum 6)
+[11:00:42] registered reference_bep    1 h     chi2      49693.3  max |z|    114.6  (2 % H2O: H3PO4 drift, spectrum 6)
+[11:00:42] registered reference_bep    8 h     chi2      49493.5  max |z|    114.5  (2 % H2O: H3PO4 drift, spectrum 6)
+[11:00:43] registered family_bep       10 min  chi2       2625.0  max |z|     41.7  (0.5 % H2O: MMSPA)
+[11:00:44] registered family_bep       1 h     chi2       2636.2  max |z|     41.7  (0.5 % H2O: MMSPA)
+[11:00:45] registered family_bep       8 h     chi2       2678.1  max |z|     41.7  (0.5 % H2O: MMSPA)
+[11:00:47] registered family_marcus    10 min  chi2       2673.9  max |z|     41.7  (0.5 % H2O: MMSPA)
+[11:00:48] registered family_marcus    1 h     chi2       2678.5  max |z|     41.7  (0.5 % H2O: MMSPA)
+[11:00:49] registered family_marcus    8 h     chi2       2678.5  max |z|     41.7  (0.5 % H2O: MMSPA)
+[11:00:50] registered level1           10 min  chi2       2648.8  max |z|     41.7  (0.5 % H2O: MMSPA)
+[11:00:51] registered level1           1 h     chi2       2653.4  max |z|     41.7  (0.5 % H2O: MMSPA)
+[11:00:52] registered level1           8 h     chi2       2653.4  max |z|     41.7  (0.5 % H2O: MMSPA)
+[11:00:52] --- stage registered done in 0.2 min ---
+[11:00:53] --- stage steps (workers 16) ---
+[11:00:53] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/fit8_M1-steps/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; network R1-R9+N10-N15; energy box ±3 standard errors; main structure M1; readings 10 min, 1 h, 8 h; paper observations none; samples changed for the run: 2 % H2O, TMSPa alone
+[11:00:54] step S1   10 min TMSOH, glovebox      chi2      0.00  max |z|   0.03  FITS  [condensation 1.184, solvent_attack 1.223]  (427 evaluations, 1 s)
+[11:00:59] step S2   10 min TMSPa + TMSOH (A)    chi2      1.81  max |z|   0.98  FITS  [transfer 0.904]  (536 evaluations, 2 s)
+[11:01:02] step S3   10 min TMSPa alone          chi2      6.73  max |z|   1.56  FITS  [hydrolysis 1.062]  (452 evaluations, 2 s)
+[11:01:06] step S2b  10 min TMSPa + TMSOH (A)    chi2      1.81  max |z|   0.98  FITS  [transfer 0.904]  (514 evaluations, 1 s)
+[11:01:10] step S4   10 min 0.5 % H2O            chi2     13.40  max |z|   2.98  FITS  [hydrolysis 1.246]  (516 evaluations, 2 s)
+[11:01:12] step S5   10 min 2 % H2O              chi2   5307.18  max |z|  51.45  fails  [nothing free]  (1 evaluations, 0 s)
+[11:01:15] step S1   1 h    TMSOH, glovebox      chi2      0.00  max |z|   0.03  FITS  [condensation 1.184, solvent_attack 1.223]  (427 evaluations, 1 s)
+[11:01:20] step S2   1 h    TMSPa + TMSOH (A)    chi2      1.79  max |z|   0.97  FITS  [transfer 0.943]  (552 evaluations, 2 s)
+[11:01:23] step S3   1 h    TMSPa alone          chi2      6.77  max |z|   1.56  FITS  [hydrolysis 1.102]  (466 evaluations, 3 s)
+[11:01:27] step S2b  1 h    TMSPa + TMSOH (A)    chi2      1.79  max |z|   0.97  FITS  [transfer 0.943]  (532 evaluations, 2 s)
+[11:01:30] step S4   1 h    0.5 % H2O            chi2     14.66  max |z|   3.57  fails  [hydrolysis 1.255]  (492 evaluations, 1 s)
+[11:01:32] step S5   1 h    2 % H2O              chi2  12750.97  max |z|  73.38  fails  [nothing free]  (1 evaluations, 0 s)
+[11:01:34] step S1   8 h    TMSOH, glovebox      chi2      0.00  max |z|   0.03  FITS  [condensation 1.184, solvent_attack 1.223]  (427 evaluations, 1 s)
+[11:01:40] step S2   8 h    TMSPa + TMSOH (A)    chi2      1.77  max |z|   0.96  FITS  [transfer 0.995]  (580 evaluations, 2 s)
+[11:01:42] step S3   8 h    TMSPa alone          chi2     36.19  max |z|   4.42  fails  [hydrolysis 1.143]  (416 evaluations, 2 s)
+[11:01:46] step S2b  8 h    TMSPa + TMSOH (A)    chi2      1.77  max |z|   0.96  FITS  [transfer 0.995]  (542 evaluations, 2 s)
+[11:01:48] step S4   8 h    0.5 % H2O            chi2     14.94  max |z|   3.68  fails  [hydrolysis 1.265]  (426 evaluations, 1 s)
+[11:01:50] step S5   8 h    2 % H2O              chi2  30832.33  max |z| 116.00  fails  [nothing free]  (1 evaluations, 0 s)
+[11:01:51] predicted tubes, largest |z| per step and reading: S1 10 min 60.2; S2 10 min 159.9; S3 10 min 51.8; S2b 10 min 51.8; S4 10 min 113.8; S5 10 min 51.8; S1 1 h 60.2; S2 1 h 159.9; S3 1 h 73.4; S2b 1 h 73.4; S4 1 h 104.2; S5 1 h 47.0; S1 8 h 60.2; S2 8 h 159.9; S3 8 h 116.0; S2b 8 h 116.0; S4 8 h 93.8; S5 8 h 40.1
+[11:01:51] --- stage steps done in 1.0 min ---
+[11:01:51] CHAIN FINISHED

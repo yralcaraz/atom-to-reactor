@@ -1,0 +1,132 @@
+{
+ "fit": "seventh fit",
+ "solvation": {
+  "snapshot": "tank_api_snapshot_2026-10-08.json",
+  "volume_fractions": {
+   "EC": 0.5,
+   "DEC": 0.5
+  },
+  "rule": "linear"
+ },
+ "network": "R1-R9+N10-N15",
+ "sample_overrides": {
+  "2 % H2O": {
+   "heated_episodes": [
+    [13.3022, 30.0, 8.0],
+    [21.3022, 40.0, 8.0],
+    [62.9886, 50.0, 8.0],
+    [86.9961, 60.0, 8.0],
+    [109.8881, 70.0, 8.0],
+    [135.9867, 80.0, 8.0]
+   ]
+  },
+  "TMSPa alone": {
+   "added_M": {
+    "H2O": 0.0656
+   },
+   "unknown_M": {}
+  }
+ },
+ "scenarios": [
+  "0 min",
+  "5 min",
+  "10 min"
+ ],
+ "paper_observations": [],
+ "energy_box_sigma": 3.0,
+ "structures": {
+  "main": "M5-first",
+  "extended": [
+   "M1",
+   "M5",
+   "M5-first",
+   "M1+BEP",
+   "M5+BEP",
+   "M5-first+BEP"
+  ]
+ },
+ "effort": {
+  "M1": [4096, 32, 40],
+  "M5": [8192, 32, 40],
+  "M5-first": [8192, 32, 40],
+  "M5|5 min": [2048, 8, 40],
+  "M5|10 min": [2048, 8, 40],
+  "M5-first|5 min": [2048, 8, 40],
+  "M5-first|10 min": [2048, 8, 40]
+ },
+ "start_from": null,
+ "night": {
+  "structures": ["M1", "M1+BEP", "M5", "M5+BEP", "M5-first", "M5-first+BEP"],
+  "profiled": ["M1", "M1+BEP", "M5", "M5+BEP", "M5-first", "M5-first+BEP"],
+  "profile_fitting_only": false,
+  "refined": ["0 min", "5 min", "10 min"],
+  "loo_fitting_only": false,
+  "loo_effort": [1024, 8, 40],
+  "sensitivity_readings": ["0 min", "5 min", "10 min"],
+  "indistinguishability": false,
+  "tolerance_check": {
+   "M1": ["0 min", ["g hydrolysis", "g transfer"]],
+   "M1+BEP": ["0 min", ["g hydrolysis", "g transfer"]],
+   "M5-first": ["0 min", ["g hydrolysis_R1", "g transfer_R5"]],
+   "M5-first+BEP": ["0 min", ["g hydrolysis_R1", "g transfer_R5"]]
+  },
+  "trace_refits": true,
+  "recovery_required": false
+ },
+ "sensitivities": [
+  "floor x0",
+  "floor x2",
+  "covariance x0.5",
+  "covariance x2",
+  "heating as recorded",
+  "cooling 3 h",
+  "water free",
+  "Peter barriers",
+  "glovebox 4 h",
+  "glovebox 16 h"
+ ],
+ "recovery": {
+  "cases": {
+   "M1 0 min": {"structure": "M1", "scenario": "0 min", "truth": "fit", "seeds": [1, 2],
+                "profiled": ["g hydrolysis", "g transfer", "g condensation", "g solvent_attack"],
+                "effort": [4096, 32, 40]},
+   "M1+BEP 0 min": {"structure": "M1+BEP", "scenario": "0 min", "truth": "fit", "seeds": [1, 2],
+                    "profiled": ["g hydrolysis", "g transfer", "g condensation", "g solvent_attack"],
+                    "effort": [4096, 32, 40]},
+   "M5 0 min": {"structure": "M5", "scenario": "0 min", "truth": "fit", "seeds": [1, 2],
+                "profiled": ["g hydrolysis", "g transfer", "g condensation", "g solvent_attack",
+                             "dG R1", "dG R2", "dG R3", "dG R4", "dG R8", "dG R9"],
+                "effort": [4096, 16, 40]},
+   "M5+BEP 0 min": {"structure": "M5+BEP", "scenario": "0 min", "truth": "fit", "seeds": [1, 2],
+                    "profiled": ["g hydrolysis", "g transfer", "g condensation", "g solvent_attack",
+                                 "dG R1", "dG R2", "dG R3", "dG R4", "dG R8", "dG R9"],
+                    "effort": [4096, 16, 40]},
+   "M5-first 0 min": {"structure": "M5-first", "scenario": "0 min", "truth": "fit", "seeds": [1, 2],
+                      "profiled": ["g hydrolysis_R1", "g hydrolysis_R23", "g transfer_R5", "g transfer_R67",
+                                   "g condensation", "g solvent_attack",
+                                   "dG R1", "dG R2", "dG R3", "dG R4", "dG R8", "dG R9"],
+                      "effort": [4096, 16, 40]},
+   "M5-first+BEP 0 min": {"structure": "M5-first+BEP", "scenario": "0 min", "truth": "fit", "seeds": [1, 2],
+                          "profiled": ["g hydrolysis_R1", "g hydrolysis_R23", "g transfer_R5", "g transfer_R67",
+                                       "g condensation", "g solvent_attack",
+                                       "dG R1", "dG R2", "dG R3", "dG R4", "dG R8", "dG R9"],
+                          "effort": [4096, 16, 40]}
+  }
+ },
+ "why": [
+  "MET 2026-10-22 'Simple M1 fit at near-zero ages' and its follow-up the same evening. The sixth fit (05_fit6) is a separate run and is not changed by this one",
+  "scenarios: the time from adding TMSPA to the first acquisition taken as 0, 5 and 10 min ('0 min' is P. Broqvist's t = 0 at the first NMR). The first 31P spectrum of each tube still comes at its own offset from the first acquisition (3-5 min; 18.9 h in the 0.5 % tube). Only the first spectra of '2 % H2O', 'TMSPa alone' and 'TMSPa + TMSOH (A)' are sensitive to the age",
+  "structures: the chain M1 (one E0 per family, computed energies), M5 (the same barriers, energies of every independent reaction free) and M5-first (the main structure of the sixth fit: the first step of TMSPA apart in hydrolysis and transfer, energies free). Each step adds one thing: first the energies, then the barrier split. M1 is expected to fail on the equilibrium of the 2 % tube (fifth fit: chi2 729 of 886 there, MMSPA 0.07 predicted against 0.32), which no barrier, age or rule moves; it is read tube by tube",
+  "structures '+BEP': each of the three also with P. Broqvist's barrier rule, Delta G barrier = E0 downhill and E0 + Delta G uphill whichever way a step is written (capped BEP with alpha = 1, kinetics/fitting/candidates.py with_peter_bep), in every class including the exchange steps at 1.15 eV. M0-BEP (alpha = 0.5) is a different rule and is not fitted",
+  "energy_box_sigma: as in the sixth fit, every freed energy within 3 standard errors (MD) of its computed value, with the Gaussian cost inside the box",
+  "sample_overrides: as in the sixth fit (2 % tube heated 8 h at each step of its ramp; water of 'TMSPa alone' declared at the least its last spectrum needs, 65.6 mM); solvation EC/DEC 1:1 linear of the MD of the 8 Oct snapshot; network R1-R9 + N10-N15 (N12 and N15 take the hydrolysis barrier, the four exchanges a declared 1.15 eV); error model and fit rule (no |z| above 3) unchanged",
+  "effort: M1 has four parameters, so a dense search costs minutes (4096 screen points, 32 starts: twice the first plan, the user gave 10 h to finish M1). M5 and M5-first get the full search of the sixth fit at 0 min (8192 points, 32 starts) and a reduced one at 5 and 10 min (2048, 8), which also start from their own 0 min fit (scripts/run_fit.py runs the readings in the order 0, 5, 10 min). A '+BEP' structure takes the search of its Marcus form and also starts from it",
+  "start_from: none. The larger structures start from the smaller ones of this run (M1 -> M5 -> M5-first, embedded), not from earlier runs",
+  "night, for every structure of the run (the user: 'everything that may be interesting'; 10 h for M1, no limit for the rest): profiles of every parameter in every reading, whether the structure fits or not (for a structure that fails, the profile shows which parameters the data pin and how chi2 moves, not a confidence interval), with extra points at the interval edges; a profile minimum below the fit replaces it; leave-one-out in every reading, also where the structure fails (M1 without the 2 % tube: do the kinetic tubes fit with the computed energies?), with a stronger search than before (1024 points, 8 starts); the sensitivities below in every reading; solver tolerance (two profiles again at rtol 1e-8) for M1, M1+BEP, M5-first and M5-first+BEP at 0 min, on the barriers the first spectra pin (hydrolysis, transfer). No indistinguishability block (it is built on M3-split)",
+  "sensitivities: the declared error floor x0 and x2; the covariance of the computed energies x0.5 and x2 (skipped for M1, which frees no energy); the heating of the 2 % tube as the files record it, and 3 h of cooling before each of its rounds; the water of 'TMSPa alone' fitted instead of declared; N10-N15 all at 1.15 eV (Peter barriers); the 8 h at 80 C of the glovebox tube taken as 4 h and 16 h. A variant that fails on the reduced search is fitted again with the full one. '30 C before NMR 1' is left out: at a near-zero age there is no time before the first spectrum",
+  "recovery: one case per structure at 0 min, two seeds each, the truth being the run's own fit (kept in recovery/<case>_truth.json): if the tubes were exactly what the fit says, would the search and the profiles find it again? M1 with the search of its fits, the others with a reduced one (4096 points, 16 starts). It runs at the start of each night; a failure is reported and the night goes on (recovery_required false)",
+  "traces: every fit evaluated unchanged with 0 to 1 mM of TMSOH at mixing in the TMSPA tubes, and fitted again with 1 uM and 1 mM where it fits",
+  "predictions, for every structure and reading: tube B (hold-out), the 13C spectrum of tube A at 234 h (check), 'TMSPa alone' read from its first spectrum, the paper observations no fit uses (E4, 1 and 5 vol% water), storage at 25 C over the parameter sets accepted by the profiles, the bench protocol over the declared range of dS, and the trajectories of the TMSPA tubes from 36 s after mixing",
+  "order (run_chain.sh): phase 1, M1 and M1+BEP, every stage (fits, recovery, night, traces, predictions), to finish within 10 h; phase 2, the same stages for M5, M5-first and their '+BEP' forms (M1 is read back from its files), no time limit"
+ ]
+}

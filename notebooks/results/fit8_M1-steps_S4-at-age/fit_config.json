@@ -1,0 +1,200 @@
+{
+ "fit": "eighth fit, M1 tube by tube, probe first: S2 … S5 take condensation and solvent attack from S1.tube; S4 at the age: the 0.5 % H2O spectra at the age, not 18.9 h later",
+ "solvation": {
+  "snapshot": "tank_api_snapshot_2026-10-08.json",
+  "volume_fractions": {
+   "EC": 0.5,
+   "DEC": 0.5
+  },
+  "rule": "linear"
+ },
+ "network": "R1-R9+N10-N15",
+ "sample_overrides": {
+  "2 % H2O": {
+   "heated_episodes": [
+    [
+     13.3022,
+     30.0,
+     8.0
+    ],
+    [
+     21.3022,
+     40.0,
+     8.0
+    ],
+    [
+     62.9886,
+     50.0,
+     8.0
+    ],
+    [
+     86.9961,
+     60.0,
+     8.0
+    ],
+    [
+     109.8881,
+     70.0,
+     8.0
+    ],
+    [
+     135.9867,
+     80.0,
+     8.0
+    ]
+   ]
+  },
+  "TMSPa alone": {
+   "added_M": {
+    "H2O": 0.0656
+   },
+   "unknown_M": {}
+  }
+ },
+ "scenarios": [
+  "10 min",
+  "1 h",
+  "8 h"
+ ],
+ "paper_observations": [],
+ "energy_box_sigma": 3.0,
+ "structures": {
+  "main": "M1",
+  "extended": []
+ },
+ "effort": {
+  "M1": [
+   256,
+   8,
+   40
+  ]
+ },
+ "steps": [
+  {
+   "id": "S1",
+   "fit": [
+    "TMSOH, glovebox"
+   ],
+   "free": [
+    "g condensation",
+    "g solvent_attack"
+   ]
+  },
+  {
+   "id": "S1.tube",
+   "fit": [
+    "TMSOH, probe"
+   ],
+   "free": [
+    "g condensation",
+    "g solvent_attack"
+   ]
+  },
+  {
+   "id": "S2",
+   "fit": [
+    "TMSPa + TMSOH (A)"
+   ],
+   "free": [
+    "g transfer"
+   ],
+   "from": "S1.tube"
+  },
+  {
+   "id": "S3",
+   "fit": [
+    "TMSPa alone"
+   ],
+   "free": [
+    "g hydrolysis"
+   ],
+   "from": "S2"
+  },
+  {
+   "id": "S2b",
+   "fit": [
+    "TMSPa + TMSOH (A)"
+   ],
+   "free": [
+    "g transfer"
+   ],
+   "from": "S3"
+  },
+  {
+   "id": "S4",
+   "fit": [
+    "0.5 % H2O"
+   ],
+   "free": [
+    "g hydrolysis"
+   ],
+   "from": "S3"
+  },
+  {
+   "id": "S5",
+   "fit": [
+    "2 % H2O"
+   ],
+   "free": [],
+   "from": "S3"
+  }
+ ],
+ "step_variants": {
+  "2 % H2O as P. Broqvist reads it": {
+   "2 % H2O": {
+    "pre_history": [
+     [
+      null,
+      8.0
+     ],
+     [
+      30.0,
+      8.0
+     ],
+     [
+      null,
+      1.0
+     ]
+    ],
+    "heated_episodes": [
+     [
+      21.3022,
+      40.0,
+      8.0
+     ],
+     [
+      62.9886,
+      50.0,
+      8.0
+     ],
+     [
+      86.9961,
+      60.0,
+      8.0
+     ],
+     [
+      109.8881,
+      70.0,
+      8.0
+     ],
+     [
+      135.9867,
+      80.0,
+      8.0
+     ]
+    ]
+   }
+  }
+ },
+ "why": [
+  "P. Broqvist, 2026-10-23: go step by step, M1 first, one experiment at a time. The fit of every tube at once is the seventh fit (05_fit7), which this run does not repeat",
+  "model: M1 alone (one Marcus barrier per family, computed energies, network R1-R9 + N10-N15, EC/DEC 1:1 linear, water of 'TMSPa alone' declared at 65.6 mM, 2 % tube heated 8 h per step): everything as in the seventh fit but the order in which the tubes are used",
+  "scenarios: every unknown age 10 min, 1 h or 8 h (the user's choice of the ages to try)",
+  "steps, each at every reading: S1 'TMSOH, glovebox' (condensation and solvent attack; no phosphate, known history); S2 'TMSPa + TMSOH (A)' (transfer; hydrolysis held off, no water was added); S3 'TMSPa alone' (hydrolysis; its two spectra 243 h apart are the only time the data record); S2b tube A again with the hydrolysis of S3 (does transfer move?); S4 '0.5 % H2O' (hydrolysis alone again: does it agree with S3?); S5 '2 % H2O' (nothing free: a test of the computed energies). A barrier no earlier step set is held off, at the top of its box",
+  "after every step every tube is scored with that step's barriers: the tubes not used yet are predictions, the validation of the steps before",
+  "step_variants: the 2 % tube also as P. Broqvist reads it (BatteryAsTank, tmspa_reaction_network_model): its first spectrum after 8 h at room temperature and 8 h at 30 °C (plus 1 h of acquisition), so after the 30 °C step and not before every heating; the file timestamps put that spectrum 16 h before the 30 °C acquisition, the file name ('22oC after 3oC') reads as after it",
+  "effort: one or two free barriers per step, so a light search (256 screen points, 8 starts); profiles of the free barriers of every step",
+  "S1.tube (2026-10-27): S1 the other way round, condensation and solvent attack fitted to 'TMSOH, probe', 'TMSOH, glovebox' scored as a check. Probe first (2026-10-27): S2 takes them from S1.tube, so S2 … S5 rest on the probe. S1 (glovebox) is kept for comparison, its files copied from fit8_M1-steps (same setup), not refitted; everything else as fit8_M1-steps",
+  "S4 at the age (2026-10-27): the 0.5 % H2O clock starts at its 31P (the 29Si file 18.9 h before it carries the title of another sample), observables copied to data_dir/ with that change. S1 … S2b copied from fit8_M1-steps_S1-tube (same setup), not refitted; S4 refitted, S5 rescored"
+ ]
+}

@@ -1,0 +1,234 @@
+[12:02:43] --- stage registered (workers 12) ---
+[12:02:43] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[12:02:43] computed ΔG_rxn at 298 K (eV, ± standard error of the MD solvation): R1 -0.253 ± 0.104, R2 -0.182 ± 0.094, R3 -0.061 ± 0.081, R4 +0.097 ± 0.120, R5 -0.155 ± 0.111, R6 -0.085 ± 0.102, R7 +0.036 ± 0.090, R8 +0.113 ± 0.103, R9 -0.016 ± 0.106
+[12:02:44] registered reference_bep    middle  chi2       8534.4  max |z|     51.9  (2 % H2O: TMSPA drift, spectrum 6)
+[12:02:44] registered reference_bep    long    chi2       7173.7  max |z|     47.5  (2 % H2O: TMSPA drift, spectrum 6)
+[12:02:45] registered reference_bep    free    chi2       4226.0  max |z|     34.0  (2 % H2O: TMSPA drift, spectrum 6)
+[12:02:46] registered family_bep       middle  chi2       2527.1  max |z|     41.7  (0.5 % H2O: MMSPA)
+[12:02:46] registered family_bep       long    chi2       2527.0  max |z|     41.7  (0.5 % H2O: MMSPA)
+[12:02:51] registered family_bep       free    chi2       2526.6  max |z|     41.7  (0.5 % H2O: MMSPA)
+[12:02:52] registered family_marcus    middle  chi2       2527.2  max |z|     41.7  (0.5 % H2O: MMSPA)
+[12:02:53] registered family_marcus    long    chi2       2527.1  max |z|     41.7  (0.5 % H2O: MMSPA)
+[12:02:59] registered family_marcus    free    chi2       2526.8  max |z|     41.7  (0.5 % H2O: MMSPA)
+[12:03:00] registered level1           middle  chi2       2505.9  max |z|     41.7  (0.5 % H2O: MMSPA)
+[12:03:01] registered level1           long    chi2       2505.9  max |z|     41.7  (0.5 % H2O: MMSPA)
+[12:03:07] registered level1           free    chi2       2505.7  max |z|     41.7  (0.5 % H2O: MMSPA)
+[12:03:07] --- stage registered done in 0.4 min ---
+[12:03:08] --- stage recovery (workers 12) ---
+[12:03:08] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[12:08:01] recovery A seed 1: chi2 fit 39.91 vs truth 44.82, 9512 evaluations, 293 s
+[12:12:51] recovery A seed 2: chi2 fit 50.75 vs truth 58.93, 9409 evaluations, 290 s
+[12:18:15] recovery A seed 3: chi2 fit 67.15 vs truth 69.20, 10594 evaluations, 324 s
+[12:37:37] recovery B seed 1: chi2 fit 53.07 vs truth 56.60, 22339 evaluations, 1163 s
+[12:57:28] recovery B seed 2: chi2 fit 64.88 vs truth 70.72, 22302 evaluations, 1190 s
+[13:15:21] recovery C seed 1: chi2 fit 82.29 vs truth 69.21, 25457 evaluations, 1074 s
+[13:36:49] recovery C seed 2: chi2 fit 78.59 vs truth 86.38, 26966 evaluations, 1288 s
+[13:36:49] recovery: 45 intervals, truth outside in 3; optimiser at least as good as the truth in every case: False
+[13:36:49] recovery status by parameter: g hydrolysis_R1: interval, lower bound only; g hydrolysis_R23: interval, not determined; g transfer: interval, upper bound only; g condensation: interval, lower bound only; g solvent_attack: lower bound only, not determined; dG R2: interval, upper bound only; dG R3: interval; c0 H2O TMSPa alone: interval, lower bound only
+[13:36:49] RECOVERY FAILED (criterion: optimiser ok in every case and at most 15 % of the truths outside their 95 % interval)
+[13:36:49] --- stage recovery done in 93.7 min ---
+[13:36:50] --- stage baselines (workers 12) ---
+[13:36:50] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[13:37:02] fit M0-BEP     middle                          chi2    2574.34  max |z|  20.98  fails  [all reactions 0.990, c0 H2O TMSPa alone 0.098]  (128 evaluations, 13 s)
+[13:37:16] fit M0-Marcus  middle                          chi2    3666.02  max |z|  48.55  fails  [all reactions 1.032, c0 H2O TMSPa alone 0.046]  (116 evaluations, 14 s)
+[13:38:45] fit M1         middle                          chi2     631.22  max |z|  20.49  fails  [hydrolysis 1.532, transfer 0.609, condensation 1.000, solvent_attack 1.220, c0 H2O TMSPa alone 0.065]  (1366 evaluations, 86 s)
+[13:38:54] fit M0-BEP     long                            chi2    2532.80  max |z|  21.65  fails  [all reactions 1.038, c0 H2O TMSPa alone 0.110]  (152 evaluations, 9 s)
+[13:39:10] fit M0-Marcus  long                            chi2    3603.60  max |z|  48.16  fails  [all reactions 1.080, c0 H2O TMSPa alone 0.045]  (149 evaluations, 16 s)
+[13:41:07] fit M1         long                            chi2     611.85  max |z|  20.07  fails  [hydrolysis 1.348, transfer 0.611, condensation 1.065, solvent_attack 1.217, c0 H2O TMSPa alone 0.206]  (1270 evaluations, 115 s)
+[13:41:32] fit M0-BEP     free                            chi2    1342.94  max |z|  21.11  fails  [all reactions 1.071, c0 H2O TMSPa alone 0.300, log10 age 2 % H2O 2.857]  (276 evaluations, 26 s)
+[13:41:57] fit M0-Marcus  free                            chi2    1655.16  max |z|  29.62  fails  [all reactions 1.127, c0 H2O TMSPa alone 0.104, log10 age 2 % H2O 2.857]  (328 evaluations, 25 s)
+[13:44:41] fit M1         free                            chi2     511.42  max |z|  19.54  fails  [hydrolysis 1.210, transfer 0.941, condensation 1.114, solvent_attack 1.215, c0 H2O TMSPa alone 0.238, log10 age 2 % H2O 2.857]  (2006 evaluations, 161 s)
+[13:44:41] selection rule: no structure fits any scenario and passes the trace rule
+[13:44:41] check M0-BEP middle: best barrier 0.990 eV lies in the notebook 03 interval of L2
+[13:44:41] check M0-BEP long: best barrier 1.038 eV lies in the notebook 03 interval of no observation
+[13:44:41] check M0-BEP free: best barrier 1.071 eV lies in the notebook 03 interval of L1
+[13:44:41] check M0-Marcus middle: best barrier 1.032 eV lies in the notebook 03 interval of L2, L3
+[13:44:41] check M0-Marcus long: best barrier 1.080 eV lies in the notebook 03 interval of L2, L3
+[13:44:41] check M0-Marcus free: best barrier 1.127 eV lies in the notebook 03 interval of L2, L3
+[13:44:41] --- stage baselines done in 7.9 min ---
+[13:44:42] --- stage extended (workers 12) ---
+[13:44:42] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[13:47:12] fit M1-split   middle                          chi2     589.10  max |z|  20.40  fails  [R1 1.655, R23 1.004, transfer 0.810, condensation 1.137, solvent_attack 1.221, c0 H2O TMSPa alone 0.063]  (1383 evaluations, 147 s)
+[14:17:14] fit M3         middle                          chi2     453.10  max |z|  11.63  fails  [hydrolysis 0.935, transfer 0.658, condensation 1.323, solvent_attack 1.225, dG R1 0.656, dG R2 -0.083, dG R3 0.155, dG R4 -0.287, c0 H2O TMSPa alone 0.099]  (31804 evaluations, 1799 s)
+[14:53:45] fit M3-split   middle                          chi2      50.14  max |z|   2.96  FITS  [R1 1.372, R23 0.952, transfer 0.668, condensation 1.298, solvent_attack 1.226, dG R1 0.182, dG R2 0.202, dG R3 0.122, dG R4 -0.217, c0 H2O TMSPa alone 0.061]  (36954 evaluations, 2188 s)
+[14:56:18] fit M1-split   long                            chi2     611.85  max |z|  20.07  fails  [R1 1.348, R23 1.348, transfer 0.611, condensation 1.065, solvent_attack 1.217, c0 H2O TMSPa alone 0.206]  (1733 evaluations, 151 s)
+[15:20:36] fit M3         long                            chi2     375.05  max |z|  18.52  fails  [hydrolysis 1.700, transfer 0.651, condensation 1.036, solvent_attack 1.220, dG R1 0.032, dG R2 0.040, dG R3 0.058, dG R4 0.015, c0 H2O TMSPa alone 0.148]  (33284 evaluations, 1457 s)
+[15:49:51] fit M3-split   long                            chi2      52.84  max |z|   2.96  FITS  [R1 1.485, R23 0.976, transfer 0.600, condensation 1.313, solvent_attack 1.226, dG R1 0.205, dG R2 0.222, dG R3 0.137, dG R4 -0.249, c0 H2O TMSPa alone 0.141]  (36635 evaluations, 1753 s)
+[15:51:47] fit M1-split   free                            chi2     471.25  max |z|  13.89  fails  [R1 1.231, R23 1.112, transfer 1.107, condensation 1.699, solvent_attack 1.218, c0 H2O TMSPa alone 0.112, log10 age 2 % H2O 2.850]  (2104 evaluations, 114 s)
+[16:18:53] fit M3         free                            chi2      67.93  max |z|   3.02  fails  [hydrolysis 1.078, transfer 1.045, condensation 1.297, solvent_attack 1.226, dG R1 0.230, dG R2 0.214, dG R3 0.116, dG R4 -0.215, c0 H2O TMSPa alone 0.219, log10 age 2 % H2O 2.857]  (36492 evaluations, 1624 s)
+[16:48:41] fit M3-split   free                            chi2      39.65  max |z|   2.14  FITS  [R1 1.530, R23 0.950, transfer 0.698, condensation 1.298, solvent_attack 1.226, dG R1 0.181, dG R2 0.200, dG R3 0.121, dG R4 -0.215, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 1.834]  (37336 evaluations, 1786 s)
+[16:48:44] trace rule M3-split middle: chi2 1566.7 and max |z| 32.18 with 1e-06 M, chi2 1488.3 and max |z| 30.82 with 1e-03 M (chi2 50.1 without): REJECTED
+[16:48:47] trace rule M3-split long: chi2 1558.4 and max |z| 29.81 with 1e-06 M, chi2 1757.5 and max |z| 29.77 with 1e-03 M (chi2 52.8 without): REJECTED
+[16:48:50] trace rule M3-split free: chi2 40.0 and max |z| 2.14 with 1e-06 M, chi2 1492.9 and max |z| 31.00 with 1e-03 M (chi2 39.7 without): REJECTED
+[16:48:50] selection rule: no structure fits any scenario and passes the trace rule
+[16:48:50] nesting check: chi2 never rises from a structure to the one that extends it
+[16:48:50] --- stage extended done in 184.1 min ---
+[16:48:51] --- stage night (workers 12) ---
+[16:48:51] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[16:48:51] recovery A seed 1: chi2 fit 39.91 vs truth 44.82, 9512 evaluations, 0 s
+[16:48:51] recovery A seed 2: chi2 fit 50.75 vs truth 58.93, 9409 evaluations, 0 s
+[16:48:51] recovery A seed 3: chi2 fit 67.15 vs truth 69.20, 10594 evaluations, 0 s
+[16:48:51] recovery B seed 1: chi2 fit 53.07 vs truth 56.60, 22339 evaluations, 0 s
+[16:48:51] recovery B seed 2: chi2 fit 64.88 vs truth 70.72, 22302 evaluations, 0 s
+[16:48:51] recovery C seed 1: chi2 fit 82.29 vs truth 69.21, 25457 evaluations, 0 s
+[16:48:51] recovery C seed 2: chi2 fit 78.59 vs truth 86.38, 26966 evaluations, 0 s
+[16:48:51] recovery: 45 intervals, truth outside in 3; optimiser at least as good as the truth in every case: False
+[16:48:51] recovery status by parameter: g hydrolysis_R1: interval, lower bound only; g hydrolysis_R23: interval, not determined; g transfer: interval, upper bound only; g condensation: interval, lower bound only; g solvent_attack: lower bound only, not determined; dG R2: interval, upper bound only; dG R3: interval; c0 H2O TMSPa alone: interval, lower bound only
+[16:48:51] RECOVERY FAILED (criterion: optimiser ok in every case and at most 15 % of the truths outside their 95 % interval)
+the synthetic recovery failed: the night run stops here
+[16:48:51] CHAIN STOPPED: stage night failed (exit 1), see notebooks/results/05_fit4/fit4.out
+[17:51:06] --- stage registered (workers 12) ---
+[17:51:06] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[17:51:06] computed ΔG_rxn at 298 K (eV, ± standard error of the MD solvation): R1 -0.253 ± 0.104, R2 -0.182 ± 0.094, R3 -0.061 ± 0.081, R4 +0.097 ± 0.120, R5 -0.155 ± 0.111, R6 -0.085 ± 0.102, R7 +0.036 ± 0.090, R8 +0.113 ± 0.103, R9 -0.016 ± 0.106
+[17:51:07] registered reference_bep    middle  chi2       8534.4  max |z|     51.9  (2 % H2O: TMSPA drift, spectrum 6)
+[17:51:07] registered reference_bep    long    chi2       7173.7  max |z|     47.5  (2 % H2O: TMSPA drift, spectrum 6)
+[17:51:08] registered reference_bep    free    chi2       4226.0  max |z|     34.0  (2 % H2O: TMSPA drift, spectrum 6)
+[17:51:09] registered family_bep       middle  chi2       2527.1  max |z|     41.7  (0.5 % H2O: MMSPA)
+[17:51:10] registered family_bep       long    chi2       2527.0  max |z|     41.7  (0.5 % H2O: MMSPA)
+[17:51:14] registered family_bep       free    chi2       2526.6  max |z|     41.7  (0.5 % H2O: MMSPA)
+[17:51:15] registered family_marcus    middle  chi2       2527.2  max |z|     41.7  (0.5 % H2O: MMSPA)
+[17:51:16] registered family_marcus    long    chi2       2527.1  max |z|     41.7  (0.5 % H2O: MMSPA)
+[17:51:22] registered family_marcus    free    chi2       2526.8  max |z|     41.7  (0.5 % H2O: MMSPA)
+[17:51:23] registered level1           middle  chi2       2505.9  max |z|     41.7  (0.5 % H2O: MMSPA)
+[17:51:24] registered level1           long    chi2       2505.9  max |z|     41.7  (0.5 % H2O: MMSPA)
+[17:51:31] registered level1           free    chi2       2505.7  max |z|     41.7  (0.5 % H2O: MMSPA)
+[17:51:31] --- stage registered done in 0.4 min ---
+[17:51:31] --- stage recovery (workers 12) ---
+[17:51:31] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[17:51:31] recovery A seed 1: chi2 fit 39.91 vs truth 44.82, 9512 evaluations, 0 s
+[17:51:31] recovery A seed 2: chi2 fit 50.75 vs truth 58.93, 9409 evaluations, 0 s
+[17:51:31] recovery A seed 3: chi2 fit 67.15 vs truth 69.20, 10594 evaluations, 0 s
+[18:20:53] recovery B seed 1: chi2 fit 53.07 vs truth 56.60, 37612 evaluations, 1762 s
+[18:53:03] recovery B seed 2: chi2 fit 64.88 vs truth 70.72, 38450 evaluations, 1930 s
+[19:31:07] recovery C seed 1: chi2 fit 45.56 vs truth 52.14, 44543 evaluations, 2284 s
+[20:09:05] recovery C seed 2: chi2 fit 59.46 vs truth 66.27, 43308 evaluations, 2278 s
+[20:09:05] recovery: 45 intervals, truth outside in 0; optimiser at least as good as the truth in every case: True
+[20:09:05] recovery status by parameter: g hydrolysis_R1: interval, lower bound only; g hydrolysis_R23: interval; g transfer: interval, upper bound only; g condensation: interval, lower bound only; g solvent_attack: interval, lower bound only, not determined; dG R2: interval; dG R3: interval; c0 H2O TMSPa alone: interval
+[20:09:05] RECOVERY PASSED (criterion: optimiser ok in every case and at most 15 % of the truths outside their 95 % interval)
+[20:09:05] --- stage recovery done in 137.6 min ---
+[20:09:06] --- stage baselines (workers 12) ---
+[20:09:06] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[20:09:06] fit M0-BEP     middle                          chi2    2574.34  max |z|  20.98  fails  [all reactions 0.990, c0 H2O TMSPa alone 0.098]  (cached)
+[20:09:06] fit M0-Marcus  middle                          chi2    3666.02  max |z|  48.55  fails  [all reactions 1.032, c0 H2O TMSPa alone 0.046]  (cached)
+[20:09:06] fit M1         middle                          chi2     631.22  max |z|  20.49  fails  [hydrolysis 1.532, transfer 0.609, condensation 1.000, solvent_attack 1.220, c0 H2O TMSPa alone 0.065]  (cached)
+[20:09:06] fit M0-BEP     long                            chi2    2532.80  max |z|  21.65  fails  [all reactions 1.038, c0 H2O TMSPa alone 0.110]  (cached)
+[20:09:06] fit M0-Marcus  long                            chi2    3603.60  max |z|  48.16  fails  [all reactions 1.080, c0 H2O TMSPa alone 0.045]  (cached)
+[20:09:06] fit M1         long                            chi2     611.85  max |z|  20.07  fails  [hydrolysis 1.348, transfer 0.611, condensation 1.065, solvent_attack 1.217, c0 H2O TMSPa alone 0.206]  (cached)
+[20:09:06] fit M0-BEP     free                            chi2    1342.94  max |z|  21.11  fails  [all reactions 1.071, c0 H2O TMSPa alone 0.300, log10 age 2 % H2O 2.857]  (cached)
+[20:09:06] fit M0-Marcus  free                            chi2    1655.16  max |z|  29.62  fails  [all reactions 1.127, c0 H2O TMSPa alone 0.104, log10 age 2 % H2O 2.857]  (cached)
+[20:09:06] fit M1         free                            chi2     511.42  max |z|  19.54  fails  [hydrolysis 1.210, transfer 0.941, condensation 1.114, solvent_attack 1.215, c0 H2O TMSPa alone 0.238, log10 age 2 % H2O 2.857]  (cached)
+[20:09:06] selection rule: no structure fits any scenario and passes the trace rule
+[20:09:06] check M0-BEP middle: best barrier 0.990 eV lies in the notebook 03 interval of L2
+[20:09:06] check M0-BEP long: best barrier 1.038 eV lies in the notebook 03 interval of no observation
+[20:09:06] check M0-BEP free: best barrier 1.071 eV lies in the notebook 03 interval of L1
+[20:09:06] check M0-Marcus middle: best barrier 1.032 eV lies in the notebook 03 interval of L2, L3
+[20:09:06] check M0-Marcus long: best barrier 1.080 eV lies in the notebook 03 interval of L2, L3
+[20:09:06] check M0-Marcus free: best barrier 1.127 eV lies in the notebook 03 interval of L2, L3
+[20:09:06] --- stage baselines done in 0.0 min ---
+[20:09:06] --- stage extended (workers 12) ---
+[20:09:06] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[20:09:06] fit M1-split   middle                          chi2     589.10  max |z|  20.40  fails  [R1 1.655, R23 1.004, transfer 0.810, condensation 1.137, solvent_attack 1.221, c0 H2O TMSPa alone 0.063]  (cached)
+[20:09:06] fit M3         middle                          chi2     453.10  max |z|  11.63  fails  [hydrolysis 0.935, transfer 0.658, condensation 1.323, solvent_attack 1.225, dG R1 0.656, dG R2 -0.083, dG R3 0.155, dG R4 -0.287, c0 H2O TMSPa alone 0.099]  (cached)
+[20:09:06] fit M3-split   middle                          chi2      50.14  max |z|   2.96  FITS  [R1 1.372, R23 0.952, transfer 0.668, condensation 1.298, solvent_attack 1.226, dG R1 0.182, dG R2 0.202, dG R3 0.122, dG R4 -0.217, c0 H2O TMSPa alone 0.061]  (cached)
+[20:09:06] fit M1-split   long                            chi2     611.85  max |z|  20.07  fails  [R1 1.348, R23 1.348, transfer 0.611, condensation 1.065, solvent_attack 1.217, c0 H2O TMSPa alone 0.206]  (cached)
+[20:09:06] fit M3         long                            chi2     375.05  max |z|  18.52  fails  [hydrolysis 1.700, transfer 0.651, condensation 1.036, solvent_attack 1.220, dG R1 0.032, dG R2 0.040, dG R3 0.058, dG R4 0.015, c0 H2O TMSPa alone 0.148]  (cached)
+[20:09:06] fit M3-split   long                            chi2      52.84  max |z|   2.96  FITS  [R1 1.485, R23 0.976, transfer 0.600, condensation 1.313, solvent_attack 1.226, dG R1 0.205, dG R2 0.222, dG R3 0.137, dG R4 -0.249, c0 H2O TMSPa alone 0.141]  (cached)
+[20:09:06] fit M1-split   free                            chi2     471.25  max |z|  13.89  fails  [R1 1.231, R23 1.112, transfer 1.107, condensation 1.699, solvent_attack 1.218, c0 H2O TMSPa alone 0.112, log10 age 2 % H2O 2.850]  (cached)
+[20:09:06] fit M3         free                            chi2      67.93  max |z|   3.02  fails  [hydrolysis 1.078, transfer 1.045, condensation 1.297, solvent_attack 1.226, dG R1 0.230, dG R2 0.214, dG R3 0.116, dG R4 -0.215, c0 H2O TMSPa alone 0.219, log10 age 2 % H2O 2.857]  (cached)
+[20:09:06] fit M3-split   free                            chi2      39.65  max |z|   2.14  FITS  [R1 1.530, R23 0.950, transfer 0.698, condensation 1.298, solvent_attack 1.226, dG R1 0.181, dG R2 0.200, dG R3 0.121, dG R4 -0.215, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 1.834]  (cached)
+[20:09:07] selection rule: no structure fits any scenario and passes the trace rule
+[20:09:07] nesting check: chi2 never rises from a structure to the one that extends it
+[20:09:07] --- stage extended done in 0.0 min ---
+[20:09:07] --- stage night (workers 12) ---
+[20:09:07] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[20:09:07] recovery A seed 1: chi2 fit 39.91 vs truth 44.82, 9512 evaluations, 0 s
+[20:09:07] recovery A seed 2: chi2 fit 50.75 vs truth 58.93, 9409 evaluations, 0 s
+[20:09:07] recovery A seed 3: chi2 fit 67.15 vs truth 69.20, 10594 evaluations, 0 s
+[20:09:07] recovery B seed 1: chi2 fit 53.07 vs truth 56.60, 37612 evaluations, 0 s
+[20:09:07] recovery B seed 2: chi2 fit 64.88 vs truth 70.72, 38450 evaluations, 0 s
+[20:09:07] recovery C seed 1: chi2 fit 45.56 vs truth 52.14, 44543 evaluations, 0 s
+[20:09:07] recovery C seed 2: chi2 fit 59.46 vs truth 66.27, 43308 evaluations, 0 s
+[20:09:07] recovery: 45 intervals, truth outside in 0; optimiser at least as good as the truth in every case: True
+[20:09:07] recovery status by parameter: g hydrolysis_R1: interval, lower bound only; g hydrolysis_R23: interval; g transfer: interval, upper bound only; g condensation: interval, lower bound only; g solvent_attack: interval, lower bound only, not determined; dG R2: interval; dG R3: interval; c0 H2O TMSPa alone: interval
+[20:09:07] RECOVERY PASSED (criterion: optimiser ok in every case and at most 15 % of the truths outside their 95 % interval)
+[20:09:07] night: profiles of ['M3-split', 'M1']; leave-one-out, sensitivities and indistinguishability on M3-split
+[21:05:46] profiles M3-split middle: hydrolysis_R1 1.212–1.646; hydrolysis_R23 0.925–0.974; transfer ≤ 0.832; condensation 1.266–1.351; solvent_attack 1.211–1.243; dG R1 0.115–0.231; dG R2 0.159–0.247; dG R3 0.102–0.163; dG R4 -0.301–-0.178; c0 H2O TMSPa alone 0.053–0.073  (56170 evaluations, 3398 s)
+[21:51:02] profiles M3-split long: hydrolysis_R1 ≥ 1.343; hydrolysis_R23 0.974–1.001; transfer ≤ 0.814; condensation 1.273–1.377; solvent_attack 1.213–1.244; dG R1 0.155–0.249; dG R2 0.205–0.273; dG R3 0.106–0.189; dG R4 -0.354–-0.189; c0 H2O TMSPa alone 0.138–0.217  (41800 evaluations, 2716 s)
+[22:47:17] profiles M3-split free: hydrolysis_R1 not determined; hydrolysis_R23 0.898–0.981; transfer ≤ 0.862; condensation 1.267–1.349; solvent_attack 1.212–1.240; dG R1 0.119–0.230; dG R2 0.107–0.246; dG R3 0.104–0.160; dG R4 -0.295–-0.181; c0 H2O TMSPa alone 0.052–0.072; log10 age 2 % H2O ≥ 0.916  (65131 evaluations, 3375 s)
+[22:52:31] profiles M1 middle: hydrolysis 1.449–1.549; transfer ≤ 0.901; condensation ≤ 1.006; solvent_attack 1.207–1.236; c0 H2O TMSPa alone 0.060–0.074  (5955 evaluations, 314 s)
+[22:55:56] profiles M1 long: hydrolysis 1.335–1.370; transfer not determined; condensation 1.064–1.066; solvent_attack 1.203–1.234; c0 H2O TMSPa alone 0.195–0.220  (4450 evaluations, 206 s)
+[23:05:27] profiles M1 free: hydrolysis 1.201–1.240; transfer ≤ 0.977; condensation 1.108–1.115; solvent_attack 1.200–1.231; c0 H2O TMSPa alone ≥ 0.181; log10 age 2 % H2O ≥ 2.794  (9240 evaluations, 571 s)
+[23:07:23] fit M3-split   long   __from_profile_minimum   chi2      50.07  max |z|   2.96  FITS  [R1 1.635, R23 0.964, transfer 0.643, condensation 1.298, solvent_attack 1.226, dG R1 0.184, dG R2 0.202, dG R3 0.122, dG R4 -0.218, c0 H2O TMSPa alone 0.132]  (330 evaluations, 116 s)
+[23:36:19] profile minimum M3-split long: fit replaced, chi2 52.84 -> 50.07, max |z| 2.96, FITS  [R1 1.635, R23 0.964, transfer 0.643, condensation 1.298, solvent_attack 1.226, dG R1 0.184, dG R2 0.202, dG R3 0.122, dG R4 -0.218, c0 H2O TMSPa alone 0.132]
+[23:37:14] fit M3-split   free   __from_profile_minimum   chi2      39.63  max |z|   2.18  FITS  [R1 1.686, R23 0.942, transfer 0.683, condensation 1.298, solvent_attack 1.226, dG R1 0.184, dG R2 0.204, dG R3 0.122, dG R4 -0.217, c0 H2O TMSPa alone 0.060, log10 age 2 % H2O 2.672]  (444 evaluations, 56 s)
+[23:37:14] profile minimum M3-split free: fit kept (chi2 39.65; polished from the profile minimum 39.63)
+[23:37:17] trace rule M3-split long: chi2 1794.8 and max |z| 31.07 with 1e-06 M, chi2 1796.6 and max |z| 31.07 with 1e-03 M (chi2 50.1 without): REJECTED
+[23:37:17] selection rule: no structure fits any scenario and passes the trace rule
+[23:56:23] leave-one-out M3-split middle: without 0.5 % H2O: chi2 36.8, max |z| 2.2; without 2 % H2O: chi2 11.5, max |z| 2.4; without TMSPa + TMSOH (A): chi2 47.9, max |z| 3.0; without TMSPa alone: chi2 37.0, max |z| 2.2; without TMSOH, probe: chi2 47.0, max |z| 3.0; without TMSOH, glovebox: chi2 47.5, max |z| 3.0  (14919 evaluations, 1145 s)
+[00:14:21] leave-one-out M3-split long: without 0.5 % H2O: chi2 36.5, max |z| 2.2; without 2 % H2O: chi2 9.4, max |z| 2.0; without TMSPa + TMSOH (A): chi2 48.7, max |z| 3.0; without TMSPa alone: chi2 36.9, max |z| 2.2; without TMSOH, probe: chi2 47.2, max |z| 3.0; without TMSOH, glovebox: chi2 47.5, max |z| 3.0  (11320 evaluations, 1079 s)
+[00:27:26] leave-one-out M3-split free: without 0.5 % H2O: chi2 36.4, max |z| 2.2; without 2 % H2O: chi2 5.1, max |z| 1.1; without TMSPa + TMSOH (A): chi2 38.4, max |z| 2.1; without TMSPa alone: chi2 37.0, max |z| 2.2; without TMSOH, probe: chi2 36.5, max |z| 2.1; without TMSOH, glovebox: chi2 37.2, max |z| 2.2  (11525 evaluations, 784 s)
+[00:32:39] fit M3-split+W middle                          chi2      50.11  max |z|   2.96  FITS  [R1 1.374, R23 0.951, transfer 0.669, condensation 1.299, solvent_attack 1.226, dG R1 0.182, dG R2 0.203, dG R3 0.122, dG R4 -0.218, water fraction 0.989, c0 H2O TMSPa alone 0.061]  (3524 evaluations, 311 s)
+[00:35:11] fit M1-split+W middle                          chi2     247.98  max |z|  12.36  fails  [R1 1.698, R23 0.960, transfer 0.954, condensation 1.131, solvent_attack 1.223, water fraction 0.343, c0 H2O TMSPa alone 0.065]  (2736 evaluations, 151 s)
+[00:38:02] fit M1-split+W middle __on_M3-split_shares     chi2     195.48  max |z|  12.04  fails  [R1 1.699, R23 0.960, transfer 0.952, condensation 1.172, solvent_attack 1.224, water fraction 0.344, c0 H2O TMSPa alone 0.065]  (2904 evaluations, 169 s)
+[00:41:47] fit M3-split   middle __on_M1-split+W_shares   chi2       8.01  max |z|   1.37  FITS  [R1 1.442, R23 0.963, transfer 0.955, condensation 1.225, solvent_attack 1.229, dG R1 0.091, dG R2 0.093, dG R3 0.079, dG R4 -0.077, c0 H2O TMSPa alone 0.068]  (5000 evaluations, 223 s)
+[00:42:45] fit M3-split (agmon_levine) middle                          chi2      50.13  max |z|   2.96  FITS  [R1 1.373, R23 0.951, transfer 0.668, condensation 1.298, solvent_attack 1.226, dG R1 0.182, dG R2 0.203, dG R3 0.122, dG R4 -0.218, c0 H2O TMSPa alone 0.061]  (264 evaluations, 58 s)
+[00:45:07] fit M3         middle __on_M3-split_shares     chi2     421.58  max |z|  11.83  fails  [hydrolysis 0.933, transfer 0.658, condensation 1.326, solvent_attack 1.225, dG R1 0.661, dG R2 -0.084, dG R3 0.161, dG R4 -0.298, c0 H2O TMSPa alone 0.098]  (3062 evaluations, 139 s)
+[01:00:07] water fraction middle: best 0.29, 95 % range 0.21 to 0.98 (interval)
+[01:03:21] fit M3-split+W free                            chi2      31.63  max |z|   1.93  FITS  [R1 1.185, R23 1.083, transfer 0.939, condensation 1.130, solvent_attack 1.223, dG R1 -0.030, dG R2 -0.008, dG R3 -0.096, dG R4 -0.002, water fraction 0.202, c0 H2O TMSPa alone 0.063, log10 age 2 % H2O 2.649]  (3502 evaluations, 192 s)
+[01:06:56] fit M1-split+W free                            chi2     216.07  max |z|  13.27  fails  [R1 1.196, R23 1.089, transfer 0.684, condensation 1.130, solvent_attack 1.219, water fraction 0.377, c0 H2O TMSPa alone 0.065, log10 age 2 % H2O 2.857]  (3356 evaluations, 214 s)
+[01:10:14] fit M1-split+W free   __on_M3-split_shares     chi2     168.90  max |z|  12.88  fails  [R1 1.199, R23 1.085, transfer 0.693, condensation 1.171, solvent_attack 1.220, water fraction 0.381, c0 H2O TMSPa alone 0.064, log10 age 2 % H2O 2.857]  (3383 evaluations, 195 s)
+[01:14:31] fit M3-split   free   __on_M1-split+W_shares   chi2       7.43  max |z|   1.35  FITS  [R1 1.397, R23 1.065, transfer 0.781, condensation 1.220, solvent_attack 1.226, dG R1 0.050, dG R2 0.051, dG R3 0.072, dG R4 -0.068, c0 H2O TMSPa alone 0.067, log10 age 2 % H2O 2.591]  (4928 evaluations, 255 s)
+[01:15:03] fit M3-split (agmon_levine) free                            chi2      39.66  max |z|   2.14  FITS  [R1 1.530, R23 0.950, transfer 0.698, condensation 1.298, solvent_attack 1.226, dG R1 0.181, dG R2 0.200, dG R3 0.121, dG R4 -0.215, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 1.834]  (288 evaluations, 33 s)
+[01:19:15] fit M3         free   __on_M3-split_shares     chi2      40.36  max |z|   3.04  fails  [hydrolysis 1.081, transfer 1.051, condensation 1.293, solvent_attack 1.226, dG R1 0.221, dG R2 0.208, dG R3 0.111, dG R4 -0.206, c0 H2O TMSPa alone 0.216, log10 age 2 % H2O 2.857]  (4879 evaluations, 249 s)
+[01:29:48] water fraction free: best 0.20, 95 % range 0.20 to 0.28 (interval)
+[01:32:15] fit M3-split   middle __floor_x0               chi2      77.20  max |z|   3.76  fails  [R1 1.374, R23 0.949, transfer 0.657, condensation 1.301, solvent_attack 1.226, dG R1 0.189, dG R2 0.209, dG R3 0.125, dG R4 -0.225, c0 H2O TMSPa alone 0.061]  (1840 evaluations, 145 s)
+[01:45:27] fit M3-split   middle __floor_x0__full_search  chi2      77.20  max |z|   3.76  fails  [R1 1.374, R23 0.949, transfer 0.656, condensation 1.301, solvent_attack 1.226, dG R1 0.189, dG R2 0.209, dG R3 0.125, dG R4 -0.225, c0 H2O TMSPa alone 0.061]  (14656 evaluations, 790 s)
+[01:48:55] fit M3-split   middle __floor_x2               chi2      42.09  max |z|   2.24  FITS  [R1 1.402, R23 0.956, transfer 0.688, condensation 1.295, solvent_attack 1.227, dG R1 0.151, dG R2 0.175, dG R3 0.117, dG R4 -0.208, c0 H2O TMSPa alone 0.061]  (2005 evaluations, 207 s)
+[01:53:02] fit M3-split   middle __covariance_x0.5        chi2      57.44  max |z|   2.96  FITS  [R1 1.393, R23 0.954, transfer 0.677, condensation 1.294, solvent_attack 1.226, dG R1 0.164, dG R2 0.189, dG R3 0.118, dG R4 -0.209, c0 H2O TMSPa alone 0.060]  (1972 evaluations, 245 s)
+[01:56:42] fit M3-split   middle __covariance_x2          chi2      45.99  max |z|   2.96  FITS  [R1 1.373, R23 0.948, transfer 0.668, condensation 1.302, solvent_attack 1.226, dG R1 0.190, dG R2 0.209, dG R3 0.125, dG R4 -0.224, c0 H2O TMSPa alone 0.061]  (2005 evaluations, 218 s)
+[02:00:23] fit M3-split   middle __covariance_x4          chi2      43.80  max |z|   2.96  FITS  [R1 1.373, R23 0.946, transfer 0.667, condensation 1.304, solvent_attack 1.226, dG R1 0.195, dG R2 0.212, dG R3 0.127, dG R4 -0.229, c0 H2O TMSPa alone 0.062]  (1950 evaluations, 219 s)
+[02:04:08] fit M3-split   middle __ramp_held_8_h          chi2      59.50  max |z|   2.96  FITS  [R1 1.389, R23 0.923, transfer 0.697, condensation 1.326, solvent_attack 1.231, dG R1 0.213, dG R2 0.234, dG R3 0.153, dG R4 -0.282, c0 H2O TMSPa alone 0.061]  (2071 evaluations, 224 s)
+[02:06:13] fit M3-split   middle __article_8_h_RT         chi2     885.26  max |z|  14.04  fails  [R1 0.828, R23 1.011, transfer 0.600, condensation 1.265, solvent_attack 1.271, dG R1 0.316, dG R2 0.216, dG R3 0.087, dG R4 -0.161, c0 H2O TMSPa alone 0.103]  (1972 evaluations, 123 s)
+[02:17:05] fit M3-split   middle __article_8_h_RT__full_search chi2     863.20  max |z|  13.92  fails  [R1 1.352, R23 0.892, transfer 0.829, condensation 1.268, solvent_attack 1.267, dG R1 0.318, dG R2 0.219, dG R3 0.090, dG R4 -0.166, c0 H2O TMSPa alone 0.158]  (14601 evaluations, 650 s)
+[02:21:13] fit M3-split   middle __article_8_h_RT_+_30_C  chi2      59.47  max |z|   2.96  FITS  [R1 1.389, R23 0.924, transfer 0.697, condensation 1.325, solvent_attack 1.231, dG R1 0.213, dG R2 0.234, dG R3 0.153, dG R4 -0.281, c0 H2O TMSPa alone 0.061]  (2071 evaluations, 246 s)
+[02:24:55] fit M3-split   middle __glovebox_4_h           chi2      49.93  max |z|   2.96  FITS  [R1 1.375, R23 0.950, transfer 0.670, condensation 1.278, solvent_attack 1.206, dG R1 0.184, dG R2 0.205, dG R3 0.124, dG R4 -0.221, c0 H2O TMSPa alone 0.061]  (2071 evaluations, 220 s)
+[02:27:28] fit M3-split   middle __glovebox_16_h          chi2      50.44  max |z|   2.96  FITS  [R1 1.407, R23 0.949, transfer 0.634, condensation 1.320, solvent_attack 1.247, dG R1 0.182, dG R2 0.202, dG R3 0.121, dG R4 -0.216, c0 H2O TMSPa alone 0.061]  (1862 evaluations, 152 s)
+[02:29:53] fit M3-split   free   __floor_x0               chi2      63.66  max |z|   3.26  fails  [R1 1.530, R23 0.950, transfer 0.698, condensation 1.298, solvent_attack 1.226, dG R1 0.181, dG R2 0.200, dG R3 0.120, dG R4 -0.215, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 1.834]  (1996 evaluations, 143 s)
+[02:42:09] fit M3-split   free   __floor_x0__full_search  chi2      63.30  max |z|   3.25  fails  [R1 1.446, R23 0.946, transfer 0.617, condensation 1.301, solvent_attack 1.226, dG R1 0.189, dG R2 0.208, dG R3 0.125, dG R4 -0.224, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 2.204]  (15196 evaluations, 734 s)
+[02:45:32] fit M3-split   free   __floor_x2               chi2      35.59  max |z|   1.94  FITS  [R1 1.358, R23 0.949, transfer 0.602, condensation 1.293, solvent_attack 1.227, dG R1 0.159, dG R2 0.182, dG R3 0.116, dG R4 -0.206, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 1.658]  (2020 evaluations, 201 s)
+[02:48:17] fit M3-split   free   __covariance_x0.5        chi2      46.91  max |z|   2.88  FITS  [R1 1.442, R23 0.961, transfer 0.620, condensation 1.293, solvent_attack 1.226, dG R1 0.108, dG R2 0.132, dG R3 0.118, dG R4 -0.210, c0 H2O TMSPa alone 0.060, log10 age 2 % H2O 2.819]  (1996 evaluations, 163 s)
+[02:50:35] fit M3-split   free   __covariance_x2          chi2      35.54  max |z|   1.93  FITS  [R1 1.512, R23 0.940, transfer 0.728, condensation 1.304, solvent_attack 1.226, dG R1 0.192, dG R2 0.210, dG R3 0.127, dG R4 -0.228, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 1.632]  (1888 evaluations, 137 s)
+[02:53:10] fit M3-split   free   __covariance_x4          chi2      33.34  max |z|   1.93  FITS  [R1 1.511, R23 0.940, transfer 0.726, condensation 1.305, solvent_attack 1.226, dG R1 0.195, dG R2 0.212, dG R3 0.128, dG R4 -0.229, c0 H2O TMSPa alone 0.062, log10 age 2 % H2O 1.640]  (2008 evaluations, 153 s)
+[02:55:26] fit M3-split   free   __ramp_held_8_h          chi2      49.06  max |z|   2.58  FITS  [R1 1.382, R23 0.913, transfer 0.764, condensation 1.340, solvent_attack 1.229, dG R1 0.221, dG R2 0.241, dG R3 0.164, dG R4 -0.303, c0 H2O TMSPa alone 0.062, log10 age 2 % H2O 2.637]  (2008 evaluations, 134 s)
+[02:59:18] fit M3-split   free   __article_8_h_RT         chi2      49.07  max |z|   2.62  FITS  [R1 1.283, R23 0.904, transfer 0.745, condensation 1.341, solvent_attack 1.228, dG R1 0.225, dG R2 0.245, dG R3 0.164, dG R4 -0.303, c0 H2O TMSPa alone 0.061]  (2060 evaluations, 231 s)
+[03:03:06] fit M3-split   free   __article_8_h_RT_+_30_C  chi2      49.00  max |z|   2.57  FITS  [R1 1.506, R23 0.925, transfer 0.724, condensation 1.332, solvent_attack 1.230, dG R1 0.220, dG R2 0.241, dG R3 0.161, dG R4 -0.297, c0 H2O TMSPa alone 0.060]  (2038 evaluations, 226 s)
+[03:06:02] fit M3-split   free   __glovebox_4_h           chi2      39.63  max |z|   2.21  FITS  [R1 1.513, R23 0.945, transfer 0.732, condensation 1.281, solvent_attack 1.207, dG R1 0.187, dG R2 0.207, dG R3 0.125, dG R4 -0.225, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 1.646]  (1972 evaluations, 174 s)
+[03:08:25] fit M3-split   free   __glovebox_16_h          chi2      40.09  max |z|   2.17  FITS  [R1 1.517, R23 0.947, transfer 0.735, condensation 1.319, solvent_attack 1.247, dG R1 0.185, dG R2 0.204, dG R3 0.120, dG R4 -0.215, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 1.510]  (1960 evaluations, 141 s)
+[03:08:25] profiles M3-split middle: hydrolysis_R1 1.212–1.646; hydrolysis_R23 0.925–0.974; transfer ≤ 0.832; condensation 1.266–1.351; solvent_attack 1.211–1.243; dG R1 0.115–0.231; dG R2 0.159–0.247; dG R3 0.102–0.163; dG R4 -0.301–-0.178; c0 H2O TMSPa alone 0.053–0.073  (cached)
+[03:40:56] profiles M3-split middle__rtol1e-8: solvent_attack 1.211–1.243; hydrolysis_R23 0.925–0.974  (11290 evaluations, 1950 s)
+[03:40:56] tolerance check: interval edges move by at most 0.0002 eV from rtol 1e-6 to 1e-8; same status: True
+[03:40:58] --- stage night done in 451.8 min ---
+[03:40:58] --- stage traces (workers 12) ---
+[03:40:58] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[03:41:09] trace scan M3-split middle: chi2 50.1 at 0e+00 M, 50.1 at 1e-09 M, 175.7 at 1e-07 M, 1566.7 at 1e-06 M, 1498.9 at 1e-05 M, 1494.5 at 1e-04 M, 1488.3 at 1e-03 M
+[03:41:20] trace scan M3-split long: chi2 50.1 at 0e+00 M, 1601.3 at 1e-09 M, 1792.6 at 1e-07 M, 1794.8 at 1e-06 M, 1795.1 at 1e-05 M, 1795.3 at 1e-04 M, 1796.6 at 1e-03 M
+[03:41:31] trace scan M3-split free: chi2 39.7 at 0e+00 M, 39.7 at 1e-09 M, 40.0 at 1e-07 M, 40.0 at 1e-06 M, 40.7 at 1e-05 M, 1492.5 at 1e-04 M, 1492.9 at 1e-03 M
+[03:57:11] fit M3-split   middle __TMSOH_1uM              chi2      50.22  max |z|   2.96  FITS  [R1 1.623, R23 0.956, transfer 0.700, condensation 1.300, solvent_attack 1.226, dG R1 0.184, dG R2 0.204, dG R3 0.123, dG R4 -0.220, c0 H2O TMSPa alone 0.061]  (15635 evaluations, 939 s)
+[04:11:16] fit M3-split   long   __TMSOH_1uM              chi2      53.34  max |z|   2.96  FITS  [R1 1.576, R23 0.975, transfer 0.786, condensation 1.315, solvent_attack 1.226, dG R1 0.204, dG R2 0.224, dG R3 0.140, dG R4 -0.254, c0 H2O TMSPa alone 0.137]  (15426 evaluations, 841 s)
+[04:25:09] fit M3-split   free   __TMSOH_1uM              chi2      39.91  max |z|   2.16  FITS  [R1 1.458, R23 0.946, transfer 0.649, condensation 1.299, solvent_attack 1.226, dG R1 0.182, dG R2 0.203, dG R3 0.122, dG R4 -0.217, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 2.026]  (15400 evaluations, 830 s)
+[04:36:14] fit M3-split   middle __TMSOH_1mM              chi2      73.26  max |z|   3.80  fails  [R1 1.325, R23 0.953, transfer 0.896, condensation 1.320, solvent_attack 1.226, dG R1 0.208, dG R2 0.242, dG R3 0.148, dG R4 -0.271, c0 H2O TMSPa alone 0.067]  (13688 evaluations, 662 s)
+[04:47:48] fit M3-split   long   __TMSOH_1mM              chi2      57.11  max |z|   3.08  fails  [R1 1.687, R23 0.988, transfer 0.832, condensation 1.371, solvent_attack 1.226, dG R1 0.258, dG R2 0.282, dG R3 0.196, dG R4 -0.370, c0 H2O TMSPa alone 0.215]  (14205 evaluations, 691 s)
+[05:01:08] fit M3-split   free   __TMSOH_1mM              chi2      42.13  max |z|   2.30  FITS  [R1 1.429, R23 0.971, transfer 0.792, condensation 1.308, solvent_attack 1.226, dG R1 0.195, dG R2 0.215, dG R3 0.131, dG R4 -0.237, c0 H2O TMSPa alone 0.061, log10 age 2 % H2O 2.308]  (15376 evaluations, 797 s)
+[05:01:10] --- stage traces done in 80.2 min ---
+[05:01:10] --- stage predictions (workers 12) ---
+[05:01:10] setup (/home/yeray/projects/atom-to-reactor/notebooks/results/05_fit4/fit_config.json): EC:DEC 0.50:0.50 by volume (x_EC 0.645, x_DEC 0.355), linear mixing, MD solvation of the 2026-10-08 snapshot; readings middle, long, free; paper observations none
+[05:01:10] selection rule: no structure fits any scenario and passes the trace rule
+[05:01:48] storage M3-split middle: 90 % of the water gone after 439 h (accepted sets: 401 to 542 h, n = 179)
+[05:02:19] storage M3-split long: 90 % of the water gone after 1.72e+03 h (accepted sets: 1.71e+03 to 1.92e+03 h, n = 65)
+[05:03:03] storage M3-split free: 90 % of the water gone after 861 h (accepted sets: 188 to 1.42e+03 h, n = 200)
+[05:03:19] storage M1 middle: 90 % of the water gone after 527 h (accepted sets: 524 to 558 h, n = 23)
+[05:03:30] storage M1 long: 90 % of the water gone after 3.3e+03 h (accepted sets: 3.25e+03 to 3.3e+03 h, n = 11)
+[05:03:37] storage M1 free: 90 % of the water gone after 4.02e+03 h (accepted sets: 3.35e+03 to 6.11e+03 h, n = 23)
+[05:03:39] hold-out tube B, largest |z| per fit: M1 free 3.43; M1 long 3.43; M1 middle 3.43; M3-split free 2.76; M3-split long 2.78; M3-split middle 2.74
+[05:03:39] --- stage predictions done in 2.5 min ---
+[05:03:39] CHAIN FINISHED: all stages done

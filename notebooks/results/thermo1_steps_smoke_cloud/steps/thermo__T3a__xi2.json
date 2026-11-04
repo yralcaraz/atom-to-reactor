@@ -1,0 +1,434 @@
+{
+ "structure": "thermo",
+ "parameters": [
+  "dE_solv TMSPA",
+  "dE_solv H2O",
+  "dE_solv BMSPA",
+  "dE_solv TMSOH",
+  "dE_solv MMSPA",
+  "dE_solv H3PO4",
+  "dE_solv HMDSO",
+  "dE_solv EC",
+  "dE_solv TMSOEG",
+  "dE_solv CO2",
+  "dE_solv TMSOdiEG"
+ ],
+ "fixed": {},
+ "theta": {
+  "dE_solv TMSPA": -0.008818252541599264,
+  "dE_solv H2O": -0.06508215435068397,
+  "dE_solv BMSPA": -0.039550612822860584,
+  "dE_solv TMSOH": -0.018674887889948852,
+  "dE_solv MMSPA": -0.06418036998992736,
+  "dE_solv H3PO4": 0.0712221898590803,
+  "dE_solv HMDSO": 0.0874629120916868,
+  "dE_solv EC": -0.07952409133168975,
+  "dE_solv TMSOEG": -0.07599206050834562,
+  "dE_solv CO2": 0.09062039050395941,
+  "dE_solv TMSOdiEG": 0.1135846545122176
+ },
+ "x": [
+  -0.008818252541599264,
+  -0.06508215435068397,
+  -0.039550612822860584,
+  -0.018674887889948852,
+  -0.06418036998992736,
+  0.0712221898590803,
+  0.0874629120916868,
+  -0.07952409133168975,
+  -0.07599206050834562,
+  0.09062039050395941,
+  0.1135846545122176
+ ],
+ "chi2": 23.643802552155716,
+ "n_residuals": 19,
+ "n_parameters": 11,
+ "max_abs_z": 3.0453426139885793,
+ "worst": "TMSPa + TMSOH (A): free silyl",
+ "fits": false,
+ "table": {
+  "__table__": [
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "nucleus": "1H",
+    "role": "fit",
+    "quantity": "P-bound silyl",
+    "kind": "share",
+    "t_h": 265.02972222222223,
+    "measured": 0.550127830910792,
+    "predicted": 0.479052399202522,
+    "sigma": 0.028201965202586,
+    "z": -2.520229749867007,
+    "age_h": null
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "nucleus": "1H",
+    "role": "fit",
+    "quantity": "free silyl",
+    "kind": "share",
+    "t_h": 265.02972222222223,
+    "measured": 0.449872169089208,
+    "predicted": 0.520947600797478,
+    "sigma": 0.023339059251261,
+    "z": 3.045342613988579,
+    "age_h": null
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "nucleus": "31P",
+    "role": "fit",
+    "quantity": "TMSPA",
+    "kind": "share",
+    "t_h": 0.061388888888889,
+    "measured": 0.105394727871932,
+    "predicted": 0.16083572961891,
+    "sigma": 0.044518461652812,
+    "z": 1.245348551783909,
+    "age_h": null
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "nucleus": "31P",
+    "role": "fit",
+    "quantity": "BMSPA",
+    "kind": "share",
+    "t_h": 0.061388888888889,
+    "measured": 0.68730822668682,
+    "predicted": 0.692562913608989,
+    "sigma": 0.066059782134018,
+    "z": 0.079544417986542,
+    "age_h": null
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "nucleus": "31P",
+    "role": "fit",
+    "quantity": "MMSPA",
+    "kind": "share",
+    "t_h": 0.061388888888889,
+    "measured": 0.194086384440475,
+    "predicted": 0.146600871147708,
+    "sigma": 0.043088354664185,
+    "z": -1.102049815149641,
+    "age_h": null
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "nucleus": "31P",
+    "role": "fit",
+    "quantity": "H3PO4",
+    "kind": "share",
+    "t_h": 0.061388888888889,
+    "measured": 0.009922308243863,
+    "predicted": 4.85624394e-07,
+    "sigma": 0.046829903699947,
+    "z": -0.21186937908395,
+    "age_h": null
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "nucleus": "13C",
+    "role": "fit",
+    "quantity": "TMSOH",
+    "kind": "share",
+    "t_h": 233.9586111111111,
+    "measured": 0.027582038957572,
+    "predicted": 0.043685651376549,
+    "sigma": 0.044682842944704,
+    "z": 0.360398116093597,
+    "age_h": null
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "nucleus": "13C",
+    "role": "fit",
+    "quantity": "HMDSO",
+    "kind": "share",
+    "t_h": 233.9586111111111,
+    "measured": 0.534781230928297,
+    "predicted": 0.468930101322586,
+    "sigma": 0.086601012452331,
+    "z": -0.760396763744049,
+    "age_h": null
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "nucleus": "13C",
+    "role": "fit",
+    "quantity": "TMSOEG",
+    "kind": "share",
+    "t_h": 233.9586111111111,
+    "measured": -0.008770540523635,
+    "predicted": 0.008331848098343,
+    "sigma": 0.031860192061975,
+    "z": 0.536794900316646,
+    "age_h": null
+   },
+   {
+    "sample": "TMSPa + TMSOH (A)",
+    "nucleus": "13C",
+    "role": "fit",
+    "quantity": "P-silyl",
+    "kind": "share",
+    "t_h": 233.9586111111111,
+    "measured": 0.444844461209732,
+    "predicted": 0.479052399202522,
+    "sigma": 0.067561023879089,
+    "z": 0.506326518289758,
+    "age_h": null
+   },
+   {
+    "sample": "TMSOH, probe",
+    "nucleus": "13C",
+    "role": "fit",
+    "quantity": "TMSOH",
+    "kind": "share",
+    "t_h": 0.220277777777778,
+    "measured": 0.963943245248599,
+    "predicted": 0.875426873689944,
+    "sigma": 0.145962663489997,
+    "z": -0.606431599987354,
+    "age_h": null
+   },
+   {
+    "sample": "TMSOH, probe",
+    "nucleus": "13C",
+    "role": "fit",
+    "quantity": "HMDSO",
+    "kind": "share",
+    "t_h": 0.220277777777778,
+    "measured": 0.017002434066569,
+    "predicted": 0.080105930540476,
+    "sigma": 0.038986013077977,
+    "z": 1.618618871021559,
+    "age_h": null
+   },
+   {
+    "sample": "TMSOH, probe",
+    "nucleus": "13C",
+    "role": "fit",
+    "quantity": "TMSOEG",
+    "kind": "share",
+    "t_h": 0.220277777777778,
+    "measured": 0.016361410760644,
+    "predicted": 0.04446719576958,
+    "sigma": 0.034275666130286,
+    "z": 0.819992378911102,
+    "age_h": null
+   },
+   {
+    "sample": "TMSOH, probe",
+    "nucleus": "13C",
+    "role": "fit",
+    "quantity": "TMSOH",
+    "kind": "share",
+    "t_h": 144.04666666666665,
+    "measured": 0.931438713948404,
+    "predicted": 0.875426873689944,
+    "sigma": 0.14126359297603,
+    "z": -0.396505844701004,
+    "age_h": null
+   },
+   {
+    "sample": "TMSOH, probe",
+    "nucleus": "13C",
+    "role": "fit",
+    "quantity": "HMDSO",
+    "kind": "share",
+    "t_h": 144.04666666666665,
+    "measured": 0.063622719132554,
+    "predicted": 0.080105930540476,
+    "sigma": 0.041878295502661,
+    "z": 0.3935979535479,
+    "age_h": null
+   },
+   {
+    "sample": "TMSOH, probe",
+    "nucleus": "13C",
+    "role": "fit",
+    "quantity": "TMSOEG",
+    "kind": "share",
+    "t_h": 144.04666666666665,
+    "measured": 0.004938566919042,
+    "predicted": 0.04446719576958,
+    "sigma": 0.03465714188641,
+    "z": 1.140562282374429,
+    "age_h": null
+   },
+   {
+    "sample": "TMSOH, probe",
+    "nucleus": "29Si",
+    "role": "fit",
+    "quantity": "TMSOH",
+    "kind": "share",
+    "t_h": 144.26833333333337,
+    "measured": 0.651806823687001,
+    "predicted": 0.875426873689944,
+    "sigma": 0.108599156301372,
+    "z": 2.059132479651859,
+    "age_h": null
+   },
+   {
+    "sample": "TMSOH, probe",
+    "nucleus": "29Si",
+    "role": "fit",
+    "quantity": "HMDSO",
+    "kind": "share",
+    "t_h": 144.26833333333337,
+    "measured": 0.181349051189758,
+    "predicted": 0.080105930540476,
+    "sigma": 0.050929421270966,
+    "z": -1.987910290804714,
+    "age_h": null
+   },
+   {
+    "sample": "TMSOH, probe",
+    "nucleus": "29Si",
+    "role": "fit",
+    "quantity": "TMSOEG",
+    "kind": "share",
+    "t_h": 144.26833333333337,
+    "measured": 0.166844125123241,
+    "predicted": 0.04446719576958,
+    "sigma": 0.051241589900062,
+    "z": -2.388234432076303,
+    "age_h": null
+   }
+  ]
+ },
+ "ages": {},
+ "local_optima": [
+  {
+   "theta": {
+    "dE_solv TMSPA": -0.02284151116627725,
+    "dE_solv H2O": -0.045129157052419724,
+    "dE_solv BMSPA": -0.008624586045881885,
+    "dE_solv TMSOH": -0.04375609803798274,
+    "dE_solv MMSPA": 0.011330282897325475,
+    "dE_solv H3PO4": 0.06070421886066707,
+    "dE_solv HMDSO": 0.0172677810481649,
+    "dE_solv EC": -0.043607586841851384,
+    "dE_solv TMSOEG": -0.033090425757921246,
+    "dE_solv CO2": 0.05784484694120061,
+    "dE_solv TMSOdiEG": 0.033321226218638714
+   },
+   "chi2": 23.70457018912057
+  },
+  {
+   "theta": {
+    "dE_solv TMSPA": -0.013974742490761055,
+    "dE_solv H2O": -0.015282621514462177,
+    "dE_solv BMSPA": -0.010108286723605364,
+    "dE_solv TMSOH": -0.004956636508475665,
+    "dE_solv MMSPA": -0.00046277416729230414,
+    "dE_solv H3PO4": 0.06362199627496265,
+    "dE_solv HMDSO": 0.06506639311129414,
+    "dE_solv EC": -0.09247057004246431,
+    "dE_solv TMSOEG": 0.05508745181219095,
+    "dE_solv CO2": 0.07173391342357315,
+    "dE_solv TMSOdiEG": -0.0882858644010503
+   },
+   "chi2": 23.72127401168336
+  },
+  {
+   "theta": {
+    "dE_solv TMSPA": 0.01752680022830308,
+    "dE_solv H2O": 0.01187322794737082,
+    "dE_solv BMSPA": -0.022475130197737822,
+    "dE_solv TMSOH": -0.015327175056359901,
+    "dE_solv MMSPA": -0.04744803085339046,
+    "dE_solv H3PO4": 0.008577202319076757,
+    "dE_solv HMDSO": 0.023077051635717744,
+    "dE_solv EC": -0.03906155803953744,
+    "dE_solv TMSOEG": -0.02432207557877479,
+    "dE_solv CO2": 0.07469279228185226,
+    "dE_solv TMSOdiEG": 0.054606750049627686
+   },
+   "chi2": 34.19885315141557
+  }
+ ],
+ "at_bounds": [
+  "dE_solv H2O",
+  "dE_solv H3PO4",
+  "dE_solv TMSOdiEG"
+ ],
+ "n_evaluations": 376,
+ "seconds": 0.6163046190000045,
+ "xi": 2.0,
+ "step": "T3a",
+ "step_fit": [
+  "TMSOH, probe",
+  "TMSPa + TMSOH (A)"
+ ],
+ "step_free": [
+  "dE_solv TMSPA",
+  "dE_solv H2O",
+  "dE_solv BMSPA",
+  "dE_solv TMSOH",
+  "dE_solv MMSPA",
+  "dE_solv H3PO4",
+  "dE_solv HMDSO",
+  "dE_solv EC",
+  "dE_solv TMSOEG",
+  "dE_solv CO2",
+  "dE_solv TMSOdiEG"
+ ],
+ "step_from": "T1",
+ "species_shifts_eV": {
+  "TMSPA": -0.008818252541599264,
+  "H2O": -0.06508215435068397,
+  "BMSPA": -0.039550612822860584,
+  "TMSOH": -0.018674887889948852,
+  "MMSPA": -0.06418036998992736,
+  "H3PO4": 0.0712221898590803,
+  "HMDSO": 0.0874629120916868,
+  "EC": -0.07952409133168975,
+  "TMSOEG": -0.07599206050834562,
+  "CO2": 0.09062039050395941,
+  "TMSOdiEG": 0.1135846545122176
+ },
+ "reactions": [
+  "R1",
+  "R2",
+  "R3",
+  "R4",
+  "R5",
+  "R6",
+  "R7",
+  "R8",
+  "R9",
+  "N10",
+  "N11",
+  "N12",
+  "N13",
+  "N14",
+  "N15"
+ ],
+ "nuclei": {
+  "fit": [
+   "31P",
+   "13C",
+   "1H",
+   "29Si"
+  ],
+  "check": []
+ },
+ "medium": {
+  "snapshot": "tank_api_snapshot_2026-10-08.json",
+  "volume_fractions": {
+   "EC": 0.5,
+   "DEC": 0.5
+  },
+  "rule": "linear"
+ },
+ "network": "R1-R9+N10-N15",
+ "sample_overrides": {
+  "TMSPa alone": {
+   "added_M": {
+    "H2O": 0.0656
+   },
+   "unknown_M": {}
+  }
+ }
+}

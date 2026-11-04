@@ -1,0 +1,767 @@
+diff --git a/data/README.md b/data/README.md
+index d8d3325..39ad0e8 100644
+--- a/data/README.md
++++ b/data/README.md
+@@ -3,7 +3,8 @@
+ | File | Kind | Content | Location | Loaded by |
+ |---|---|---|---|---|
+ | `experimental_gogoi2024.json` | Measured, from the literature | NMR shifts, barrier windows, control experiments, water series (Gogoi et al. 2024) | this folder | `kinetics/data/experimental.py` |
+-| `tank_api_snapshot.json` | Computed | Gas-phase DFT, MD solvation in EC, NMR shieldings, geometries (Tank dataset) | data folder | `kinetics/data/snapshot.py`, `species.py` |
++| `tank_api_snapshot_2026-09-24.json` | Computed | Gas-phase DFT, MD solvation in EC, NMR shieldings, geometries (Tank dataset). The default; read by fits 1–3 | data folder | `kinetics/data/snapshot.py`, `species.py` |
++| `tank_api_snapshot_2026-10-08.json` | Computed | Same dataset, later capture: MD solvation in EC at 338 K and in DEC, openCOSMO-RS table, 27 species | data folder | `kinetics/data/snapshot.py` (path `SNAPSHOT_2026_10_08_PATH`) |
+ | `lab_observables.json` | Measured | Area shares and sample histories from the experimental NMR spectra | data folder | `kinetics/data/observables.py` |
+ | NMR spectra (`.jdf`) | Measured | NMR data from experiments (JEOL Delta) | `LAB_NMR_DIR` | `kinetics/data/lab_nmr.py` |
+ 
+@@ -13,16 +14,28 @@ The data files are read from folders set with two environment variables (see `.e
+ 
+ | Variable | Folder |
+ |---|---|
+-| `ATOM_DATA_DIR` | `data/` (the snapshot, `lab_observables.json`, `lab_sample_folders.json`), `results/` (tables written by notebooks 01 and 03) and `tests/` (the regression baseline) |
++| `ATOM_DATA_DIR` | `data/` (the snapshots, `lab_observables.json`, `lab_sample_folders.json`), `results/` (tables written by notebooks 01 and 03) and `tests/` (the regression baseline) |
+ | `LAB_NMR_DIR` | the NMR spectra |
+ 
+ The species database, the network thermochemistry and every test are built from the snapshot, so the numerical
+ pipeline needs `ATOM_DATA_DIR`. The DFT and MD data are from P. Broqvist's Tank dataset.
+ 
+-## Snapshot: `tank_api_snapshot.json`
++## Snapshots: `tank_api_snapshot_<capture date>.json`
+ 
+-An offline snapshot of the Tank dataset API, captured on 2026-09-24. It is the only source of thermochemistry,
+-solvation, NMR and geometry data in this repo. **All of it is computed.**
++Offline snapshots of the Tank dataset API, named by their capture date. They are the only source of thermochemistry,
++solvation, NMR and geometry data in this repo. **All of it is computed.** Two are in the data folder:
++
++| File | Captured | MD solvation | Other | Used by |
++|---|---|---|---|---|
++| `tank_api_snapshot_2026-09-24.json` | 2026-09-24 | EC at 298.15 K, 12 species | 24 species | the default (`DEFAULT_SNAPSHOT_PATH`): notebooks 01–03, fits 1–3 |
++| `tank_api_snapshot_2026-10-08.json` | 2026-10-08 | EC at 338 K and DEC at 298.15 K, 13 species each | 27 species; `cosmors`: openCOSMO-RS ΔG_solv at 298.15 K in 7 solvents | passed explicitly |
++
++Solvation records are always read for one solvent (`get_solvation_records(path, solvent)`, default `EC`): a snapshot
++can hold several, and a species with two records in one solvent is an error. The solvent mixture of the lab tubes
++(EC/DEC 1:1 by volume) is built from the neat values by `kinetics/data/medium.py` (linear mixing, mole fractions);
++the fourth fit uses it with the 2026-10-08 file (`notebooks/results/05_fit4/fit_config.json`). The gas-phase records are the same in
++both files for the species they share. The section below describes the 2026-09-24 file; what changes in the later one
++is in the table above.
+ 
+ | Endpoint | Content |
+ |---|---|
+diff --git a/data/experimental_gogoi2024.json b/data/experimental_gogoi2024.json
+index dfb96a7..285ae32 100644
+--- a/data/experimental_gogoi2024.json
++++ b/data/experimental_gogoi2024.json
+@@ -38,7 +38,7 @@
+   ],
+   "control_experiments": [
+     {"id": "E1", "label": "TMSOH in EC, RT, 1 week", "c0_M": {"TMSOH": 0.45, "EC": 7.1}, "T_K": 298.15, "t_s": 604800,
+-     "observable": "ring_opened_fraction", "low": null, "high": 0.02, "status": "derived", "time_basis": "paper (1 week)",
++     "observable": "ring_opened_fraction", "low": null, "high": 0.02, "status": "derived", "time_basis": "assumed: the article text states no time (\"not involved in any recordable side reactions with the carbonate solvents at RT\"); 1 week is from an earlier curation and its source is not traceable (checked 2026-10-19; supporting information not seen)",
+      "observation": "No EC ring-opening at room temperature (< 2 % taken as the detection limit)"},
+     {"id": "E2", "label": "TMSOH in EC, 8 h at 80 °C", "c0_M": {"TMSOH": 0.45, "EC": 7.1}, "T_K": 353.15, "t_s": 28800,
+      "observable": "ring_opened_fraction", "low": 0.05, "high": 0.90, "status": "derived", "time_basis": "paper (8 h hold)",
+diff --git a/kinetics/data/__init__.py b/kinetics/data/__init__.py
+index 3adf162..cadd193 100644
+--- a/kinetics/data/__init__.py
++++ b/kinetics/data/__init__.py
+@@ -3,6 +3,7 @@ experimental reference data.
+ 
+     snapshot.py      read-only access to the Tank snapshot (DFT, MD solvation, NMR, geometries; read from the data folder)
+     species.py       species database built from the snapshot (energies converted to eV)
++    medium.py        the solvation medium the species database takes (neat solvent or EC/DEC mixture)
+     network.py       the 9-reaction network, its species and stoichiometry helpers
+     experimental.py  Gogoi et al. 2024: measured shifts, barrier windows, control experiments, water series
+     lab_nmr.py       measured NMR spectra (JEOL .jdf, read from LAB_NMR_DIR): inventory and processing
+@@ -12,9 +13,11 @@ Source: Y. Alcaraz Galván
+ """
+ 
+ from kinetics.data.snapshot import (
+-    calculate_molar_mass, count_elements, get_dataset_records, get_solvation_records, load_snapshot,
++    calculate_molar_mass, count_elements, get_dataset_records, get_solvation_records, get_solvent,
++    list_solvation_sets, load_snapshot,
+ )
+-from kinetics.data.species import load_species_database
++from kinetics.data.medium import DEFAULT_MEDIUM, SolvationMedium, get_active_medium, set_active_medium
++from kinetics.data.species import load_medium_species_database, load_species_database
+ from kinetics.data.network import (
+     NETWORK, NETWORK_SPECIES, build_stoichiometric_matrix, find_reaction_cycles, format_equation, list_species,
+ )
+@@ -32,8 +35,9 @@ from kinetics.data.observables import (
+ )
+ 
+ __all__ = [
+-    "load_snapshot", "get_dataset_records", "get_solvation_records", "count_elements", "calculate_molar_mass",
+-    "load_species_database",
++    "load_snapshot", "get_dataset_records", "get_solvation_records", "get_solvent", "list_solvation_sets", "count_elements", "calculate_molar_mass",
++    "DEFAULT_MEDIUM", "SolvationMedium", "get_active_medium", "set_active_medium",
++    "load_medium_species_database", "load_species_database",
+     "NETWORK", "NETWORK_SPECIES", "build_stoichiometric_matrix", "find_reaction_cycles", "format_equation",
+     "list_species",
+     "load_experimental_data", "get_measured_shifts", "get_barrier_windows", "get_water_series",
+diff --git a/kinetics/data/observables.py b/kinetics/data/observables.py
+index e58a10a..ee9f1be 100644
+--- a/kinetics/data/observables.py
++++ b/kinetics/data/observables.py
+@@ -62,8 +62,9 @@ LAB_SAMPLES = {
+         'label': '5 vol% TMSPa + 0.5 vol% H2O in EC/DEC', 'nucleus': '31P', 'role': 'fit',
+         'recipe': ('water_series', 0.5),
+         'flags': ['lock solvent D2O; every other sample is locked on DMSO-d6 (notebook 04 §5)',
+-                  '31P lines near -140.1, -144.5 and -148.9 ppm, 4.4 ppm apart, the pattern of PF6- '
+-                  '(notebook 04, Appendix A): if the sample holds LiPF6 it is outside the network. AUDIT OPEN'],
++                  '31P lines at -140.1 and -148.9 ppm, signal-to-noise 10 and 23 against 540 for TMSPA, in this '
++                  'tube only (checked 2026-10-19 on every 31P spectrum): no line at -144.5 ppm, where the septet of '
++                  'PF6- has its strongest one, so not PF6-. Unassigned; outside the integration windows'],
+         'more_nuclei': {'13C': {'role': 'fit', 'axis_offset_ppm': 0.44,
+                                 'flags': ['axis 0.44 ppm above that of the 2 % sample (DEC methyl line at 13.79 ppm '
+                                           'against 13.35): the windows are moved by that amount']}},
+@@ -145,7 +146,6 @@ C13_FLAG = ('13C recorded with NOE on and a 2 s relaxation delay: shares assume
+             'NOE and relaxation for the Si-CH3 carbons of every species')
+ 
+ OPEN_AUDIT = [
+-    'Raw spectra: check the 31P region near -144 ppm (PF6-) in every TMSPa sample, not only the 0.5 % one.',
+     'Raw spectra: inspect the 19F spectrum of the glovebox TMSOH sample (PF6- near -72 ppm, fluorosilanes).',
+     'Raw spectra: replace the ASSUMED clock times and the minimum durations of the heating steps by '
+     'find_heated_windows on the inventory.',
+diff --git a/kinetics/data/snapshot.py b/kinetics/data/snapshot.py
+index edee3c0..951f1d5 100644
+--- a/kinetics/data/snapshot.py
++++ b/kinetics/data/snapshot.py
+@@ -1,9 +1,13 @@
+-"""Read-only access to the Tank dataset API snapshot (`tank_api_snapshot.json`).
++"""Read-only access to a Tank dataset API snapshot (`tank_api_snapshot_<capture date>.json`).
+ 
+ The snapshot is the single data source of the pipeline (see `data/README.md`): the Tank dataset of P. Broqvist
+ (DFT, MD solvation, computed NMR shieldings, geometries). It is read from the data folder (`ATOM_DATA_DIR`,
+ see `kinetics/paths.py`). It is parsed once and cached; the returned structures are shared, so callers must not mutate them.
+ 
++Snapshots in use (see `data/README.md`): 2026-09-24 (MD solvation in EC at 298 K, the default; fits 1–3) and 2026-10-08
++(MD solvation in EC at 338 K and in DEC at 298 K, openCOSMO-RS table). Since a snapshot may hold the MD solvation in
++more than one solvent, solvation records are always read for one solvent.
++
+ Source: Y. Alcaraz Galván; DFT and MD data by P. Broqvist
+ """
+ 
+@@ -14,7 +18,13 @@ from functools import lru_cache
+ 
+ from kinetics.paths import DATA_DIR_VAR, data_path
+ 
+-DEFAULT_SNAPSHOT_PATH = data_path("data", "tank_api_snapshot.json")
++DEFAULT_SNAPSHOT_FILE = "tank_api_snapshot_2026-09-24.json"
++DEFAULT_SNAPSHOT_PATH = data_path("data", DEFAULT_SNAPSHOT_FILE)
++SNAPSHOT_2026_10_08_PATH = data_path("data", "tank_api_snapshot_2026-10-08.json")
++DEFAULT_SOLVENT = "EC"
++
++# Solvent of an MD solvation record, for records that do not name it in `raw_metadata['solvent']` (2026-09-24 snapshot)
++SOLVENT_IDS = {"1,3-dioxolan-2-one": "EC", "diethyl carbonate": "DEC"}
+ 
+ # Standard atomic weights [g/mol] for the elements present in the snapshot
+ ATOMIC_MASS_G_MOL = {
+@@ -39,10 +49,40 @@ def get_dataset_records(path: str = DEFAULT_SNAPSHOT_PATH) -> dict:
+     return {d["pipeline_id"]: d for d in load_snapshot(path)["datasets"]}
+ 
+ 
+-@lru_cache(maxsize=4)
+-def get_solvation_records(path: str = DEFAULT_SNAPSHOT_PATH) -> dict:
+-    """{species name: MACE MD solvation record}."""
+-    return {s["raw_metadata"]["name"]: s for s in load_snapshot(path)["solvation"]}
++def get_solvent(record: dict) -> str:
++    """Solvent pipeline id ('EC', 'DEC') of one MD solvation record."""
++    return record["raw_metadata"].get("solvent") or SOLVENT_IDS[record["solvent_name"]]
++
++
++def list_solvation_sets(path: str = DEFAULT_SNAPSHOT_PATH) -> dict:
++    """{solvent: {'T_K': MD temperatures, 'n_species': record count}} of the MD solvation in a snapshot."""
++    sets = {}
++    for record in load_snapshot(path)["solvation"]:
++        entry = sets.setdefault(get_solvent(record), {"T_K": set(), "n_species": 0})
++        entry["T_K"].add(record["temperature_k"])
++        entry["n_species"] += 1
++    return {solvent: {"T_K": sorted(e["T_K"]), "n_species": e["n_species"]} for solvent, e in sets.items()}
++
++
++@lru_cache(maxsize=8)
++def get_solvation_records(path: str = DEFAULT_SNAPSHOT_PATH, solvent: str = DEFAULT_SOLVENT) -> dict:
++    """{species name: MACE MD solvation record} in one solvent.
++
++    Raises if the snapshot has no record in that solvent, or two records of one species in it (e.g. two MD
++    temperatures): a species must never take its energy from whichever record comes last.
++    """
++    records = {}
++    for record in load_snapshot(path)["solvation"]:
++        if get_solvent(record) != solvent:
++            continue
++        name = record["raw_metadata"]["name"]
++        if name in records:
++            raise ValueError(f"Two MD solvation records of '{name}' in {solvent} in {os.path.basename(path)}")
++        records[name] = record
++    if not records:
++        raise KeyError(f"No MD solvation in '{solvent}' in {os.path.basename(path)}: "
++                       f"it has {sorted(list_solvation_sets(path))}")
++    return records
+ 
+ 
+ def get_structure(pipeline_id: str, path: str = DEFAULT_SNAPSHOT_PATH) -> tuple[list, list]:
+diff --git a/kinetics/data/species.py b/kinetics/data/species.py
+index 75f643a..7cb55c3 100644
+--- a/kinetics/data/species.py
++++ b/kinetics/data/species.py
+@@ -6,36 +6,71 @@ One record per snapshot species, keyed by `pipeline_id`:
+     G_gas_Eh, G_gas_eV        ωB97M-V/def2-TZVPD Gibbs energy (RRHO, 298.15 K, 1 bar)
+     H_gas_eV                  enthalpy at 298.15 K
+     E_scf_eV                  electronic SCF energy (qRRHO starts from it)
+-    dE_solv_eV                MACE MD solvation energy in EC (an energy, not a free energy); None if absent
++    dE_solv_eV                MACE MD solvation energy in the chosen solvent (an energy, not a free energy); None if absent
++    solvent, solvation_T_K    solvent of that energy and temperature of its MD run (None if absent; for a mixture
++                              the solvents joined by ':' and no temperature)
+     dE_solv_sigma_eV          standard error of dE_solv (snapshot `uncertainty_kjmol`, see thermo/uncertainty.py)
+     sigma_rot                 rotational symmetry number (placeholder 1, Finding 2)
+ 
+ The snapshot has no frequencies or moments of inertia, so `frequencies_cm1` / `moments_amu_A2` are absent
+ and the qRRHO route falls back to the stored Gibbs energy.
+ 
++The shared default database is that of the active solvation medium (kinetics/data/medium.py): neat EC from the
++2026-09-24 snapshot unless a run sets another. In a mixture a species has a solvation energy only if every
++solvent of the mixture has an MD record of it.
++
+ Source: Y. Alcaraz Galván; DFT and MD data by P. Broqvist
+ """
+ 
++import math
+ from copy import deepcopy
+ from functools import lru_cache
+ 
+ from kinetics.constants import HARTREE_TO_EV, KJ_MOL_TO_EV
+-from kinetics.data.snapshot import DEFAULT_SNAPSHOT_PATH, calculate_molar_mass, get_dataset_records, get_solvation_records
++from kinetics.data.medium import SolvationMedium, get_active_medium
++from kinetics.data.snapshot import (
++    DEFAULT_SNAPSHOT_PATH, DEFAULT_SOLVENT, calculate_molar_mass, get_dataset_records, get_solvation_records,
++)
+ 
+ 
+-def load_species_database(snapshot_path: str = DEFAULT_SNAPSHOT_PATH) -> dict:
++def load_species_database(snapshot_path: str = DEFAULT_SNAPSHOT_PATH, solvent: str = DEFAULT_SOLVENT) -> dict:
+     """Species database as an independent copy (safe to modify, e.g. to add frequencies)."""
+-    return deepcopy(_cached_species_database(snapshot_path))
++    return deepcopy(_cached_species_database(snapshot_path, solvent))
++
++
++def load_medium_species_database(medium: SolvationMedium) -> dict:
++    """Species database of a solvation medium (neat solvent or mixture), as an independent copy."""
++    return deepcopy(_cached_medium_database(medium))
+ 
+ 
+ def resolve_species_database(species_db: dict = None) -> dict:
+-    """`species_db` if given, else the shared read-only default database."""
+-    return species_db if species_db is not None else _cached_species_database(DEFAULT_SNAPSHOT_PATH)
++    """`species_db` if given, else the shared read-only database of the active solvation medium."""
++    return species_db if species_db is not None else _cached_medium_database(get_active_medium())
++
++
++@lru_cache(maxsize=4)
++def _cached_medium_database(medium: SolvationMedium) -> dict:
++    if medium.neat:
++        return _cached_species_database(medium.path, medium.solvents[0])
++    x = medium.mole_fractions()
++    parts = {s: _cached_species_database(medium.path, s) for s in medium.solvents}
++    db = {}
++    for name, record in parts[medium.solvents[0]].items():
++        values = [(x[s], parts[s][name]['dE_solv_eV'], parts[s][name]['dE_solv_sigma_eV']) for s in medium.solvents]
++        complete = all(v is not None for _, v, _ in values)
++        db[name] = {
++            **record,
++            'dE_solv_eV': sum(w * v for w, v, _ in values) if complete else None,
++            'dE_solv_sigma_eV': math.sqrt(sum((w * e) ** 2 for w, _, e in values)) if complete else None,
++            'solvent': ':'.join(medium.solvents) if complete else None,
++            'solvation_T_K': None,
++        }
++    return db
+ 
+ 
+ @lru_cache(maxsize=4)
+-def _cached_species_database(snapshot_path: str) -> dict:
+-    solvation = get_solvation_records(snapshot_path)
++def _cached_species_database(snapshot_path: str, solvent: str) -> dict:
++    solvation = get_solvation_records(snapshot_path, solvent)
+     db = {}
+     for name, record in get_dataset_records(snapshot_path).items():
+         solv = solvation.get(name)
+@@ -48,6 +83,8 @@ def _cached_species_database(snapshot_path: str) -> dict:
+             'E_scf_eV': record['energy_scf_eh'] * HARTREE_TO_EV,
+             'dE_solv_eV': solv['delta_e_solv_kjmol'] * KJ_MOL_TO_EV if solv else None,
+             'dE_solv_sigma_eV': solv['uncertainty_kjmol'] * KJ_MOL_TO_EV if solv else None,
++            'solvent': solvent if solv else None,
++            'solvation_T_K': solv['temperature_k'] if solv else None,
+             'sigma_rot': 1,
+         }
+     return db
+diff --git a/kinetics/fitting/__init__.py b/kinetics/fitting/__init__.py
+index 221a360..6c01d36 100644
+--- a/kinetics/fitting/__init__.py
++++ b/kinetics/fitting/__init__.py
+@@ -8,6 +8,8 @@
+     residuals.py    lab observables against a model under a scenario of the unknown ages: residuals and tables
+     candidates.py   candidate structures of the first fit: which barriers and energies are free
+     estimation.py   best fit, profile intervals, leave-one-out and what the data cannot determine
++    reporting.py    a stored fit against the measurements, spectrum by spectrum and in time
++    config.py       the setup of one fit run (solvation medium, readings, paper observations), stored with its results
+ 
+ Source: Y. Alcaraz Galván
+ """
+@@ -45,6 +47,9 @@ from kinetics.fitting.candidates import (
+     FIT_STRUCTURES, FitParameter, FitStructure, build_fitted_model, embed_parent_theta, get_structure,
+     tabulate_reaction_barriers,
+ )
++from kinetics.fitting.config import (
++    DEFAULT_FIT_CONFIG, FIT_CONFIG_FILE, apply_fit_config, check_fit_medium, load_fit_config,
++)
+ from kinetics.fitting.estimation import (
+     DELTA_CHI2_95, FIT_RULE_MAX_Z, FitProblem, add_profile_points, build_profile_grid, calculate_parameter_directions,
+     calculate_prediction_band, calculate_profile, compare_structures, extend_profile, find_confidence_interval,
+@@ -54,6 +59,7 @@ from kinetics.fitting.estimation import (
+ )
+ 
+ __all__ = [
++    "DEFAULT_FIT_CONFIG", "FIT_CONFIG_FILE", "apply_fit_config", "check_fit_medium", "load_fit_config",
+     "FIT_STRUCTURES", "FitParameter", "FitStructure", "build_fitted_model", "embed_parent_theta", "get_structure",
+     "tabulate_reaction_barriers",
+     "DELTA_CHI2_95", "FIT_RULE_MAX_Z", "FitProblem", "add_profile_points", "build_profile_grid",
+diff --git a/kinetics/fitting/candidates.py b/kinetics/fitting/candidates.py
+index ba19878..9e213bf 100644
+--- a/kinetics/fitting/candidates.py
++++ b/kinetics/fitting/candidates.py
+@@ -33,6 +33,7 @@ from dataclasses import dataclass, field, replace
+ import numpy as np
+ from scipy.linalg import cholesky, solve_triangular
+ 
++from kinetics.data.medium import get_active_medium
+ from kinetics.data.network import NETWORK
+ from kinetics.fitting.residuals import FREE_AGE_BOUNDS_H
+ from kinetics.microkinetics.models import get_model
+@@ -176,8 +177,8 @@ _ENERGY_TOOLS = {}
+ 
+ def _energy_tools(freed: tuple, prior_scale: float = 1.0):
+     """(species-shift matrix, species, Cholesky factor of the covariance, standard errors, computed ΔG) for the
+-    freed reactions; the covariance is multiplied by prior_scale."""
+-    key = (freed, prior_scale)
++    freed reactions in the active solvation medium; the covariance is multiplied by prior_scale."""
++    key = (get_active_medium(), freed, prior_scale)
+     if key not in _ENERGY_TOOLS:
+         unit = [calculate_species_shifts({r: (1.0 if r == rxn else 0.0) for r in freed}) for rxn in freed]
+         species = sorted({sp for shifts in unit for sp in shifts})
+diff --git a/kinetics/fitting/feasibility.py b/kinetics/fitting/feasibility.py
+index e6d647b..4d2f447 100644
+--- a/kinetics/fitting/feasibility.py
++++ b/kinetics/fitting/feasibility.py
+@@ -1,7 +1,7 @@
+ """Block 14A — Feasibility fit: which family barriers the windowed observations allow.
+ 
+-The control experiments of Gogoi et al. 2024 give windows ("< 2 % ring-opened after one week"), not time
+-series, so they bound parameters instead of fitting them. For each family the intrinsic barrier g is scanned
++The control experiments of Gogoi et al. 2024 give windows ("< 2 % ring-opened at room temperature"; the times are
++partly assumed, see `time_basis` in data/experimental_gogoi2024.json), not time series, so they bound parameters instead of fitting them. For each family the intrinsic barrier g is scanned
+ with the other families fixed at the model's values. Each window edge that the predicted observable crosses
+ becomes a bound on g, refined by bisection; the feasible interval of a family is the intersection over all
+ experiments.
+diff --git a/kinetics/fitting/reporting.py b/kinetics/fitting/reporting.py
+index fdec861..5826749 100644
+--- a/kinetics/fitting/reporting.py
++++ b/kinetics/fitting/reporting.py
+@@ -3,7 +3,8 @@
+ A fit result holds a parameter set and its table of standardised residuals, in which the repeated spectra of a
+ tube are folded into a mean and its drifts. A reader wants the same comparison in the units of the experiment:
+ the share of each peak in each spectrum, the concentrations of a tube since it was mixed, and the spectrum
+-itself. Nothing here is fitted: a stored parameter set is run forward.
++itself. Nothing here is fitted: a stored parameter set is run forward, in the solvation medium it was fitted in
++(apply_fit_config on the run's results directory first) and with the paper observations it was fitted with.
+ 
+     evaluate_fit                     the samples of a fit with the age and the shares its parameter set gives each
+     tabulate_fit_shares              measured and predicted share of every window of every spectrum
+@@ -21,9 +22,10 @@ import pandas as pd
+ from kinetics.constants import ZERO_CELSIUS_K
+ from kinetics.data.observables import C_REGION_PPM, C_WINDOWS_PPM, P_WINDOWS_PPM, list_spectrum_sets
+ from kinetics.fitting.candidates import get_structure
++from kinetics.fitting.config import check_fit_medium
+ from kinetics.fitting.estimation import FitProblem, calculate_parameter_directions
+ from kinetics.fitting.residuals import (
+-    FREE_AGE_BOUNDS_H, N_AGE_GRID, REPORT_SOLVER, SHARE_SPECIES, _block_shares, _initial_composition, _whiten_sample,
++    FREE_AGE_BOUNDS_H, N_AGE_GRID, PAPER_OBSERVATIONS, REPORT_SOLVER, SHARE_SPECIES, _block_shares, _initial_composition, _whiten_sample,
+     build_sample_history, build_sample_set, calculate_residuals,
+ )
+ from kinetics.reactor.protocol import simulate_history
+@@ -33,6 +35,11 @@ PARAMETER_KINDS = ('barrier', 'energy', 'recipe', 'age')
+ N_EXACT_AGES = 240                       # ages tried between the two trial ages of the fit that enclose a stored age
+ 
+ 
++def _fit_paper(fit: dict) -> tuple:
++    """The paper observations a stored fit was fitted with (fits from before the record: PAPER_OBSERVATIONS)."""
++    return tuple(fit['paper']) if 'paper' in fit else PAPER_OBSERVATIONS
++
++
+ def _find_exact_age(sample: dict, built: dict, age_h: float, solver: dict) -> float:
+     """Age near age_h at which the model, run without interpolation, is closest to the spectra of one sample.
+ 
+@@ -64,8 +71,9 @@ def evaluate_fit(fit: dict, observables: dict, *, overrides: dict = None, ages:
+     overrides: as in build_sample_set (e.g. TMSOH present at mixing).
+     ages: {sample: hours} used as they are, e.g. those of another evaluation of the same fit.
+     """
++    check_fit_medium(fit)
+     solver = solver or REPORT_SOLVER
+-    samples = build_sample_set(observables, fit['scenario'], overrides=overrides)
++    samples = build_sample_set(observables, fit['scenario'], overrides=overrides, paper=_fit_paper(fit))
+     built = get_structure(fit['structure']).build(fit['theta'])
+     if ages is None:
+         ages = {**fit.get('ages', {}), **built['ages']}
+@@ -196,7 +204,8 @@ def calculate_parameter_correlation(fit: dict, observables: dict, *, kinds=PARAM
+     it describes the neighbourhood of the best fit, and a parameter the data do not determine shows up as a
+     standard error wider than its search box. A parameter in a combination the data do not see at all gets NaN.
+     """
+-    problem = FitProblem(fit['structure'], build_sample_set(observables, fit['scenario']))
++    check_fit_medium(fit)
++    problem = FitProblem(fit['structure'], build_sample_set(observables, fit['scenario'], paper=_fit_paper(fit)))
+     found = calculate_parameter_directions(problem, fit['theta'], kinds=kinds)
+     names, sigma = found['parameters'], found['sigma_local'].to_numpy()
+     covariance = np.linalg.pinv(found['J'].T @ found['J'])
+diff --git a/kinetics/fitting/residuals.py b/kinetics/fitting/residuals.py
+index 42cc967..250f34d 100644
+--- a/kinetics/fitting/residuals.py
++++ b/kinetics/fitting/residuals.py
+@@ -145,9 +145,11 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
+     that have one of these roles. exclude: sample names left out (leave-one-out).
+     paper: one-sided observations of Gogoi 2024 added to the set (ids of data/experimental_gogoi2024.json).
+     floor_scale multiplies the declared error floor (0 removes it).
+-    overrides: {sample: {'hold_h': hours of its known pre-history, 'heated_duration_h': hours of every heating
+-    episode (at most until the next one starts), 'added_M': {species: mol/L present at mixing on top of the recipe}}}, for the sensitivity to the
+-    times the files do not fix and to what the recipe does not list.
++    overrides: {sample: {'hold_h': hours of its known pre-history, 'pre_history': [(T_C or None for room
++    temperature, hours), ...] from mixing to the first spectrum (the age is then known), 'heated_duration_h':
++    hours of every heating episode (at most until the next one starts), 'added_M': {species: mol/L present at
++    mixing on top of the recipe}}}, for the sensitivity to the times the files do not fix and to what the recipe
++    does not list.
+     """
+     if scenario not in SCENARIOS:
+         raise ValueError(f"scenario must be one of {SCENARIOS}")
+@@ -160,6 +162,9 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
+         if sample is None:
+             continue
+         change = (overrides or {}).get(name, {})
++        if 'pre_history' in change:
++            sample['pre_segments'] = [(sample['T_rt_K'] if T_C is None else T_C + ZERO_CELSIUS_K, 3600.0 * hours)
++                                      for T_C, hours in change['pre_history']]
+         if 'hold_h' in change:
+             sample['pre_segments'] = [(T, 3600.0 * change['hold_h']) for T, _ in sample['pre_segments']]
+         if 'heated_duration_h' in change:
+diff --git a/kinetics/paths.py b/kinetics/paths.py
+index 26f321f..18c5c94 100644
+--- a/kinetics/paths.py
++++ b/kinetics/paths.py
+@@ -5,7 +5,7 @@ read from folders that each user sets with two environment variables, in the she
+ at the repository root (copy `.env.example`):
+ 
+     ATOM_DATA_DIR   data folder, laid out as in the repository:
+-                      data/       tank_api_snapshot.json, lab_observables.json, lab_sample_folders.json
++                      data/       tank_api_snapshot_<date>.json, lab_observables.json, lab_sample_folders.json
+                       results/    tables written by notebooks 01 and 03
+                       tests/      regression baseline
+     LAB_NMR_DIR     folder with the NMR spectra (JEOL .jdf files)
+diff --git a/kinetics/thermo/uncertainty.py b/kinetics/thermo/uncertainty.py
+index e27783d..8f80348 100644
+--- a/kinetics/thermo/uncertainty.py
++++ b/kinetics/thermo/uncertainty.py
+@@ -16,6 +16,10 @@ build_shifted_species_database), never per reaction, so the Wegscheider cycles s
+ The values are standard errors already, so every σ returned here is the ±1 standard error of
+ the solvation contribution and is used as stored (no further division by √n).
+ 
++Without explicit records, the components are those of the active solvation medium (kinetics/data/medium.py). In a
++linear mixture each term is weighted by the mole fraction of its solvent: σ_solute² = Σ_s (x_s σ_solute,s)², and
++the pure-solvent reference terms combine into one term shared by every species, σ_ref² = Σ_s (x_s σ_ref,s)².
++
+ Source: Y. Alcaraz Galván
+ """
+ 
+@@ -29,6 +33,7 @@ import pandas as pd
+ 
+ from kinetics.constants import KJ_MOL_TO_EV
+ from kinetics.data.network import NETWORK, list_species
++from kinetics.data.medium import SolvationMedium, get_active_medium
+ from kinetics.data.snapshot import get_solvation_records
+ from kinetics.data.species import resolve_species_database
+ 
+@@ -39,14 +44,27 @@ def calculate_solvation_sigma_components(solvation_records: dict = None) -> dict
+     sigma_solute combines the gas-phase and solution-box standard errors (independent per species);
+     sigma_solvent is the standard error of the shared pure-EC reference term.
+     """
+-    records = solvation_records if solvation_records is not None else get_solvation_records()
++    if solvation_records is None:
++        return dict(_medium_components(get_active_medium()))
+     components = {}
+-    for name, record in records.items():
++    for name, record in solvation_records.items():
+         raw = record['raw_metadata']
+         components[name] = (math.hypot(raw['E_gas_std_eV'], raw['E_solution_std_eV']), raw['E_solvent_std_eV'])
+     return components
+ 
+ 
++@lru_cache(maxsize=4)
++def _medium_components(medium: SolvationMedium) -> dict:
++    """Components of a solvation medium: those of its solvent, or of a linear mixture (weights x_s)."""
++    parts = {s: calculate_solvation_sigma_components(get_solvation_records(medium.path, s)) for s in medium.solvents}
++    if medium.neat:
++        return parts[medium.solvents[0]]
++    x = medium.mole_fractions()
++    shared = set.intersection(*(set(p) for p in parts.values()))
++    return {name: (math.sqrt(sum((x[s] * parts[s][name][0]) ** 2 for s in parts)),
++                   math.sqrt(sum((x[s] * parts[s][name][1]) ** 2 for s in parts))) for name in sorted(shared)}
++
++
+ def calculate_solvation_sigma(reactants, products, solvation_records: dict = None) -> float:
+     """Standard error σ of ΔΔE_solv [eV] for one reaction, treating the pure-EC reference term as shared.
+ 
+@@ -91,11 +109,16 @@ def calculate_solvation_covariance(rxn_ids, network: dict = None, solvation_reco
+ 
+ 
+ def calculate_solvation_sigma_naive(reactants, products, solvation_records: dict = None) -> float:
+-    """σ from adding each species' snapshot `uncertainty_kjmol` in quadrature (overestimate)."""
+-    records = solvation_records if solvation_records is not None else get_solvation_records()
++    """σ from adding each species' snapshot `uncertainty_kjmol` in quadrature (overestimate). Without records:
++    the per-species standard errors of the active medium's database."""
++    if solvation_records is not None:
++        totals = {name: r['uncertainty_kjmol'] * KJ_MOL_TO_EV for name, r in solvation_records.items()}
++    else:
++        totals = {name: r['dE_solv_sigma_eV'] for name, r in resolve_species_database(None).items()
++                  if r['dE_solv_sigma_eV'] is not None}
+     var = 0.0
+     for name, nu in _net_stoichiometry(reactants, products).items():
+-        var += (nu * records[name]['uncertainty_kjmol'] * KJ_MOL_TO_EV) ** 2
++        var += (nu * totals[name]) ** 2
+     return math.sqrt(var)
+ 
+ 
+@@ -152,7 +175,7 @@ def calculate_species_shifts(dG_shifts_eV: dict, *, network: dict = None, specie
+ 
+ 
+ @lru_cache(maxsize=256)
+-def _cached_shifted_database(shifts: tuple) -> dict:
++def _cached_shifted_database(medium: SolvationMedium, shifts: tuple) -> dict:
+     db = deepcopy(resolve_species_database(None))
+     for sp, shift in shifts:
+         db[sp]['dE_solv_eV'] += shift
+@@ -165,7 +188,8 @@ def build_shifted_species_database(species_shifts_eV: dict, species_db: dict = N
+     Without species_db the shifted copy of the default database is cached and shared: do not modify it.
+     """
+     if species_db is None:
+-        return _cached_shifted_database(tuple(sorted((sp, float(v)) for sp, v in species_shifts_eV.items())))
++        return _cached_shifted_database(get_active_medium(),
++                                        tuple(sorted((sp, float(v)) for sp, v in species_shifts_eV.items())))
+     db = deepcopy(species_db)
+     for sp, shift in species_shifts_eV.items():
+         db[sp]['dE_solv_eV'] += float(shift)
+diff --git a/scripts/build_observables.py b/scripts/build_observables.py
+index 4f4469f..6bd4d26 100644
+--- a/scripts/build_observables.py
++++ b/scripts/build_observables.py
+@@ -42,7 +42,7 @@ def main():
+         observables = build_lab_observables(
+             shares_P, shares_C,
+             built_from='results/03/lab_shares_31P.csv and lab_shares_13C.csv of the data folder (area shares exported by '
+-                       '03_feasible_region.ipynb); heating episodes transcribed from notebooks 03 and 04. '
++                       '03_feasible_region_rev01.ipynb); heating episodes transcribed from notebooks 03 and 04. '
+                        'NOT rebuilt from the raw spectra')
+     path = write_lab_observables(observables, args.out)
+     print(f'written: {path}')
+diff --git a/scripts/run_fit.py b/scripts/run_fit.py
+index df6c8fc..a2952bc 100644
+--- a/scripts/run_fit.py
++++ b/scripts/run_fit.py
+@@ -26,6 +26,17 @@ Rules of the third fit (docs/plan-fit_improvement.md), which replace the selecti
+ - the consistent parameter set is that of the smallest structure that fits and passes the trace rule, free
+   ages taking precedence over a common age (the first two fits took the common age first).
+ 
++Setup of a run (kinetics/fitting/config.py): `fit_config.json` in the results directory, read at the start of
++every stage, fixes the solvation medium, the readings fitted and the paper observations added to the lab samples.
++Without it a run is set up as the first three fits. Each fit records its medium and paper observations, so a
++notebook runs it forward as it was fitted.
++
++Fourth fit (notebooks/results/05_fit4/fit_config.json): the reaction energies in EC/DEC 1:1 by volume, linear
++mixing of the MD solvation in EC and in DEC of the 2026-10-08 snapshot; readings 1 day, 7 days and free ages
++(the 1 h reading failed in every earlier fit); no paper observation (E1 rests on a time the article does not state).
++New sensitivities: the covariance of the computed energies x4, and the protocol of the article for the 2 % water
++tube (8 h at room temperature before the first spectrum, with or without an 8 h step at 30 °C, and 8 h holds).
++
+ Source: Y. Alcaraz Galván
+ """
+ 
+@@ -48,8 +59,10 @@ if str(REPO) not in sys.path:
+     sys.path.insert(0, str(REPO))
+ 
+ from kinetics.data import load_experimental_data, load_lab_observables
++from kinetics.data.medium import get_active_medium
+ from kinetics.fitting import (
+-    DELTA_CHI2_95, REPORT_SOLVER, SCENARIOS, FitProblem, FitStructure, add_profile_points, build_sample_set,
++    DELTA_CHI2_95, REPORT_SOLVER, SCENARIOS, FitProblem, FitStructure, add_profile_points, apply_fit_config,
++    build_sample_set,
+     calculate_parameter_directions, extend_profile,
+     calculate_profile, calculate_residuals, compare_structures, embed_parent_theta, find_confidence_interval,
+     find_free_age, fit_leave_one_out, fit_structure, get_profile_theta, get_structure, load_fit_result,
+@@ -57,6 +70,8 @@ from kinetics.fitting import (
+     tabulate_reaction_barriers, tabulate_residuals, write_fit_result,
+ )
+ from kinetics.fitting.estimation import RECIPE_FACTORS
++from kinetics.fitting.residuals import PAPER_OBSERVATIONS
++from kinetics.thermo.reaction import calculate_network_thermo
+ from kinetics.microkinetics.models import MODELS, get_model
+ from kinetics.reactor import (
+     build_protocol_schedule, calculate_recipe_molarities, calculate_remaining_fraction, find_crossing_time,
+@@ -64,6 +79,7 @@ from kinetics.reactor import (
+ )
+ 
+ RESULTS = REPO / 'notebooks' / 'results' / '05'
++PAPER = PAPER_OBSERVATIONS               # paper observations added to every sample set; set from the run's setup
+ 
+ # Search effort per structure: (Sobol screen points, starts polished, least-squares iterations per start).
+ # M0, M1 and M1-split did not fit in the first run (chi2 above 280) and get a light search; the first run missed
+@@ -93,7 +109,7 @@ def cached(path: Path, compute):
+ 
+ 
+ def sample_set(scenario: str, **options) -> list:
+-    return build_sample_set(load_lab_observables(), scenario, **options)
++    return build_sample_set(load_lab_observables(), scenario, **{'paper': PAPER, **options})
+ 
+ 
+ def short(theta: dict) -> str:
+@@ -104,6 +120,11 @@ def short(theta: dict) -> str:
+ # registered: the models of the registry as they are
+ # ------------------------------------------------------------------------------
+ def stage_registered(args) -> None:
++    # The computed reaction energies of the run's medium: the centre of the freed energies of M3 and M3-split
++    thermo = calculate_network_thermo(298.15)
++    thermo.to_csv(RESULTS / 'computed_energies.csv')
++    log('computed ΔG_rxn at 298 K (eV, ± standard error of the MD solvation): ' + ', '.join(
++        f"{rxn} {row['dG_rxn_eV']:+.3f} ± {row['sigma_solv_eV']:.3f}" for rxn, row in thermo.iterrows()))
+     rows, tables = [], []
+     for name in MODELS:
+         for scenario in SCENARIOS:
+@@ -281,7 +302,8 @@ def run_one(structure, scenario: str, args, *, tag: str = '', starts=(), sample_
+                             seed=args.seed, workers=args.workers, start_points=usable, seed_values=block)
+         fit['tmsoh_block'] = block
+         fit.update(scenario=scenario, tag=tag, label=structure.label,
+-                   barriers=tabulate_reaction_barriers(structure, fit['theta']))
++                   barriers=tabulate_reaction_barriers(structure, fit['theta']),
++                   medium=get_active_medium().to_dict(), paper=[s['name'] for s in data if s['kind'] == 'paper'])
+         return fit
+ 
+     path = fit_path(structure.name, scenario, tag)
+@@ -608,7 +630,8 @@ def adopt_profile_minimum(structure: str, scenario: str, args, *, refine: bool)
+     return True
+ 
+ 
+-FITTED_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox', 'E1')
++LAB_FITTED_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox')
++FITTED_SAMPLES = LAB_FITTED_SAMPLES + PAPER       # left out one at a time; set from the run's setup
+ 
+ 
+ def run_leave_one_out(structure: str, scenario: str, args) -> dict:
+@@ -641,7 +664,16 @@ SENSITIVITIES = {
+     'floor x2': ({'floor_scale': 2.0}, 1.0),
+     'covariance x0.5': ({}, 0.5),
+     'covariance x2': ({}, 2.0),
++    # Fourth fit: σ of the computed energies doubled, about the size of the gap between the linear and the
++    # preferential mixing rule (0.18 eV in R1) and of the σ of the 2026-09-24 snapshot
++    'covariance x4': ({}, 4.0),
+     'ramp held 8 h': ({'overrides': {'2 % H2O': {'heated_duration_h': 8.0}}}, 1.0),
++    # Fourth fit: the protocol of Gogoi 2024 for the 2 % water tube, read as 8 h at room temperature before the
++    # first spectrum (the room-temperature step), with or without an 8 h step at 30 °C before it (the first
++    # block is named "after 30 °C"), and every heating step held 8 h where the clock allows. A reading, not a record
++    'article 8 h RT': ({'overrides': {'2 % H2O': {'pre_history': [(None, 8.0)], 'heated_duration_h': 8.0}}}, 1.0),
++    'article 8 h RT + 30 C': ({'overrides': {'2 % H2O': {'pre_history': [(None, 8.0), (30.0, 8.0)],
++                                                         'heated_duration_h': 8.0}}}, 1.0),
+     'glovebox 4 h': ({'overrides': {'TMSOH, glovebox': {'hold_h': 4.0}}}, 1.0),
+     'glovebox 16 h': ({'overrides': {'TMSOH, glovebox': {'hold_h': 16.0}}}, 1.0),
+ }
+@@ -1103,9 +1135,14 @@ def main():
+     parser.add_argument('--results', default=None, help='results directory (default notebooks/results/05)')
+     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
+     args = parser.parse_args()
+-    global RESULTS, CHECK_EFFORT
++    global RESULTS, CHECK_EFFORT, SCENARIOS, SCENARIO_ORDER, PAPER, FITTED_SAMPLES
+     if args.results:
+         RESULTS = Path(args.results).resolve()
++    config = apply_fit_config(RESULTS)
++    SCENARIOS = tuple(sc for sc in SCENARIOS if sc in config['scenarios'])
++    SCENARIO_ORDER = tuple(sc for sc in SCENARIO_ORDER if sc in config['scenarios'])
++    PAPER = tuple(config['paper_observations'])
++    FITTED_SAMPLES = LAB_FITTED_SAMPLES + PAPER
+     if args.quick:
+         args.scale, args.profile_nfev = 0.05, 3
+         for name in EFFORT:
+@@ -1114,6 +1151,8 @@ def main():
+     warnings.filterwarnings('ignore', category=RuntimeWarning)
+     RESULTS.mkdir(parents=True, exist_ok=True)
+     log(f'--- stage {args.stage} (workers {args.workers}) ---')
++    log(f"setup ({config['source']}): {config['medium'].label()}; readings {', '.join(SCENARIOS)}; "
++        f"paper observations {', '.join(PAPER) or 'none'}")
+     t0 = time.perf_counter()
+     STAGES[args.stage](args)
+     log(f'--- stage {args.stage} done in {(time.perf_counter() - t0) / 60:.1f} min ---')
+diff --git a/tests/run_all.py b/tests/run_all.py
+index 6a48c9d..f307e63 100644
+--- a/tests/run_all.py
++++ b/tests/run_all.py
+@@ -37,7 +37,7 @@ def main() -> int:
+     for name, status in results.items():
+         print(f'{name:<{width}}  {status}')
+     if not have_snapshot:
+-        print(f'\n{DATA_DIR_VAR} is not set or has no data/tank_api_snapshot.json: see .env.example')
++        print(f'\n{DATA_DIR_VAR} is not set or has no data/tank_api_snapshot_2026-09-24.json: see .env.example')
+     return int(any(status.startswith('FAILED') for status in results.values()))
+ 
+ 
+diff --git a/tests/test_solvation_uncertainty.py b/tests/test_solvation_uncertainty.py
+index 1234384..0ac06b0 100644
+--- a/tests/test_solvation_uncertainty.py
++++ b/tests/test_solvation_uncertainty.py
+@@ -12,7 +12,8 @@ if repo_root not in sys.path:
+     sys.path.insert(0, repo_root)
+ 
+ from kinetics.constants import EV_TO_KJ_MOL
+-from kinetics.data.snapshot import get_solvation_records
++from kinetics.data.snapshot import SNAPSHOT_2026_10_08_PATH, get_solvation_records, list_solvation_sets
++from kinetics.data.species import load_species_database
+ from kinetics.data.network import NETWORK
+ from kinetics.thermo import (
+     calculate_solvation_covariance, calculate_solvation_sigma, calculate_solvation_sigma_naive,
+@@ -59,7 +60,37 @@ def test_covariance_matches_sigmas_and_shared_species():
+     assert math.isclose(cov.loc['R2', 'R3'], expected, rel_tol=1e-12)
+ 
+ 
++def test_solvation_is_read_for_one_solvent():
++    """The 2026-10-08 snapshot holds EC and DEC records of the same species: each solvent gets its own."""
++    if not os.path.exists(SNAPSHOT_2026_10_08_PATH):
++        print("skipped: no 2026-10-08 snapshot")
++        return
++    sets = list_solvation_sets(SNAPSHOT_2026_10_08_PATH)
++    assert sets == {'EC': {'T_K': [338.0], 'n_species': 13}, 'DEC': {'T_K': [298.15], 'n_species': 13}}
++    for solvent, T_K in (('EC', 338.0), ('DEC', 298.15)):
++        records = get_solvation_records(SNAPSHOT_2026_10_08_PATH, solvent)
++        assert {r['temperature_k'] for r in records.values()} == {T_K}
++        db = load_species_database(SNAPSHOT_2026_10_08_PATH, solvent)
++        assert db['TMSPA']['solvent'] == solvent and db['TMSPA']['solvation_T_K'] == T_K
++        assert math.isclose(db['TMSPA']['dE_solv_eV'] * EV_TO_KJ_MOL, records['TMSPA']['delta_e_solv_kjmol'], rel_tol=1e-12)
++    ec = get_solvation_records(SNAPSHOT_2026_10_08_PATH, 'EC')['TMSPA']['delta_e_solv_kjmol']
++    dec = get_solvation_records(SNAPSHOT_2026_10_08_PATH, 'DEC')['TMSPA']['delta_e_solv_kjmol']
++    assert ec != dec
++
++
++def test_default_is_the_ec_set_of_2026_09_24():
++    assert {r['temperature_k'] for r in SOLVATION.values()} == {298.15} and len(SOLVATION) == 12
++    try:
++        get_solvation_records(solvent='DEC')
++    except KeyError:
++        pass
++    else:
++        raise AssertionError('the 2026-09-24 snapshot has no DEC records')
++
++
+ if __name__ == "__main__":
++    test_solvation_is_read_for_one_solvent()
++    test_default_is_the_ec_set_of_2026_09_24()
+     test_snapshot_uncertainty_is_quadrature_of_md_stds()
+     test_shared_solvent_term_cancels_in_two_to_two_reactions()
+     test_list_and_dict_stoichiometry_agree()

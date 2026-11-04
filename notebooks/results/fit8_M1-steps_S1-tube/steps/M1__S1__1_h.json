@@ -1,0 +1,309 @@
+{
+ "structure": "M1",
+ "parameters": [
+  "g condensation",
+  "g solvent_attack"
+ ],
+ "fixed": {
+  "g hydrolysis": 1.7,
+  "g transfer": 1.5
+ },
+ "theta": {
+  "g hydrolysis": 1.7,
+  "g transfer": 1.5,
+  "g condensation": 1.184192458905978,
+  "g solvent_attack": 1.2230325785811034
+ },
+ "x": [
+  1.184192458905978,
+  1.2230325785811034
+ ],
+ "chi2": 0.00129705523975396,
+ "n_residuals": 3,
+ "n_parameters": 2,
+ "max_abs_z": 0.02818892397356403,
+ "worst": "TMSOH, glovebox: TMSOEG",
+ "fits": true,
+ "table": {
+  "__table__": [
+   {
+    "sample": "TMSOH, glovebox",
+    "quantity": "TMSOH",
+    "kind": "share",
+    "t_h": 8.085555555555555,
+    "age_h": null,
+    "measured": 0.417673645346297,
+    "predicted": 0.416009001423324,
+    "sigma": 0.06726322570991,
+    "z": -0.024748202385537
+   },
+   {
+    "sample": "TMSOH, glovebox",
+    "quantity": "HMDSO",
+    "kind": "share",
+    "t_h": 8.085555555555555,
+    "age_h": null,
+    "measured": 0.160556834914945,
+    "predicted": 0.159093260420521,
+    "sigma": 0.063070233236669,
+    "z": -0.023205471413614
+   },
+   {
+    "sample": "TMSOH, glovebox",
+    "quantity": "TMSOEG",
+    "kind": "share",
+    "t_h": 8.085555555555555,
+    "age_h": null,
+    "measured": 0.427057426127992,
+    "predicted": 0.424897738156155,
+    "sigma": 0.076614771598312,
+    "z": -0.028188923973564
+   }
+  ]
+ },
+ "ages": {},
+ "local_optima": [
+  {
+   "theta": {
+    "g hydrolysis": 1.7,
+    "g transfer": 1.5,
+    "g condensation": 1.1841924578415863,
+    "g solvent_attack": 1.2230325751293678
+   },
+   "chi2": 0.0012970552397568481
+  },
+  {
+   "theta": {
+    "g hydrolysis": 1.7,
+    "g transfer": 1.5,
+    "g condensation": 1.0000000000000002,
+    "g solvent_attack": 1.218991905207631
+   },
+   "chi2": 0.01237032710385454
+  },
+  {
+   "theta": {
+    "g hydrolysis": 1.7,
+    "g transfer": 1.5,
+    "g condensation": 1.0000000000000002,
+    "g solvent_attack": 1.2189919052217417
+   },
+   "chi2": 0.012370327103857506
+  },
+  {
+   "theta": {
+    "g hydrolysis": 1.7,
+    "g transfer": 1.5,
+    "g condensation": 1.0000000000000002,
+    "g solvent_attack": 1.2189919052209772
+   },
+   "chi2": 0.01237032710385777
+  },
+  {
+   "theta": {
+    "g hydrolysis": 1.7,
+    "g transfer": 1.5,
+    "g condensation": 1.0000000000000002,
+    "g solvent_attack": 1.2189919052227864
+   },
+   "chi2": 0.012370327103858528
+  },
+  {
+   "theta": {
+    "g hydrolysis": 1.7,
+    "g transfer": 1.5,
+    "g condensation": 1.0000000000000002,
+    "g solvent_attack": 1.2189919052219893
+   },
+   "chi2": 0.012370327103858877
+  },
+  {
+   "theta": {
+    "g hydrolysis": 1.7,
+    "g transfer": 1.5,
+    "g condensation": 1.0000000000000002,
+    "g solvent_attack": 1.2189919052207625
+   },
+   "chi2": 0.012370327103859711
+  },
+  {
+   "theta": {
+    "g hydrolysis": 1.7,
+    "g transfer": 1.5,
+    "g condensation": 1.0000000000000173,
+    "g solvent_attack": 1.218991905225682
+   },
+   "chi2": 0.012370327103861371
+  },
+  {
+   "theta": {
+    "g hydrolysis": 1.7,
+    "g transfer": 1.5,
+    "g condensation": 1.0000000001088682,
+    "g solvent_attack": 1.1000000000274155
+   },
+   "chi2": 24.97895062327084
+  }
+ ],
+ "at_bounds": [],
+ "n_evaluations": 427,
+ "seconds": 1.1160451619999776,
+ "scenario": "1 h",
+ "tag": "__S1",
+ "step": "S1",
+ "step_fit": [
+  "TMSOH, glovebox"
+ ],
+ "step_free": [
+  "g condensation",
+  "g solvent_attack"
+ ],
+ "step_from": null,
+ "label": "one Marcus barrier per family",
+ "energy_box_sigma": 3.0,
+ "barriers": {
+  "R1": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.5760252957488101,
+   "dG_rxn_eV": -0.25264266712380834,
+   "k_f": 8.39448567722176e-15
+  },
+  "R2": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.610134106628605,
+   "dG_rxn_eV": -0.18217198015103558,
+   "k_f": 2.2006982699860316e-15
+  },
+  "R3": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.669654389900518,
+   "dG_rxn_eV": -0.06096450482013703,
+   "k_f": 2.1279034904722367e-16
+  },
+  "R5": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.4233929334904742,
+   "dG_rxn_eV": -0.1552219542765029,
+   "k_f": 3.3560743083951533e-12
+  },
+  "R6": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.4579236487360343,
+   "dG_rxn_eV": -0.08475126730373013,
+   "k_f": 8.653783241959586e-13
+  },
+  "R7": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.518283481309573,
+   "dG_rxn_eV": 0.03645620802716841,
+   "k_f": 8.096291126047594e-14
+  },
+  "N10": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.1855052411886915,
+   "dG_rxn_eV": 0.07047068697277277,
+   "k_f": 3.810380912261037e-08
+  },
+  "N12": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.6279227421076816,
+   "dG_rxn_eV": -0.14571577212628029,
+   "k_f": 1.0947821379296399e-15
+  },
+  "N13": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.0901946999462069,
+   "dG_rxn_eV": -0.12120747533331167,
+   "k_f": 1.6057326389248145e-06
+  },
+  "N14": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.247835848429233,
+   "dG_rxn_eV": 0.19167816230367132,
+   "k_f": 3.2995431790119527e-09
+  },
+  "N15": {
+   "T_K": 295.65,
+   "dG_barrier_eV": 1.5354881308361317,
+   "dG_rxn_eV": -0.3373939344299516,
+   "k_f": 4.1210529534103055e-14
+  },
+  "R4": {
+   "T_K": 353.15,
+   "dG_barrier_eV": 1.2334037260574418,
+   "dG_rxn_eV": 0.097420712848512,
+   "k_f": 1.840648351710097e-05
+  },
+  "R8": {
+   "T_K": 353.15,
+   "dG_barrier_eV": 1.2799743434201414,
+   "dG_rxn_eV": 0.11258797425214183,
+   "k_f": 3.9844180966910975e-06
+  },
+  "R9": {
+   "T_K": 353.15,
+   "dG_barrier_eV": 1.2151107306153526,
+   "dG_rxn_eV": -0.015869435124346104,
+   "k_f": 3.357599141486668e-05
+  },
+  "N11": {
+   "T_K": 353.15,
+   "dG_barrier_eV": 1.0866681054205678,
+   "dG_rxn_eV": -0.12845740937890104,
+   "k_f": 0.0022857266279399852
+  }
+ },
+ "medium": {
+  "snapshot": "tank_api_snapshot_2026-10-08.json",
+  "volume_fractions": {
+   "EC": 0.5,
+   "DEC": 0.5
+  },
+  "rule": "linear"
+ },
+ "paper": [],
+ "network": "R1-R9+N10-N15",
+ "sample_overrides": {
+  "2 % H2O": {
+   "heated_episodes": [
+    [
+     13.3022,
+     30.0,
+     8.0
+    ],
+    [
+     21.3022,
+     40.0,
+     8.0
+    ],
+    [
+     62.9886,
+     50.0,
+     8.0
+    ],
+    [
+     86.9961,
+     60.0,
+     8.0
+    ],
+    [
+     109.8881,
+     70.0,
+     8.0
+    ],
+    [
+     135.9867,
+     80.0,
+     8.0
+    ]
+   ]
+  },
+  "TMSPa alone": {
+   "added_M": {
+    "H2O": 0.0656
+   },
+   "unknown_M": {}
+  }
+ },
+ "variant_overrides": {}
+}
