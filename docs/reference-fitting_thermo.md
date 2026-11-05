@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Programmed 2026-10-29, not run. The run is prepared in `notebooks/results/thermo1_steps/` (§5) |
-| **Source** | Y. Alcaraz Galván; the problem as set out in `notebooks/06_fitting_thermo_rev01.ipynb` §1 and §5 |
-| **Scope** | How the reaction energies are fitted to the tubes whose reaction has finished, before and apart from the kinetic fit: which spectra are at equilibrium, the model (ΔG, K, the equilibrium composition), what is free (E_solv inside ±ξ standard errors), the steps, and the hand-over to M1. It is the specification of the code of §8 |
+| **Source** | Y. Alcaraz Galván; the problem as set out in `notebooks/06_fitting_thermo_rev01.ipynb` §1 and §5, and the handwritten notes of 4 Nov 2026 (error model, thermo model, boundary ξ, K and k) |
+| **Scope** | How the reaction energies are fitted to the tubes whose reaction has finished, before and apart from the kinetic fit: which spectra are at equilibrium, the model (ΔG, K, the equilibrium composition), what is free (E_solv inside ±ξ standard errors), the steps, and the hand-over to M1. It is the specification of the code of §9 |
 | **See also** | [reference-fitting_system.md](reference-fitting_system.md) (the kinetic fit this one precedes), notebook `05_fitting_rev08_(M1_steps)` §2 (every spectrum of every tube: used, usable, noise) |
 
 ## 1. The idea
@@ -33,15 +33,29 @@ flowchart LR
 
 ## 2. The model
 
+### 2.0 The error model
+
+The fit minimises the residuals of the model against the lab data, each divided by its own uncertainty:
+
+```
+e_k = (Y_model,k − Y_NMR,k) / σ_TOT,k          Y_NMR: raw lab data (mM or share), Y_model: predicted
+σ_TOT = √(σ²_noise + σ²_baseline)
+```
+
+Y_NMR is what was measured; nothing in it is corrected. In the code the shares are the compared quantity and σ also carries a floor (§2.4); the notes write σ_TOT without it (open point, §8).
+
 ### 2.1 Free energy of a species and of a reaction
 
-Each species has a stored gas-phase Gibbs energy (ωB97M-V, 298.15 K, RRHO) and a solvation energy from MD (`dE_solv_eV`; an energy, not a free energy), in the medium of the run (EC:DEC 1:1, linear mixing, 2026-10-08 snapshot):
+Each species i has a stored gas-phase energy ΔE_DFT,i (ωB97M-V, 298.15 K, RRHO: one value per species) and a solvation energy ΔE_solv,i from MD (`dE_solv_eV`; an energy, not a free energy), in the medium of the run (EC:DEC 1:1, linear mixing, 2026-10-08 snapshot). The solvation energy is a computed value with an uncertainty, σ_solv,i, the standard error (SD) of the solvent calculation:
 
 ```
-G_i    = G_gas,i + E_solv,i                         (kinetics/thermo/solution.py)
-ΔG_j   = Σ_i ν_ij · G_i        (ν > 0 products, < 0 reactants)
-K_j    = exp(−ΔG_j / RT)
+ΔG_i   = ΔE_DFT,i + ΔE_solv,i                        (kinetics/thermo/solution.py: G_gas,i + E_solv,i)
+ΔE_solv,i = ΔE_solv,computed,i ± σ_solv,i
+ΔG_rxn,j = Σ_i ν_ij · ΔG_i      (j reaction, i species; ν > 0 products, < 0 reactants)
+K_eq,j = exp(−ΔG_rxn,j / RT)
 ```
+
+(ΔG_rxn is taken at the DFT temperature only: no T_DFT dependence for now, §2.2.)
 
 - Every reaction of the network is 2 → 2, so the shift from the 1 bar gas to the 1 M solution cancels and is not applied.
 - Concentrations are in mol/L with a 1 M standard state, no activity coefficients, and EC enters as a concentration (7.1 M at mixing). This is the convention of the reactor (`k_r = k_f / K`): the two fits use the same K.
@@ -82,14 +96,20 @@ The model predicts one composition per tube, so a block of repeated spectra give
 
 ## 3. What is free: E_solv,i within ±ξ standard errors
 
-As in notebook 06 §5:
+As in notebook 06 §5 and the notes. The DFT energy is one value per species and is not touched; the solvation energy is the only thing the fit may correct, and only within what its own error allows:
+
+```
+ΔE_solv,fit,i ∈ [ΔE_solv,computed,i − ξ·σ_solv,i ,  ΔE_solv,computed,i + ξ·σ_solv,i]      ξ = 1, 2, 3
+```
+
+Sketch of the notes (axis y: species A, B, C; axis x: energy from DFT; ● corrected value, □ not corrected, bars = ± σ_solv,i): the corrected point of each species may sit anywhere along its bar; it is not pulled towards the computed one.
 
 | | |
 |---|---|
 | **Variables** | E_solv,i of every species of the reactions: TMSPA, BMSPA, MMSPA, H₃PO₄, H₂O, TMSOH, HMDSO, EC, TMSOEG, CO₂, TMSOdiEG. Parameter `dE_solv <species>` = shift δ_i from the computed value |
-| **Parameters** | G_gas,i, SD_i, ν_ij, T, c0 |
-| **Box** | δ_i ∈ [−ξ·SD_i, +ξ·SD_i], SD_i the standard error of the MD run of the species. No E_solv moves without this limit |
-| **Objective** | min χ² = Σ_k ((s_k^model − s_k^NMR)/σ_k)², nothing else: inside the box every value is allowed alike |
+| **Parameters** | ΔE_DFT,i (G_gas,i), σ_solv,i, ν_ij, T, c0 |
+| **Boundary** | δ_i ∈ [−ξ·σ_solv,i, +ξ·σ_solv,i], σ_solv,i the standard error of the MD run of the species. No E_solv moves without this limit. ξ is a specification of the fit: x times the σ_solv,i |
+| **Objective** | min χ² = Σ_k ((s_k^model − s_k^NMR)/σ_TOT,k)², nothing else: inside the box every value is allowed alike |
 | **ξ** | 1, 2 and 3, each fitted |
 
 **What the data can see.** Only differences of species energies enter ΔG, so the data see at most six combinations of the eleven δ_i (one per independent reaction). The other directions are flat inside the box. The result to read is ΔG_j and K_j of every reaction; a single E_solv,i is determined only where its profile says so. Outputs: the profile of each δ_i across its box, and for every reaction the lowest and highest ΔG over the profile points within Δχ² = 3.84 of the best fit (an envelope, `calculate_energy_ranges`).
@@ -170,16 +190,59 @@ After every step each tube is scored with the step's parameters: a tube not adde
 | `steps_intervals.csv` | per free parameter: interval, bound or not determined |
 | `steps_energies.csv` | per step, ξ and reaction (R1–R9, N10–N15): computed and fitted ΔG and K, the envelope low–high |
 
-## 6. Hand-over to the kinetic fit
+## 6. From the energies to the rate constants
+
+The thermo fit gives ΔG_rxn and hence K_eq. The kinetic fit needs k_f and k_r. The two are tied by
+
+```
+K_eq,j(T) = exp(−ΔG_rxn,j / RT) = k_f,j(T) / k_r,j(T)
+```
+
+The notes record a confusion here between the two expressions, which must not be mixed: **K_eq is a function of ΔG_rxn; a rate constant is a function of a barrier ΔG‡, not of ΔG_rxn** (k_f = exp(−ΔG_rxn/RT) as first written is not a rate law). The barrier is the part the thermo fit does not see; the model chosen for it is what links the two.
+
+### 6.1 Barrier model (forward direction)
+
+```mermaid
+flowchart LR
+    DG["ΔG_rxn<br/>(thermo fit)"] --> TST["k_f(T) = (k_B T/h)·exp(−ΔG‡_f / RT)<br/>transition-state theory"]
+    TST --> M["Marcus<br/>ΔG‡ = (λ/4)·(1 + ΔG_rxn/λ)²"]
+    TST --> B["linear BEP (capped)<br/>ΔG‡_f = max(E₀, E₀ + α·ΔG_rxn)"]
+    M --> SDB["strict detailed balance"]
+    B --> SDB
+    SDB --> KR["k_r = k_f / K_eq<br/>ΔG‡_r = ΔG‡_f − ΔG_rxn"]
+```
+
+- **TST**: k(T) = exp(−ΔG‡/RT) with ΔG‡ the free-energy barrier. The notes strike out the factor k_B T/h; the code keeps it (Eyring prefactor, `kinetics/microkinetics/rates.py`). Open point (§8).
+- **Marcus**: ΔG‡ = (λ/4)(1 + ΔG_rxn/λ)². In the code λ = 4g (g = intrinsic barrier, the fitted `g <family>`), i.e. ΔG‡ = g(1 + ΔG_rxn/4g)², one g per family in M1.
+- **Linear BEP**: ΔG‡_f = max(E₀, E₀ + α·ΔG_rxn). In the code α = 0.5 (M0-BEP) or α = 1 (`+BEP`, P. Broqvist's rule).
+
+### 6.2 Strict detailed balance
+
+The reverse step is not an independent choice: given the forward barrier and ΔG_rxn,
+
+```
+k_r(T)  = k_f(T) / K_eq(T)
+ΔG‡_r   = ΔG‡_f − ΔG_rxn
+```
+
+Both barrier models respect it (Marcus: ΔG‡_r = (λ/4)(1 − ΔG_rxn/λ)²). This is what keeps every Wegscheider cycle closed and makes the kinetic fit end at the equilibrium the thermo fit found.
+
+**Choice (Y. Alcaraz, 4 Nov 2026): Marcus.** The BEP forms stay available as the `+BEP` suffix for comparison.
+
+## 7. Hand-over to the kinetic fit
 
 The fit stores `species_shifts_eV` ({species: eV}), the form the model already takes (`ModelSpec.species_shifts_eV`, applied by `build_shifted_species_database`). M1 then runs with the energies held at the thermo fit and fits the barriers alone. Because the shifts are per species, every Wegscheider cycle stays closed: N10–N15 follow without a parameter. The spectra at equilibrium stay in the kinetic fit as checks: once the energies are held, the reactor must end at those shares in the time of the experiment.
 
-## 7. To decide
+## 8. To decide
 
-1. **ξ**: multiplicative, ±ξ·SD_i (1, 2, 3), as in the code of NB06 §5. NB06 §1 also writes ±(SD_i + ξ).
-2. **The water of `TMSPa alone`**: declared at 65.6 mM as in M1 (¹H OH line), or free (0–0.3 M).
+Settled by the notes: **ξ** is multiplicative, ±ξ·σ_solv,i with ξ = 1, 2, 3 (as in the code; the ±(SD_i + ξ) of NB06 §1 is dropped), and the barrier model is **Marcus**.
 
-## 8. Code
+1. **The water of `TMSPa alone`**: declared at 65.6 mM as in M1 (¹H OH line), or free (0–0.3 M).
+2. **σ_TOT**: the notes write √(σ²_noise + σ²_baseline); the code adds a floor (§2.4). Keep the floor, or drop it for this fit.
+3. **Eyring prefactor k_B T/h**: struck out in the notes, present in the code. Confirm which, since it shifts every g by a constant.
+4. **T_DFT**: ΔG_rxn without T dependence for now (§2.2); the −4.4 … +2.9 kJ/mol at 80 °C is the cost.
+
+## 9. Code
 
 | Piece | Where | Reuses |
 |---|---|---|
