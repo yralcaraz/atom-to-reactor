@@ -27,7 +27,7 @@ The file reads from the whole to its parts: the problem first, then what it give
     1  The problem        ThermoProblem: parameters → equilibrium → predicted shares → z → χ²
     2  What it gives      tabulate_reaction_energies, calculate_energy_ranges: ΔG and K, and their range
     3  The samples        build_equilibrium_samples: the tubes at equilibrium, with their errors (what §1 reads)
-    4  Which spectra      tabulate_lab_spectra → find_equilibrium_points (the rule) / find_departed_spectra (overrides)
+    4  Which spectra      tabulate_lab_spectra → find_equilibrium_points (the rule)
     5  Replicates, steps  compare_replicates → build_cumulative_steps: the order in which tubes enter the fit
 
 A run goes the other way, 4 → 5 → 3 → 1 → 2 (scripts/run_thermo_fit.py). The chain of §1, from the parameters to χ²:
@@ -492,45 +492,6 @@ def _plateau_z(Y: np.ndarray, S: np.ndarray) -> np.ndarray:
         mean, sigma_mean = (w * Y[others]).sum(axis=0) / w.sum(axis=0), 1.0 / np.sqrt(w.sum(axis=0))
         z[k] = np.abs(Y[k] - mean) / np.hypot(S[k], sigma_mean)
     return z
-
-def find_departed_spectra(shares: pd.DataFrame, points: pd.DataFrame, observables: dict, *, max_abs_z: float = 3.0,
-                          error_floor: dict = None, floor: bool = False) -> pd.DataFrame:
-    """The candidates of find_equilibrium_points set against the composition at mixing: a spectrum whose shares differ from
-    those at mixing by more than max_abs_z in some window has seen the reaction run (σ: that of one spectrum in the fit,
-    noise ⊕ baseline ⊕ floor). Our criterion for the overrides (29 Oct): such a spectrum is taken as at equilibrium, also
-    alone ('counts'), unless a later spectrum of its tube and nucleus differs from it (|z| > max_abs_z, σ as the rule:
-    noise ⊕ baseline, with the floor if `floor`): an early spectrum away from the later ones was taken before the end.
-    The steps show where the reading fails. One row per candidate: 'tube', 'nucleus', 'file', 't_h', 'max |z| from
-    mixing', 'departed', 'max |z| to later', 'counts'. The composition at mixing is the recipe with the run's 'added_M' on top."""
-    error_floor = error_floor or observables['_meta'].get('error_floor', DEFAULT_ERROR_FLOOR)
-    idx = {sp: i for i, sp in enumerate(sorted({sp for n in SHARE_SPECIES.values() for w in n.values() for sp in w}))}
-    overrides, rows = get_sample_overrides(), []
-    for _, r in points[points['candidate']].iterrows():
-        c0 = dict(observables['samples'][r['tube']]['c0_M'])
-        for species, added in overrides.get(r['tube'], {}).get('added_M', {}).items():
-            c0[species] = c0.get(species, 0.0) + added
-        column = np.zeros((len(idx), 1))
-        for sp, c in c0.items():
-            if sp in idx:
-                column[idx[sp], 0] = c
-        spectrum = shares[(shares['tube'] == r['tube']) & (shares['data_md5'] == r['data_md5'])]
-        with np.errstate(invalid='ignore', divide='ignore'):
-            mixing = _shares_from_state(column, idx, r['nucleus'], tuple(spectrum['window']))[0]
-        z = np.abs(spectrum['share'].to_numpy() - mixing) / _spectrum_sigma(spectrum, error_floor, True)
-        max_z = float(np.nanmax(z)) if np.isfinite(z).any() else np.nan
-        later = points[points['candidate'] & (points['tube'] == r['tube']) & (points['nucleus'] == r['nucleus'])
-                       & (points['t_h'] > r['t_h'])]
-        z_later = 0.0
-        for m in later['data_md5']:
-            other = shares[(shares['tube'] == r['tube']) & (shares['data_md5'] == m)]
-            sigma = np.hypot(_spectrum_sigma(spectrum, error_floor, floor), _spectrum_sigma(other, error_floor, floor))
-            z_later = max(z_later, float(np.max(np.abs(spectrum['share'].to_numpy() - other['share'].to_numpy()) / sigma)))
-        rows.append({'tube': r['tube'], 'nucleus': r['nucleus'], 'file': r['file'], 't_h': r['t_h'],
-                     'max |z| from mixing': max_z, 'departed': bool(max_z > max_abs_z),
-                     'max |z| to later': z_later if len(later) else np.nan,
-                     'counts': bool(max_z > max_abs_z and z_later <= max_abs_z)})
-    return pd.DataFrame(rows)
-
 
 # ------------------------------------------------------------------------------
 # 5  Replicates and steps: the order in which the tubes enter the fit
