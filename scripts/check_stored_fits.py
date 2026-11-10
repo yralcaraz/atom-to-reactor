@@ -4,7 +4,9 @@
     python scripts/check_stored_fits.py notebooks/results/fit8_M1-steps
 
 Each fit (fits/<structure>__<reading>.json) and each step (steps/*.json) is run forward with the report solver,
-in the setup of its run (fit_config.json), on the samples it was fitted to. A χ² that changed means the code no
+in the setup of its run (fit_config.json), on the samples it was fitted to. A thermodynamic step
+(steps/thermo__*.json) is rebuilt from the directory's spectra_shares.csv and equilibrium_points.csv, as
+scripts/run_thermo_fit.py fitted it. A χ² that changed means the code no
 longer runs that fit as it was fitted, or the lab observables changed: run it after any change to kinetics/.
 The fits of a variant (a third part in the file name) are not checked. The directory is only read.
 
@@ -20,8 +22,11 @@ REPO = Path(__file__).resolve().parent.parent
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
+import pandas as pd
+
 from kinetics.data import load_lab_observables
 from kinetics.fitting import REPORT_SOLVER, FitProblem, apply_fit_config, build_sample_set, load_fit_result
+from kinetics.fitting.thermo_fit import ThermoProblem, build_equilibrium_samples, load_thermo_setup
 
 LAB_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox')
 
@@ -39,19 +44,41 @@ def check_fit(path: Path, observables: dict) -> float:
     return abs(chi2 - fit['chi2']) / max(1.0, abs(fit['chi2']))
 
 
+def thermo_samples(results: Path, config: dict, observables: dict) -> list:
+    """The tubes at equilibrium of a thermodynamic run, from its stored spectra and points (run_thermo_fit.stage_steps)."""
+    setup = load_thermo_setup(config)
+    shares = pd.read_csv(results / 'spectra_shares.csv', parse_dates=['acquired_at'])
+    points = pd.read_csv(results / 'equilibrium_points.csv')
+    return build_equilibrium_samples(shares, points, observables, setup['nuclei'], error_model=setup['error_model'])
+
+
+def check_thermo_step(path: Path, config: dict, samples: list) -> float:
+    """Relative change of the χ² of one stored thermodynamic step."""
+    setup, fit = load_thermo_setup(config), load_fit_result(str(path))
+    data = [s for s in samples if s['name'] in fit['step_fit']]
+    problem = ThermoProblem(data, free_species=setup['free_species'], xi=fit['xi'], reactions=setup['reactions'],
+                            fixed=fit.get('fixed') or {}, sigma_solv=setup['sigma_solv'])
+    chi2 = problem.chi2(problem.vector(fit['theta']))
+    return abs(chi2 - fit['chi2']) / max(1.0, abs(fit['chi2']))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('results', help='results directory, with its fit_config.json')
     parser.add_argument('--tolerance', type=float, default=1e-9, help='largest relative change accepted')
     args = parser.parse_args()
     results = Path(args.results).resolve()
-    apply_fit_config(results)
+    config = apply_fit_config(results)
     observables = load_lab_observables()
     paths = sorted(p for p in (results / 'fits').glob('*.json') if p.stem.count('__') == 1)
     paths += sorted((results / 'steps').glob('*.json'))
+    samples = thermo_samples(results, config, observables) if any(p.name.startswith('thermo__') for p in paths) else []
     t0, worst, changed, skipped = time.perf_counter(), 0.0, [], []
     for path in paths:
-        change = check_fit(path, observables)
+        if path.name.startswith('thermo__'):
+            change = check_thermo_step(path, config, samples)
+        else:
+            change = check_fit(path, observables)
         if change is None:
             skipped.append(path.name)
             continue
