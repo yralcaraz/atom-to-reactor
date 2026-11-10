@@ -110,6 +110,10 @@ LAB_SAMPLES = {
     },
 }
 
+# The order the tubes are shown in (notebooks 05 and 06): every sample of LAB_SAMPLES, the TMSOH tubes first
+TUBE_ORDER = ['TMSOH, glovebox', 'TMSOH, probe', 'TMSPa + TMSOH (A)', 'TMSPa + TMSOH (B)', 'TMSPa alone', '0.5 % H2O', '2 % H2O']
+assert sorted(TUBE_ORDER) == sorted(LAB_SAMPLES), 'TUBE_ORDER must list every sample of LAB_SAMPLES once'
+
 # What notebooks 03 and 04 record of each sample's history besides its room-temperature spectra.
 # 'heated': episodes after the sample's first spectrum [start_h and duration_h on the file clock].
 # 'pre_history': what happened between mixing and the first spectrum, where something is known.
