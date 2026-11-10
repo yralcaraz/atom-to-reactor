@@ -155,7 +155,8 @@ def score_tubes(samples: list, theta: dict, xi: float) -> list:
     """χ² and worst miss of each tube under one parameter set, on the fitted nuclei and on the checked ones."""
     rows = []
     for sample in samples:
-        problem = ThermoProblem([sample], free_species=SETUP['free_species'], xi=xi, reactions=SETUP['reactions'])
+        problem = ThermoProblem([sample], free_species=SETUP['free_species'], xi=xi, reactions=SETUP['reactions'],
+                                sigma_solv=SETUP['sigma_solv'])
         problem = problem.replace(fixed={**start_values(problem), **theta})     # an amount no step has fitted: mid-range
         for role in ('fit', 'check'):
             table = problem.table(np.zeros(0), roles=(role,))
@@ -172,7 +173,8 @@ def score_tubes(samples: list, theta: dict, xi: float) -> list:
 def stage_steps(args) -> None:
     """The steps of the setup at every ξ (as stage_steps of scripts/run_fit.py)."""
     observables = load_lab_observables()
-    samples = build_equilibrium_samples(read_shares(), read_points(), observables, SETUP['nuclei'])
+    samples = build_equilibrium_samples(read_shares(), read_points(), observables, SETUP['nuclei'],
+                                        error_model=SETUP['error_model'])
     tubes = [s['name'] for s in samples]
     contents = {s['name']: ', '.join(f"{b['nucleus']} × {len(b['t_spec_s'])} {b['role']}" for b in s['blocks']) for s in samples}
     log('tubes at equilibrium: ' + '; '.join(f'{tube} ({blocks})' for tube, blocks in contents.items()))
@@ -209,7 +211,8 @@ def stage_steps(args) -> None:
         for step in steps:
             name, fitted = step['id'], tubes if step['fit'] == 'all' else list(step['fit'])
             data = [s for s in samples if s['name'] in fitted]
-            problem = ThermoProblem(data, free_species=SETUP['free_species'], xi=xi, reactions=SETUP['reactions'])
+            problem = ThermoProblem(data, free_species=SETUP['free_species'], xi=xi, reactions=SETUP['reactions'],
+                                    sigma_solv=SETUP['sigma_solv'])
             free = data_parameters(problem) if step.get('free', 'data') == 'data' else [parameter_name(p) for p in step['free']]
             base = {**start_values(problem), **(thetas[step['from']] if step.get('from') else {})}
             problem = problem.replace(fixed={k: v for k, v in base.items() if k not in free})
@@ -296,7 +299,8 @@ def main():
     log(f"setup ({config['source']}): {config['medium'].label()}; network {config['network']}; reactions at equilibrium "
         f"{', '.join(SETUP['reactions'])}; free {', '.join(SETUP['free_species'])} within ±ξ standard errors, ξ "
         f"{', '.join(f'{x:g}' for x in SETUP['xi'])}; nuclei fitted {', '.join(SETUP['nuclei']['fit'])}, checked "
-        f"{', '.join(SETUP['nuclei']['check'])}; rule {SETUP['rule']}; samples changed for the run: "
+        f"{', '.join(SETUP['nuclei']['check'])}; rule {SETUP['rule']}; error model {SETUP['error_model']}, σ_solv "
+        f"{SETUP['sigma_solv']}; samples changed for the run: "
         f"{', '.join(config['sample_overrides']) or 'none'}")
     t0 = time.perf_counter()
     for stage in (list(STAGES) if args.stage == 'all' else [args.stage]):

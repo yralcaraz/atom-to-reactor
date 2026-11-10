@@ -84,7 +84,10 @@ def _lab_block(name: str, nucleus: str, role: str, spectra: list, observables: d
     noise = np.array([[sp['shares'][w]['sigma_noise'] for w in windows] for sp in spectra])
     baseline = np.array([[sp['shares'][w]['sigma_baseline'] for w in windows] for sp in spectra])
     all_rt = all(sp['temperature_C'] < RT_MAX_C for sp in spectra)
-    replicate = all_rt and len(spectra) >= REPLICATE_MIN_SPECTRA
+    # a record with 'replicates': False is a tube still reacting while recorded (5 Nov 2026 2 % H2O): its spectra
+    # are not repeats of one composition, each gets its own error as in a tube with fewer spectra
+    replicate = (all_rt and len(spectra) >= REPLICATE_MIN_SPECTRA
+                 and observables['samples'][name].get('replicates', True))
     floor = error_floor[nucleus]
     if replicate:
         birge = max(1.0, calculate_replicate_scatter(observables, name, nucleus)['birge'])

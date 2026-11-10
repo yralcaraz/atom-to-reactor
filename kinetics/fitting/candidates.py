@@ -172,11 +172,13 @@ class FitStructure:
             if self.shape is not None:
                 entry['shape'] = self.shape
                 entry.update(self.shape_params)
-        shifts, prior, prior_rows = {}, np.zeros(0), []
+        shifts, prior, prior_rows = dict(get_species_shifts()), np.zeros(0), []    # the run's fixed shifts (thermo fit)
         if self.freed:
             d = np.array([float(theta[f'dG {r}']) for r in self.freed])
             matrix, species, chol, sigma, computed = _energy_tools(self.freed)
-            shifts = {sp: float(v) for sp, v in zip(species, matrix @ d) if abs(v) > 1e-15}
+            for sp, v in zip(species, matrix @ d):
+                if abs(v) > 1e-15:
+                    shifts[sp] = shifts.get(sp, 0.0) + float(v)
             prior = solve_triangular(chol, d, lower=True)
             prior_rows = [{'sample': 'computed energies', 'quantity': f'ΔG_rxn({r}) − computed', 'kind': 'prior',
                            't_h': np.nan, 'age_h': np.nan, 'measured': 0.0, 'predicted': d[j], 'sigma': sigma[j],
@@ -212,6 +214,20 @@ def get_energy_box_sigma():
 def set_energy_box_sigma(k: float = None):
     _ENERGY_BOX_SIGMA[0] = None if k is None else float(k)
     return _ENERGY_BOX_SIGMA[0]
+
+
+# Fixed corrections to the solvation energies of the run ({species: eV}, fit_config.json 'species_shifts_eV'), e.g. the
+# E_solv,i of a thermodynamic fit: every model a structure builds has them, under any freed energies
+_SPECIES_SHIFTS = [{}]
+
+
+def get_species_shifts() -> dict:
+    return _SPECIES_SHIFTS[0]
+
+
+def set_species_shifts(shifts: dict = None) -> dict:
+    _SPECIES_SHIFTS[0] = {sp: float(v) for sp, v in (shifts or {}).items()}
+    return _SPECIES_SHIFTS[0]
 
 
 def _energy_tools(freed: tuple, prior_scale: float = 1.0):

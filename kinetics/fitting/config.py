@@ -13,7 +13,8 @@ themselves; see scripts/run_fit.recovery_cases). Sixth fit: the box of the freed
 ('start_from': an earlier results directory) and the parts of the night and traces stages that run ('night').
 Eighth fit: the readings '10 min', '1 h' and '8 h' (the only ones of this branch), and the steps of a fit made one tube at a time ('steps', 'step_variants';
 see scripts/run_fit.stage_steps). Thermodynamic fit: its own part under 'thermo' (kinetics.fitting.thermo_fit.DEFAULT_THERMO_SETUP,
-scripts/run_thermo_fit.py); the medium, network and sample changes above hold for it too.
+scripts/run_thermo_fit.py); the medium, network and sample changes above hold for it too. Fixed corrections to the
+solvation energies of every model of the run ('species_shifts_eV', {species: eV}; e.g. the E_solv,i of a thermodynamic fit).
 A results directory without the file is a run of the default setup: neat EC from the 2026-09-24 snapshot, R1–R9
 and the three readings. A setup with paper observations (Gogoi 2024, the first fits) is refused: they are in the
 branch M5-full.
@@ -34,7 +35,7 @@ from kinetics.data.medium import DEFAULT_MEDIUM, SolvationMedium, get_active_med
 from kinetics.data.network import (
     DEFAULT_NETWORK_VARIANT, NETWORK_VARIANTS, get_active_network_variant, set_active_network_variant,
 )
-from kinetics.fitting.candidates import set_energy_box_sigma
+from kinetics.fitting.candidates import set_energy_box_sigma, set_species_shifts
 from kinetics.fitting.residuals import (
     DEFAULT_SCENARIOS, SCENARIOS, get_sample_overrides, set_sample_overrides,
 )
@@ -43,7 +44,8 @@ FIT_CONFIG_FILE = 'fit_config.json'
 DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'network': DEFAULT_NETWORK_VARIANT, 'sample_overrides': {},
                       'scenarios': list(DEFAULT_SCENARIOS),
                       'sensitivities': None, 'recovery': {}, 'energy_box_sigma': None, 'structures': None,
-                      'effort': {}, 'start_from': None, 'night': {}, 'steps': [], 'step_variants': {}, 'thermo': None}
+                      'effort': {}, 'start_from': None, 'night': {}, 'steps': [], 'step_variants': {}, 'thermo': None,
+                      'species_shifts_eV': {}}
 
 
 def load_fit_config(results_dir) -> dict:
@@ -72,6 +74,7 @@ def apply_fit_config(results_dir) -> dict:
     set_active_network_variant(config['network'])
     set_sample_overrides(config['sample_overrides'])
     set_energy_box_sigma(config['energy_box_sigma'])
+    set_species_shifts(config['species_shifts_eV'])
     return config
 
 

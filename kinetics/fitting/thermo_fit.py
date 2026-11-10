@@ -11,6 +11,9 @@ algebraic model (kinetics.thermo.equilibrium, no reactor, no ages), and the kine
 
     χ²   = Σ z²,   z = (predicted − measured) / σ     the shares of the spectra at equilibrium, error model of the
                                                        kinetic fit (residuals._lab_block, residuals._whiten)
+                                                       — or, setup 'error_model': 'nmr' (fit_thermo_rev01 §2.1),
+                                                       the concentrations in mM with σ_tot = noise ⊕ baseline, every
+                                                       point independent (_concentration_block, _standardise)
 
 The free parameters are the shifts δ_i of E_solv,i of the species of R1–R4, inside a box of ±ξ standard errors and
 with no other constraint (notebook 06 §5); an amount at mixing that the recipe does not fix is a parameter as in the
@@ -82,6 +85,12 @@ DEFAULT_THERMO_SETUP = {
     'profile_nfev': 20,     # number of function evaluations per profile point (the optimiser is re-run at each point)
     'order': [],            # the order in which tubes enter the fit (the rest is alphabetical)
     'steps': 'cumulative',  # 'cumulative': each step adds the next tube, 'independent': each step fits one tube alone
+    # 'kinetic': shares, error model of the kinetic fit (floor, replicate blocks, √((K−1)/K)); 'nmr': fit_thermo_rev01
+    # §2.1, concentrations (mM), σ_tot = √(σ_noise² + σ_baseline²), every point independent
+    'error_model': 'kinetic',
+    # the box of E_solv,i: 'solute' = gas ⊕ solution standard errors (the shared pure-solvent term left out);
+    # 'total' = gas ⊕ solution ⊕ solvent, the snapshot's uncertainty of the solvent correction (fit_thermo_rev01 §2.1)
+    'sigma_solv': 'solute',
 }
 
 def load_thermo_setup(config: dict) -> dict:
@@ -111,16 +120,24 @@ class ThermoProblem:
 
 
     def __init__(self, samples: list, *, free_species, xi: float, reactions=('R1', 'R2', 'R3', 'R4'), fixed: dict = None,
-                 network: dict = None, solver: dict = None):
+                 network: dict = None, solver: dict = None, sigma_solv: str = 'solute'):
         # saves tubes, species, reacions, network and xi
         self.samples = samples
         self.free_species, self.xi, self.reactions = tuple(free_species), float(xi), tuple(reactions)
         self.network = network or get_active_network()
-        
-        # Calculates sd (error of simulation MD for each species)
+
+        # Calculates sd (standard error of the solvation energy of each species): 'solute' = gas ⊕ solution box,
+        # 'total' = gas ⊕ solution ⊕ pure-solvent box (the snapshot's uncertainty of the solvent correction)
         self.solver = solver
+        self.sigma_solv = sigma_solv
         self.structure = SimpleNamespace(name='thermo', label=f'solvation energies within ±{self.xi:g} standard errors')
-        sd = {sp: s for sp, (s, _) in calculate_solvation_sigma_components().items()}
+        components = calculate_solvation_sigma_components()
+        if sigma_solv == 'solute':
+            sd = {sp: s for sp, (s, _) in components.items()}
+        elif sigma_solv == 'total':
+            sd = {sp: float(np.hypot(s, ref)) for sp, (s, ref) in components.items()}
+        else:
+            raise ValueError(f"sigma_solv '{sigma_solv}': 'solute' or 'total'")
         
         # Creates a list of parameters
         self.all_parameters = [FitParameter(f'{SOLVATION_PREFIX}{sp}', 'solvation', sp, -self.xi * sd[sp], self.xi * sd[sp], 'eV')
@@ -162,11 +179,12 @@ class ThermoProblem:
             if predicted is None:
                 out.append(np.full(sum(b['measured'].size for b in blocks), PENALTY))
                 continue
-            out += [_whiten(b, p) for b, p in zip(sample['blocks'], predicted) if b['role'] in roles]
+            out += [_standardise(b, p) for b, p in zip(sample['blocks'], predicted) if b['role'] in roles]
         return np.concatenate(out) if out else np.zeros(0)
 
     def _predicted(self, sample: dict, theta: dict) -> list:
-        """Shares of every block of a sample (spectra × windows, the same row for every spectrum); None on failure."""
+        """What every block of a sample predicts (spectra × windows, the same row for every spectrum): shares, or for a
+        block in mM (error model 'nmr') the concentration of each window, Σ n·C_i / divisor; None on failure."""
         try:
             C = self.equilibrium(sample, theta)
         except (RuntimeError, np.linalg.LinAlgError, FloatingPointError):
@@ -175,8 +193,16 @@ class ThermoProblem:
         for sp, c in C.items():
             if sp in self._idx:
                 column[self._idx[sp], 0] = c
-        return [np.repeat(_shares_from_state(column, self._idx, b['nucleus'], b['windows']), len(b['t_spec_s']), axis=0)
-                for b in sample['blocks']]
+        out = []
+        for b in sample['blocks']:
+            if b.get('units') == 'mM':
+                members = SHARE_SPECIES[b['nucleus']]
+                amounts = np.array([sum(n * max(C.get(sp, 0.0), 0.0) for sp, n in members[w].items()) for w in b['windows']])
+                row = (1000.0 * amounts / b['divisor'])[None, :]
+            else:
+                row = _shares_from_state(column, self._idx, b['nucleus'], b['windows'])
+            out.append(np.repeat(row, len(b['t_spec_s']), axis=0))
+        return out
 
     def equilibrium(self, sample: dict, theta: dict) -> dict:
         """Composition at equilibrium [mol/L] of one sample under a parameter set."""
@@ -208,7 +234,8 @@ class ThermoProblem:
                     rows.append({'sample': sample['name'], 'quantity': 'equilibrium not found', 'kind': 'failure', 'z': PENALTY,
                                  'nucleus': block['nucleus'], 'role': block['role']})
                     continue
-                rows += [{**row, 'nucleus': block['nucleus'], 'role': block['role']}
+                rows += [{**row, 'nucleus': block['nucleus'], 'role': block['role'],
+                          **({'kind': 'concentration (mM)'} if block.get('units') == 'mM' else {})}
                          for row in _rows_of_block(sample['name'], block, predicted[i], block['t_spec_s'] / 3600.0)]
         table = pd.DataFrame(rows, columns=['sample', 'nucleus', 'role', 'quantity', 'kind', 't_h', 'measured', 'predicted', 'sigma', 'z'])
         table['age_h'] = np.nan
@@ -231,7 +258,15 @@ class ThermoProblem:
     def replace(self, *, samples: list = None, solver: dict = None, fixed: dict = None, prior_scale: float = None):
         return ThermoProblem(self.samples if samples is None else samples, free_species=self.free_species, xi=self.xi,
                              reactions=self.reactions, fixed=self.fixed if fixed is None else fixed, network=self.network,
-                             solver=self.solver if solver is None else solver)
+                             solver=self.solver if solver is None else solver, sigma_solv=self.sigma_solv)
+
+
+def _standardise(block: dict, predicted: np.ndarray) -> np.ndarray:
+    """z of one block: for a block in mM (error model 'nmr', fit_thermo_rev01 §2.1) (y_model − y_NMR) / σ_tot, every
+    point independent; otherwise the whitened residuals of the kinetic fit (residuals._whiten)."""
+    if block.get('units') == 'mM':
+        return ((predicted - block['measured']) / block['sigma_ind']).ravel()
+    return _whiten(block, predicted)
 
 
 
@@ -274,12 +309,15 @@ def calculate_energy_ranges(profile: pd.DataFrame, problem: ThermoProblem, *, de
 # 3  The samples: the tubes at equilibrium, with their blocks and errors (what ThermoProblem reads)
 # ------------------------------------------------------------------------------
 def build_equilibrium_samples(shares: pd.DataFrame, points: pd.DataFrame, observables: dict, nuclei: dict, *,
-                              error_floor: dict = None) -> list:
+                              error_floor: dict = None, error_model: str = 'kinetic') -> list:
     """The tubes with spectra at equilibrium, as samples: 'name', 'c0_M' (the recipe, with the run's 'added_M' on
     top), 'unknown_M' (the record's, or the run's where it replaces them), 'T_K' (mean temperature of the spectra
     used) and 'blocks' (one per nucleus, the error model of residuals._lab_block: three spectra or more of one block
     share their baseline and floor). nuclei: {'fit': [...], 'check': [...]}; a block of a 'check' nucleus has the
-    role 'check' and enters no χ²."""
+    role 'check' and enters no χ².
+    error_model 'nmr' (fit_thermo_rev01 §2.1): every block in mM instead, _concentration_block (no floor, no shared errors)."""
+    if error_model not in ('kinetic', 'nmr'):
+        raise ValueError(f"error_model '{error_model}': 'kinetic' or 'nmr'")
     base = error_floor or observables['_meta'].get('error_floor', DEFAULT_ERROR_FLOOR)
     floor = {nucleus: base[FLOOR_OF[nucleus]] for nucleus in FLOOR_OF}
     roles = {**{n: 'check' for n in nuclei.get('check', [])}, **{n: 'fit' for n in nuclei.get('fit', [])}}
@@ -296,18 +334,46 @@ def build_equilibrium_samples(shares: pd.DataFrame, points: pd.DataFrame, observ
         first = next(iter(sets))
         view = {'samples': {tube: {'nucleus': first, 'spectra': sets[first],
                                    'more_nuclei': {n: {'spectra': s} for n, s in sets.items() if n != first}}}}
-        blocks = [_lab_block(tube, nucleus, roles[nucleus], spectra, view, floor, 1.0) for nucleus, spectra in sets.items()]
-        for block, spectra in zip(blocks, sets.values()):
-            block['files'] = [sp['file'] for sp in spectra]
         c0 = dict(record['c0_M'])
         for species, added in change.get('added_M', {}).items():
             c0[species] = c0.get(species, 0.0) + added
+        if error_model == 'nmr':
+            blocks = [_concentration_block(tube, nucleus, roles[nucleus], spectra, c0) for nucleus, spectra in sets.items()]
+        else:
+            blocks = [_lab_block(tube, nucleus, roles[nucleus], spectra, view, floor, 1.0) for nucleus, spectra in sets.items()]
+        for block, spectra in zip(blocks, sets.values()):
+            block['files'] = [sp['file'] for sp in spectra]
         unknown = change['unknown_M'] if 'unknown_M' in change else record.get('unknown_M', {})
         temperatures = [sp['temperature_C'] for spectra in sets.values() for sp in spectra]
         samples.append({'name': tube, 'kind': 'equilibrium', 'c0_M': c0, 'T_K': float(np.mean(temperatures)) + ZERO_CELSIUS_K,
                         'unknown_M': {sp: (float(low), float(high)) for sp, (low, high) in (unknown or {}).items()},
                         'blocks': blocks})
     return samples
+
+
+def _concentration_block(name: str, nucleus: str, role: str, spectra: list, c0: dict) -> dict:
+    """The spectra of one nucleus of one tube in mM (fit_thermo_rev01 §2.1, as its tabulate_concentrations):
+
+        y_NMR = share · total / n,   σ_tot = √(σ_noise² + σ_baseline²) · total / n
+
+    total: the nucleus at mixing over the windows of the spectrum, Σ_windows Σ_i n_i·c0_i; n: the count of the species of a
+    one-species window (HMDSO: 2 silyl groups), 1 for a window of several species (its concentration counts groups).
+    Every point is independent: no floor, no error shared between spectra."""
+    members = SHARE_SPECIES[nucleus]
+    unknown = set(spectra[0]['shares']) - set(members)
+    if unknown:
+        raise KeyError(f'{name}: no species declared for the {nucleus} window(s) {sorted(unknown)}')
+    windows = tuple(w for w in members if w in spectra[0]['shares'])
+    total = sum(n * c0.get(sp, 0.0) for w in windows for sp, n in members[w].items())
+    divisor = np.array([next(iter(members[w].values())) if len(members[w]) == 1 else 1 for w in windows], dtype=float)
+    scale = 1000.0 * total / divisor
+    Y = np.array([[sp['shares'][w]['share'] for w in windows] for sp in spectra])
+    sigma = np.array([[np.hypot(sp['shares'][w]['sigma_noise'], sp['shares'][w]['sigma_baseline']) for w in windows]
+                      for sp in spectra])
+    return {'nucleus': nucleus, 'role': role, 'units': 'mM', 'windows': windows, 'divisor': divisor,
+            't_spec_s': 3600.0 * np.array([sp['t_since_first_h'] for sp in spectra]),
+            'measured': Y * scale, 'sigma_ind': sigma * scale, 'sigma_common': np.zeros(len(windows)),
+            'sigma_nmr': sigma * scale, 'replicate': False, 'birge': 1.0, 'cholesky': None}
 
 
 def _spectrum_record(rows: pd.DataFrame) -> dict:
