@@ -230,28 +230,18 @@ def set_species_shifts(shifts: dict = None) -> dict:
     return _SPECIES_SHIFTS[0]
 
 
-def _energy_tools(freed: tuple, prior_scale: float = 1.0):
+def _energy_tools(freed: tuple):
     """(species-shift matrix, species, Cholesky factor of the covariance, standard errors, computed ΔG) for the
-    freed reactions in the active solvation medium; the covariance is multiplied by prior_scale."""
-    key = (get_active_medium(), freed, prior_scale)
+    freed reactions in the active solvation medium."""
+    key = (get_active_medium(), freed)
     if key not in _ENERGY_TOOLS:
         unit = [calculate_species_shifts({r: (1.0 if r == rxn else 0.0) for r in freed}) for rxn in freed]
         species = sorted({sp for shifts in unit for sp in shifts})
         matrix = np.array([[shifts.get(sp, 0.0) for shifts in unit] for sp in species])
-        cov = prior_scale * calculate_solvation_covariance(list(freed)).to_numpy()
+        cov = calculate_solvation_covariance(list(freed)).to_numpy()
         computed = calculate_network_thermo(298.15)['dG_rxn_eV'].loc[list(freed)].to_numpy()
         _ENERGY_TOOLS[key] = (matrix, species, cholesky(cov, lower=True), np.sqrt(np.diag(cov)), computed)
     return _ENERGY_TOOLS[key]
-
-
-def scale_energy_prior(structure: FitStructure, built: dict, theta: dict, prior_scale: float) -> dict:
-    """`built` with the constraint on the freed energies recomputed for a covariance multiplied by prior_scale."""
-    if not structure.freed or prior_scale == 1.0:
-        return built
-    d = np.array([float(theta[f'dG {r}']) for r in structure.freed])
-    _, _, chol, sigma, _ = _energy_tools(structure.freed, prior_scale)
-    rows = [{**row, 'sigma': sigma[j], 'z': d[j] / sigma[j]} for j, row in enumerate(built['prior_rows'])]
-    return {**built, 'prior': solve_triangular(chol, d, lower=True), 'prior_rows': rows}
 
 
 def tabulate_reaction_barriers(structure: FitStructure, theta: dict, temperatures_K: dict = None) -> dict:

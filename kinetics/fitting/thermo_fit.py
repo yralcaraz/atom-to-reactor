@@ -255,7 +255,7 @@ class ThermoProblem:
     def from_unit(self, u) -> np.ndarray:
         return self.lower + (np.asarray(u, dtype=float) - 1.0) * (self.upper - self.lower)
 
-    def replace(self, *, samples: list = None, solver: dict = None, fixed: dict = None, prior_scale: float = None):
+    def replace(self, *, samples: list = None, solver: dict = None, fixed: dict = None):
         return ThermoProblem(self.samples if samples is None else samples, free_species=self.free_species, xi=self.xi,
                              reactions=self.reactions, fixed=self.fixed if fixed is None else fixed, network=self.network,
                              solver=self.solver if solver is None else solver, sigma_solv=self.sigma_solv)

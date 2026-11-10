@@ -31,7 +31,7 @@ import pandas as pd
 from scipy.optimize import least_squares
 from scipy.stats import qmc
 
-from kinetics.fitting.candidates import get_structure, scale_energy_prior
+from kinetics.fitting.candidates import get_structure
 from kinetics.fitting.residuals import REPORT_SOLVER, SEARCH_SOLVER, calculate_residuals, tabulate_residuals
 
 FIT_RULE_MAX_Z = 3.0
@@ -45,11 +45,10 @@ RECIPE_FACTORS = (0.25, 0.5, 0.67, 0.8, 0.9, 1.1, 1.25, 1.5, 2.0, 4.0)      # mu
 class FitProblem:
     """A structure and a sample set: the free parameters, their box and the residual vector."""
 
-    def __init__(self, structure, samples: list, *, solver: dict = None, fixed: dict = None, prior_scale: float = 1.0):
+    def __init__(self, structure, samples: list, *, solver: dict = None, fixed: dict = None):
         self.structure = get_structure(structure)
         self.samples = samples
         self.solver = dict(solver or SEARCH_SOLVER)
-        self.prior_scale = float(prior_scale)
         self.all_parameters = self.structure.parameters(samples)
         self.fixed = dict(fixed or {})
         unknown = set(self.fixed) - {p.name for p in self.all_parameters}
@@ -80,8 +79,7 @@ class FitProblem:
         return self.lower + (np.asarray(u, dtype=float) - 1.0) * (self.upper - self.lower)
 
     def build(self, x) -> dict:
-        theta = self.theta(x)
-        return scale_energy_prior(self.structure, self.structure.build(theta), theta, self.prior_scale)
+        return self.structure.build(self.theta(x))
 
     def residuals(self, x) -> np.ndarray:
         built = self.build(x)
@@ -100,11 +98,10 @@ class FitProblem:
             table = pd.concat([table, pd.DataFrame(built['prior_rows'])], ignore_index=True)
         return table
 
-    def replace(self, *, samples: list = None, solver: dict = None, fixed: dict = None, prior_scale: float = None):
+    def replace(self, *, samples: list = None, solver: dict = None, fixed: dict = None):
         return FitProblem(self.structure, self.samples if samples is None else samples,
                           solver=self.solver if solver is None else solver,
-                          fixed=self.fixed if fixed is None else fixed,
-                          prior_scale=self.prior_scale if prior_scale is None else prior_scale)
+                          fixed=self.fixed if fixed is None else fixed)
 
 
 # ------------------------------------------------------------------------------
@@ -158,15 +155,12 @@ def _select_starts(points: np.ndarray, chi2: np.ndarray, n_starts: int, min_dist
 
 
 def fit_structure(problem: FitProblem, *, n_screen: int = 512, n_starts: int = 16, max_nfev: int = 40, seed: int = 0,
-                  workers: int = 1, start_points=(), seed_values: dict = None, report: bool = True) -> dict:
+                  workers: int = 1, start_points=(), report: bool = True) -> dict:
     """Best fit of a problem: Sobol screen of the box, bounded least squares from the best points, final polish.
 
     n_screen: number of screen points (rounded up to a power of two). n_starts: how many of the best screen
     points are polished. start_points: parameter sets {name: value} or vectors polished in addition (e.g. the
     best fit of the structure this one extends). max_nfev: least-squares iterations per start.
-    seed_values: {name: value} known from a part of the data that sees those parameters alone (e.g. the
-    barriers the TMSOH-only samples fix). The screen is then repeated with these coordinates held at their
-    values, and the best half as many of those points are polished too; every parameter is free in the polish.
     With report: the best point is polished once more and tabulated with the report solver (rtol 1e-8).
 
     Returns a dict: 'theta', 'x', 'chi2', 'n_residuals', 'n_parameters', 'max_abs_z', 'worst', 'fits' (the fit
@@ -180,15 +174,6 @@ def fit_structure(problem: FitProblem, *, n_screen: int = 512, n_starts: int = 1
         screen_chi2 = np.array(_map(_chi2_unit, list(screen), problem, workers))
         n_eval += len(screen)
         starts_u = [screen[i] for i in _select_starts(screen, screen_chi2, n_starts, 0.05 * np.sqrt(n))]
-        held = {problem.names.index(k): v for k, v in (seed_values or {}).items() if k in problem.names}
-        if held:
-            seeded = screen.copy()
-            for i, value in held.items():
-                seeded[:, i] = 1.0 + (np.clip(value, problem.lower[i], problem.upper[i]) - problem.lower[i]) \
-                    / (problem.upper[i] - problem.lower[i])
-            seeded_chi2 = np.array(_map(_chi2_unit, list(seeded), problem, workers))
-            n_eval += len(seeded)
-            starts_u += [seeded[i] for i in _select_starts(seeded, seeded_chi2, max(n_starts // 2, 1), 0.05 * np.sqrt(n))]
     for point in start_points:
         x = problem.vector(point) if isinstance(point, dict) else np.asarray(point, dtype=float)
         starts_u.append(problem.to_unit(np.clip(x, problem.lower, problem.upper)))
