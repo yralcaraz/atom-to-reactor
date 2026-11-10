@@ -31,6 +31,7 @@ Source: Y. Alcaraz Galván
 import json
 from pathlib import Path
 
+from kinetics.data.observables import DEFAULT_OBSERVABLES_PATH, list_spectrum_sets
 from kinetics.data.medium import DEFAULT_MEDIUM, SolvationMedium, get_active_medium, set_active_medium
 from kinetics.data.network import (
     DEFAULT_NETWORK_VARIANT, NETWORK_VARIANTS, get_active_network_variant, set_active_network_variant,
@@ -45,12 +46,13 @@ DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'network': DEFAULT_
                       'scenarios': list(DEFAULT_SCENARIOS),
                       'sensitivities': None, 'recovery': {}, 'energy_box_sigma': None, 'structures': None,
                       'effort': {}, 'start_from': None, 'night': {}, 'steps': [], 'step_variants': {}, 'thermo': None,
-                      'species_shifts_eV': {}}
+                      'species_shifts_eV': {}, 'tubes': None, 'observables': None}
+RUN_OBSERVABLES = Path('data_dir') / 'data' / 'lab_observables.json'   # a run's own copy of the observables
 
 
 def load_fit_config(results_dir) -> dict:
     """The setup of the run whose results are in `results_dir`: fit_config.json over the default, with the medium
-    as a SolvationMedium under 'medium'."""
+    as a SolvationMedium under 'medium' and 'observables' resolved to a path (resolve_observables_path)."""
     path = Path(results_dir) / FIT_CONFIG_FILE
     stored = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
     config = {**DEFAULT_FIT_CONFIG, **stored}
@@ -63,7 +65,26 @@ def load_fit_config(results_dir) -> dict:
         raise ValueError(f"{path}: unknown network '{config['network']}' (one of {NETWORK_VARIANTS})")
     config['medium'] = SolvationMedium.from_dict(config['solvation'])
     config['source'] = str(path) if path.exists() else 'default (no fit_config.json)'
+    config['observables'] = resolve_observables_path(results_dir, config['observables'])
     return config
+
+
+def resolve_observables_path(results_dir, observables: str = None) -> str:
+    """The lab observables of a run: 'observables' of its setup (relative to the results directory), else the run's own
+    copy (data_dir/data/lab_observables.json), else the data folder's."""
+    if observables:
+        return str(Path(results_dir) / observables)
+    own = Path(results_dir) / RUN_OBSERVABLES
+    return str(own) if own.exists() else DEFAULT_OBSERVABLES_PATH
+
+
+def list_fitted_tubes(observables: dict, config: dict = None) -> tuple:
+    """The lab tubes a run can fit: 'tubes' of its setup, else every tube of the observables with a block of role
+    'fit' (in their order)."""
+    if config and config.get('tubes'):
+        return tuple(config['tubes'])
+    return tuple(name for name, record in observables['samples'].items()
+                 if any(role == 'fit' for _, role, _ in list_spectrum_sets(record)))
 
 
 def apply_fit_config(results_dir) -> dict:

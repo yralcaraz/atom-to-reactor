@@ -51,9 +51,11 @@ from kinetics.fitting import (
     write_fit_result,
 )
 from kinetics.fitting.candidates import get_energy_box_sigma
+from kinetics.fitting.config import list_fitted_tubes
 from kinetics.fitting.residuals import get_sample_overrides
 
 RESULTS = None                           # the results directory (--results); set in main
+OBSERVABLES = None                       # the run's lab observables file (fit_config.json 'observables'); set in main
 
 # Search effort per structure: (Sobol screen points, starts polished, least-squares iterations per start); the
 # setup can change it ('effort')
@@ -78,7 +80,7 @@ def cached(path: Path, compute):
 
 
 def sample_set(scenario: str, **options) -> list:
-    return build_sample_set(load_lab_observables(), scenario, **options)
+    return build_sample_set(load_lab_observables(OBSERVABLES), scenario, **options)
 
 
 def short(theta: dict) -> str:
@@ -90,7 +92,7 @@ def short(theta: dict) -> str:
 # ------------------------------------------------------------------------------
 SCENARIO_ORDER = ('10 min', '1 h', '8 h')
 MAIN_STRUCTURE = 'M1'                    # the structure the steps fit; set in main
-LAB_FITTED_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox')
+LAB_FITTED_SAMPLES = ()                  # the tubes a step can fit (fit_config.json 'tubes', else the observables'); set in main
 
 
 def base_name(structure: str) -> str:
@@ -211,9 +213,11 @@ def main():
     parser.add_argument('--profile-nfev', type=int, default=15, help='least-squares iterations per profile point')
     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
     args = parser.parse_args()
-    global RESULTS, SCENARIOS, SCENARIO_ORDER, MAIN_STRUCTURE, STEPS, STEP_VARIANTS
+    global RESULTS, OBSERVABLES, LAB_FITTED_SAMPLES, SCENARIOS, SCENARIO_ORDER, MAIN_STRUCTURE, STEPS, STEP_VARIANTS
     RESULTS = Path(args.results).resolve()
     config = apply_fit_config(RESULTS)
+    OBSERVABLES = config['observables']
+    LAB_FITTED_SAMPLES = list_fitted_tubes(load_lab_observables(OBSERVABLES), config)
     SCENARIOS = tuple(sc for sc in SCENARIOS if sc in config['scenarios'])
     SCENARIO_ORDER = tuple(sc for sc in SCENARIO_ORDER if sc in config['scenarios'])
     if config['structures']:

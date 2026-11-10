@@ -26,15 +26,14 @@ import pandas as pd
 
 from kinetics.data import load_lab_observables
 from kinetics.fitting import REPORT_SOLVER, FitProblem, apply_fit_config, build_sample_set, load_fit_result
+from kinetics.fitting.config import list_fitted_tubes
 from kinetics.fitting.thermo_fit import ThermoProblem, build_equilibrium_samples, load_thermo_setup
 
-LAB_SAMPLES = ('0.5 % H2O', '2 % H2O', 'TMSPa + TMSOH (A)', 'TMSPa alone', 'TMSOH, probe', 'TMSOH, glovebox')
-
-
-def check_fit(path: Path, observables: dict) -> float:
-    """Relative change of the χ² of one stored fit (None: its structure cannot be rebuilt by name)."""
+def check_fit(path: Path, observables: dict, tubes: tuple) -> float:
+    """Relative change of the χ² of one stored fit (None: its structure cannot be rebuilt by name); tubes: those the
+    run could fit (list_fitted_tubes), the ones a step did not fit are left out."""
     fit = load_fit_result(str(path))
-    exclude = tuple(s for s in LAB_SAMPLES if s not in fit['step_fit']) if 'step_fit' in fit else ()
+    exclude = tuple(s for s in tubes if s not in fit['step_fit']) if 'step_fit' in fit else ()
     samples = build_sample_set(observables, fit['scenario'], exclude=exclude)
     try:
         problem = FitProblem(fit['structure'], samples, solver=REPORT_SOLVER, fixed=fit.get('fixed') or None)
@@ -69,7 +68,8 @@ def main():
     args = parser.parse_args()
     results = Path(args.results).resolve()
     config = apply_fit_config(results)
-    observables = load_lab_observables()
+    observables = load_lab_observables(config['observables'])
+    tubes = list_fitted_tubes(observables, config)
     paths = sorted(p for p in (results / 'fits').glob('*.json') if p.stem.count('__') == 1)
     paths += sorted((results / 'steps').glob('*.json'))
     samples = thermo_samples(results, config, observables) if any(p.name.startswith('thermo__') for p in paths) else []
@@ -78,7 +78,7 @@ def main():
         if path.name.startswith('thermo__'):
             change = check_thermo_step(path, config, samples)
         else:
-            change = check_fit(path, observables)
+            change = check_fit(path, observables, tubes)
         if change is None:
             skipped.append(path.name)
             continue
