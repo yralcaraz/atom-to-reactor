@@ -126,41 +126,6 @@ def _lab_sample(name: str, record: dict, observables: dict, error_floor: dict, f
     }
 
 
-def _hold_heated(sample: dict, hold_h: float) -> list:
-    """The heating episodes of a sample as holds of hold_h hours, each over before the next room-temperature spectrum.
-
-    An episode that would run past that spectrum starts earlier, so that it ends at the spectrum; one never starts
-    before the previous ends, and is cut where the next recorded one starts. Starts are on the clock of the first spectrum.
-    """
-    spectra = sorted({float(t) for block in sample['blocks'] for t in block['t_spec_s']})
-    starts = [start for start, _, _ in sample['heated']]
-    hold, clock, episodes = 3600.0 * hold_h, 0.0, []
-    for k, (start, T, _) in enumerate(sample['heated']):
-        following = starts[k + 1] if k + 1 < len(starts) else np.inf
-        next_spectrum = min([t for t in spectra if t > start], default=np.inf)
-        if start + hold > next_spectrum:
-            start = next_spectrum - hold
-        start = max(start, clock)
-        duration = min(hold, following - start, next_spectrum - start)
-        episodes.append((start, T, duration))
-        clock = start + duration
-    return episodes
-
-
-def _cool_before_spectra(sample: dict, cooling_h: float) -> list:
-    """The heating episodes of a sample, each moved earlier where needed so that it ends at least cooling_h hours
-    before the next spectrum; a moved one never starts before the previous one ends (it is shortened instead)."""
-    spectra = sorted({float(t) for block in sample['blocks'] for t in block['t_spec_s']})
-    cooling, clock, episodes = 3600.0 * cooling_h, -np.inf, []
-    for start, T, duration in sample['heated']:
-        next_spectrum = min([t for t in spectra if t > start], default=np.inf)
-        stop = min(start + duration, next_spectrum - cooling)
-        start = max(stop - duration, clock)
-        episodes.append((start, T, stop - start))
-        clock = stop
-    return episodes
-
-
 def _episodes(rows) -> list:
     """[(start_h, T_C, duration_h), ...] on the clock of the first spectrum → [(start_s, T_K, duration_s), ...] in time order."""
     return sorted((3600.0 * float(start), float(T_C) + ZERO_CELSIUS_K, 3600.0 * float(hours)) for start, T_C, hours in rows)
@@ -198,14 +163,10 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
     roles: which blocks of the lab samples enter ('fit', 'hold_out', 'check'); a sample enters with the blocks
     that have one of these roles. exclude: sample names left out.
     floor_scale multiplies the declared error floor (0 removes it).
-    overrides: {sample: {'hold_h': hours of its known pre-history, 'pre_history': [(T_C or None for room
-    temperature, hours), ...] from mixing to the first spectrum (the age is then known), 'heated_episodes':
-    [(start_h, T_C, hours), ...] on the clock of the first spectrum, replacing the recorded heating (None: the
-    recorded one), 'added_episodes': the same, added to it (a negative start lies before the first spectrum and
-    is cut at mixing), 'cooling_h': hours at room temperature at least before every spectrum (an episode that
-    ends later is moved earlier, see _cool_before_spectra), 'heated_duration_h': hours of every heating episode (at most until the next one starts),
-    'heated_hold_h': hours of every heating episode as a hold that is over before the next room-temperature
-    spectrum (see _hold_heated), 'added_M': {species: mol/L present at mixing on top of the recipe},
+    overrides: {sample: {'pre_history': [(T_C or None for room temperature, hours), ...] from mixing to the first
+    spectrum (the age is then known), 'heated_episodes': [(start_h, T_C, hours), ...] on the clock of the first
+    spectrum, replacing the recorded heating (None: the recorded one), 'added_M': {species: mol/L present at mixing
+    on top of the recipe},
     'unknown_M': {species: (low, high)} replacing the amounts at mixing that are fit parameters ({}: none; sixth
     fit: the water of 'TMSPa alone' declared through 'added_M' instead)}}, for the sensitivity to the times the
     files do not fix and to what the recipe does not list. They go on top of the run's own changes
@@ -228,19 +189,6 @@ def build_sample_set(observables: dict, scenario: str, *, roles=('fit',), exclud
         if 'pre_history' in change:
             sample['pre_segments'] = [(sample['T_rt_K'] if T_C is None else T_C + ZERO_CELSIUS_K, 3600.0 * hours)
                                       for T_C, hours in change['pre_history']]
-        if 'hold_h' in change:
-            sample['pre_segments'] = [(T, 3600.0 * change['hold_h']) for T, _ in sample['pre_segments']]
-        if 'heated_duration_h' in change:
-            # an episode never runs into the next one: it is held until the next one starts at the latest
-            starts = [start for start, _, _ in sample['heated']][1:] + [np.inf]
-            sample['heated'] = [(start, T, min(3600.0 * change['heated_duration_h'], following - start))
-                                for (start, T, _), following in zip(sample['heated'], starts)]
-        if 'heated_hold_h' in change:
-            sample['heated'] = _hold_heated(sample, change['heated_hold_h'])
-        if change.get('added_episodes'):
-            sample['heated'] = sorted(sample['heated'] + _episodes(change['added_episodes']))
-        if change.get('cooling_h') is not None:
-            sample['heated'] = _cool_before_spectra(sample, change['cooling_h'])
         for species, added in change.get('added_M', {}).items():
             sample['c0_M'][species] = sample['c0_M'].get(species, 0.0) + added
         if 'unknown_M' in change:
