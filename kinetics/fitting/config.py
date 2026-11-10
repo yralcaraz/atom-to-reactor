@@ -1,23 +1,24 @@
 """Block 14H — Setup of one fit run, stored with its results (`fit_config.json` in the results directory).
 
-Every stage of a run reads the setup at its start, and so does every notebook that reads the run's results: the
-solvation medium the reaction energies are computed in, the reaction network (kinetics.data.network variants),
-the changes to the samples that hold for the whole run ('sample_overrides', e.g. the heating steps of the 2 %
-tube in the fifth fit; keys as in residuals.build_sample_set), the readings of the unknown ages that are fitted,
-the sensitivity variants of the night stage ('sensitivities':
-names of scripts/run_fit.SENSITIVITIES; None runs those of the fourth fit) and the changes to the synthetic
-recovery check ('recovery': truths replaced per case, the search of the fits for every case, or the cases
-themselves; see scripts/run_fit.recovery_cases). Sixth fit: the box of the freed energies in standard errors
-('energy_box_sigma', kinetics.fitting.candidates), and for scripts/run_fit.py the structures of the run
-('structures': main and extended), their search ('effort'), the fits whose parameters start the search
-('start_from': an earlier results directory) and the parts of the night and traces stages that run ('night').
-Eighth fit: the readings '10 min', '1 h' and '8 h' (the only ones of this branch), and the steps of a fit made one tube at a time ('steps', 'step_variants';
-see scripts/run_fit.stage_steps). Thermodynamic fit: its own part under 'thermo' (kinetics.fitting.thermo_fit.DEFAULT_THERMO_SETUP,
-scripts/run_thermo_fit.py); the medium, network and sample changes above hold for it too. Fixed corrections to the
-solvation energies of every model of the run ('species_shifts_eV', {species: eV}; e.g. the E_solv,i of a thermodynamic fit).
+Every stage of a run, and every notebook that reads its results, reads the setup first. Keys (missing: the default):
+
+    solvation          the solvation medium of the reaction energies (kinetics.data.medium.SolvationMedium)
+    network            the reaction network variant (kinetics.data.network.NETWORK_VARIANTS)
+    sample_overrides   changes to the samples for the whole run (keys as in residuals.build_sample_set)
+    scenarios          the readings of the unknown ages: '10 min', '1 h', '8 h'
+    energy_box_sigma   the box of the freed energies, in standard errors (kinetics.fitting.candidates)
+    structures         {'main': ..., 'extended': [...]}: the structures scripts/run_fit.py fits
+    effort             the search per structure: {name: [screen points, starts, iterations]}
+    steps              the steps of a fit made one tube at a time (scripts/run_fit.stage_steps)
+    step_variants      other readings of a tube's history, scored after every step
+    thermo             the thermodynamic fit (kinetics.fitting.thermo_fit.DEFAULT_THERMO_SETUP, scripts/run_thermo_fit.py)
+    species_shifts_eV  fixed corrections to the solvation energies of every model, {species: eV}
+    tubes              the tubes a step can fit (default: every tube of the observables with a 'fit' block)
+    observables        the lab observables file, relative to the results directory (default: the run's own
+                       data_dir/data/lab_observables.json, else the data folder's)
+
 A results directory without the file is a run of the default setup: neat EC from the 2026-09-24 snapshot, R1–R9
-and the three readings. A setup with paper observations (Gogoi 2024, the first fits) is refused: they are in the
-branch M5-full.
+and the three readings.
 
     DEFAULT_FIT_CONFIG  the setup of a directory without fit_config.json
     load_fit_config     the setup stored in a results directory
@@ -44,8 +45,8 @@ from kinetics.fitting.residuals import (
 FIT_CONFIG_FILE = 'fit_config.json'
 DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'network': DEFAULT_NETWORK_VARIANT, 'sample_overrides': {},
                       'scenarios': list(DEFAULT_SCENARIOS),
-                      'sensitivities': None, 'recovery': {}, 'energy_box_sigma': None, 'structures': None,
-                      'effort': {}, 'start_from': None, 'night': {}, 'steps': [], 'step_variants': {}, 'thermo': None,
+                      'energy_box_sigma': None, 'structures': None,
+                      'effort': {}, 'steps': [], 'step_variants': {}, 'thermo': None,
                       'species_shifts_eV': {}, 'tubes': None, 'observables': None}
 RUN_OBSERVABLES = Path('data_dir') / 'data' / 'lab_observables.json'   # a run's own copy of the observables
 
@@ -59,8 +60,6 @@ def load_fit_config(results_dir) -> dict:
     unknown = set(config['scenarios']) - set(SCENARIOS)
     if unknown:
         raise ValueError(f'{path}: unknown scenarios {sorted(unknown)} (this branch reads {list(SCENARIOS)})')
-    if config.get('paper_observations'):
-        raise ValueError(f"{path}: paper observations {config['paper_observations']} are not in this branch")
     if config['network'] not in NETWORK_VARIANTS:
         raise ValueError(f"{path}: unknown network '{config['network']}' (one of {NETWORK_VARIANTS})")
     config['medium'] = SolvationMedium.from_dict(config['solvation'])
