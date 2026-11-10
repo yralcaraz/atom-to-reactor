@@ -46,7 +46,7 @@ from kinetics.data import load_lab_observables
 from kinetics.data.medium import get_active_medium
 from kinetics.data.network import get_active_network_variant
 from kinetics.fitting import (
-    REPORT_SOLVER, SCENARIOS, FitProblem, apply_fit_config, build_sample_set, calculate_profile,
+    REPORT_SOLVER, FitProblem, apply_fit_config, build_sample_set, calculate_profile,
     find_confidence_interval, fit_structure, get_structure, load_fit_result, tabulate_reaction_barriers,
     write_fit_result,
 )
@@ -59,7 +59,7 @@ OBSERVABLES = None                       # the run's lab observables file (fit_c
 
 # Search effort per structure: (Sobol screen points, starts polished, least-squares iterations per start); the
 # setup can change it ('effort')
-EFFORT = {'M1': (128, 4, 30), 'M1-split': (128, 4, 30)}
+EFFORT = {'M1': (128, 4, 30)}
 
 
 def log(message: str) -> None:
@@ -93,10 +93,6 @@ def short(theta: dict) -> str:
 SCENARIO_ORDER = ('10 min', '1 h', '8 h')
 MAIN_STRUCTURE = 'M1'                    # the structure the steps fit; set in main
 LAB_FITTED_SAMPLES = ()                  # the tubes a step can fit (fit_config.json 'tubes', else the observables'); set in main
-
-
-def base_name(structure: str) -> str:
-    return structure.split('+')[0].split(' (')[0]
 
 
 STEPS = ()                               # the steps of the run (fit_config.json 'steps'); set in main
@@ -145,7 +141,7 @@ def stage_steps(args) -> None:
     other history: the tubes not used yet are predicted, so each step tests the ones before it."""
     structure = get_structure(MAIN_STRUCTURE)
     off = {p.name: p.upper for p in structure.parameters(sample_set(SCENARIO_ORDER[0]))}
-    n_screen, n_starts, max_nfev = EFFORT[base_name(MAIN_STRUCTURE)]
+    n_screen, n_starts, max_nfev = EFFORT[MAIN_STRUCTURE]
     by_id = {step['id']: step for step in STEPS}
     summary, scores, intervals = [], [], []
     for scenario in SCENARIO_ORDER:
@@ -213,12 +209,11 @@ def main():
     parser.add_argument('--profile-nfev', type=int, default=15, help='least-squares iterations per profile point')
     parser.add_argument('--quick', action='store_true', help='smoke test: tiny screens, two starts, few iterations')
     args = parser.parse_args()
-    global RESULTS, OBSERVABLES, LAB_FITTED_SAMPLES, SCENARIOS, SCENARIO_ORDER, MAIN_STRUCTURE, STEPS, STEP_VARIANTS
+    global RESULTS, OBSERVABLES, LAB_FITTED_SAMPLES, SCENARIO_ORDER, MAIN_STRUCTURE, STEPS, STEP_VARIANTS
     RESULTS = Path(args.results).resolve()
     config = apply_fit_config(RESULTS)
     OBSERVABLES = config['observables']
     LAB_FITTED_SAMPLES = list_fitted_tubes(load_lab_observables(OBSERVABLES), config)
-    SCENARIOS = tuple(sc for sc in SCENARIOS if sc in config['scenarios'])
     SCENARIO_ORDER = tuple(sc for sc in SCENARIO_ORDER if sc in config['scenarios'])
     if config['structures']:
         MAIN_STRUCTURE = config['structures']['main']
@@ -240,7 +235,7 @@ def main():
     log(f"setup ({config['source']}): {config['medium'].label()}; network {config['network']}; energy box "
         f"{'±%g standard errors' % config['energy_box_sigma'] if config['energy_box_sigma'] else 'fixed'}; main structure "
         f"{MAIN_STRUCTURE}; readings "
-        f"{', '.join(SCENARIOS)}; samples changed for the run: "
+        f"{', '.join(SCENARIO_ORDER)}; samples changed for the run: "
         f"{', '.join(config['sample_overrides']) or 'none'}")
     t0 = time.perf_counter()
     STAGES[args.stage](args)

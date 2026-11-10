@@ -18,7 +18,7 @@ Source: Y. Alcaraz Galván
 """
 
 from kinetics.data import (
-    NETWORK, NETWORK_SPECIES, format_equation, load_experimental_data,
+    NETWORK, NETWORK_SPECIES, format_equation,
 )
 from kinetics.thermo import (
     calculate_network_thermo, calculate_reaction_thermo, calculate_solution_gibbs,
@@ -31,7 +31,7 @@ from kinetics.reactor import (
 )
 
 __all__ = [
-    "NETWORK", "NETWORK_SPECIES", "format_equation", "load_experimental_data",
+    "NETWORK", "NETWORK_SPECIES", "format_equation",
     "calculate_network_thermo", "calculate_reaction_thermo", "calculate_solution_gibbs",
     "MODELS", "ModelSpec", "calculate_network_rates", "calculate_rate_constants", "get_model",
     "build_protocol_schedule", "calculate_recipe_molarities", "simulate_protocol", "tabulate_acquisitions",
