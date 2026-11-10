@@ -46,7 +46,7 @@ from kinetics.data import load_lab_observables
 from kinetics.data.medium import get_active_medium
 from kinetics.data.network import get_active_network_variant
 from kinetics.fitting import (
-    REPORT_SOLVER, FitProblem, apply_fit_config, build_sample_set, calculate_profile,
+    FIT_RULE_MAX_Z, REPORT_SOLVER, FitProblem, apply_fit_config, build_sample_set, calculate_profile,
     find_confidence_interval, fit_structure, get_structure, load_fit_result, tabulate_reaction_barriers,
     write_fit_result,
 )
@@ -113,7 +113,7 @@ def score_step(problem: FitProblem, theta: dict) -> dict:
     return {'structure': problem.structure.name, 'parameters': [], 'fixed': dict(problem.fixed), 'theta': final.theta(x),
             'x': [], 'chi2': float(residuals @ residuals), 'n_residuals': int(residuals.size), 'n_parameters': 0,
             'max_abs_z': float(abs(worst['z'])), 'worst': f"{worst['sample']}: {worst['quantity']}",
-            'fits': bool(abs(worst['z']) <= 3.0), 'table': table, 'ages': {}, 'local_optima': [], 'at_bounds': [],
+            'fits': bool(abs(worst['z']) <= FIT_RULE_MAX_Z), 'table': table, 'ages': {}, 'local_optima': [], 'at_bounds': [],
             'n_evaluations': 1, 'seconds': 0.0}
 
 
@@ -128,7 +128,7 @@ def score_tubes(theta: dict, scenario: str, tubes, overrides: dict = None) -> li
         table = problem.table(np.zeros(0))
         worst = table.loc[table['z'].abs().idxmax()]
         rows.append({'tube': sample['name'], 'chi2': problem.chi2(np.zeros(0)), 'max |z|': float(abs(worst['z'])),
-                     'worst': worst['quantity'], 'fits': bool(abs(worst['z']) <= 3.0)})
+                     'worst': worst['quantity'], 'fits': bool(abs(worst['z']) <= FIT_RULE_MAX_Z)})
     return rows
 
 

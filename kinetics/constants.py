@@ -25,6 +25,7 @@ ZERO_CELSIUS_K = 273.15
 # Unit conversions
 EV_TO_J = 1.602176634e-19
 EV_TO_KJ_MOL = EV_TO_J * NA / 1000.0        # ≈ 96.4853
+KCAL_EV = 1 / 23.0605                        # 1 kcal/mol in eV
 KJ_MOL_TO_EV = 1.0 / EV_TO_KJ_MOL
 HARTREE_TO_EV = 27.211386245988
 AMU_TO_KG = 1.66053906660e-27

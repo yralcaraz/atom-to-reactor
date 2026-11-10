@@ -47,6 +47,7 @@ from dataclasses import dataclass, field, replace
 import numpy as np
 from scipy.linalg import cholesky, solve_triangular
 
+from kinetics.constants import T_STD_K
 from kinetics.data.medium import get_active_medium
 from kinetics.data.network import NETWORK, get_active_network
 from kinetics.microkinetics.models import get_model
@@ -239,7 +240,7 @@ def _energy_tools(freed: tuple):
         species = sorted({sp for shifts in unit for sp in shifts})
         matrix = np.array([[shifts.get(sp, 0.0) for shifts in unit] for sp in species])
         cov = calculate_solvation_covariance(list(freed)).to_numpy()
-        computed = calculate_network_thermo(298.15)['dG_rxn_eV'].loc[list(freed)].to_numpy()
+        computed = calculate_network_thermo(T_STD_K)['dG_rxn_eV'].loc[list(freed)].to_numpy()
         _ENERGY_TOOLS[key] = (matrix, species, cholesky(cov, lower=True), np.sqrt(np.diag(cov)), computed)
     return _ENERGY_TOOLS[key]
 

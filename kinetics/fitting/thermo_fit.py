@@ -50,6 +50,7 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 
+from kinetics.constants import T_STD_K
 from kinetics.data.lab_spectra import FLOOR_OF, classify_tube_files, list_tube_folders, tabulate_tube_shares
 from kinetics.data.network import format_equation, get_active_network
 from kinetics.data.observables import DEFAULT_ERROR_FLOOR, RT_MAX_C
@@ -274,7 +275,7 @@ def _standardise(block: dict, predicted: np.ndarray) -> np.ndarray:
 # 2  What it gives: ΔG and K of every reaction, and their range over a profile
 # ------------------------------------------------------------------------------
 
-def tabulate_reaction_energies(species_shifts_eV: dict, T_K: float = 298.15, *, network: dict = None) -> pd.DataFrame:
+def tabulate_reaction_energies(species_shifts_eV: dict, T_K: float = T_STD_K, *, network: dict = None) -> pd.DataFrame:
     # Builds a table of the computed and shifted ΔG and K of every reaction in the network, at a temperature T_K.
     net = network or get_active_network()
     RT_eV = R_SI * T_K / 1000.0 / EV_TO_KJ_MOL
@@ -290,7 +291,7 @@ def tabulate_reaction_energies(species_shifts_eV: dict, T_K: float = 298.15, *, 
 
 
 def calculate_energy_ranges(profile: pd.DataFrame, problem: ThermoProblem, *, delta: float = DELTA_CHI2_95,
-                            T_K: float = 298.15) -> pd.DataFrame:
+                            T_K: float = T_STD_K) -> pd.DataFrame:
     """Lowest and highest ΔG of each reaction over the profile points within `delta` of the lowest χ² (the parameters
     re-minimised at each point, 'θ …' columns of calculate_profile): an envelope of the values the data allow, not a
     profile of ΔG itself. One row per reaction: 'ΔG low (eV)', 'ΔG high (eV)', 'points'."""

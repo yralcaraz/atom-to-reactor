@@ -56,7 +56,7 @@ if str(REPO) not in sys.path:
 from kinetics.data import build_lab_nmr_inventory, load_lab_observables
 from kinetics.data.medium import get_active_medium
 from kinetics.data.network import get_active_network_variant
-from kinetics.fitting import apply_fit_config, calculate_profile, find_confidence_interval, fit_structure, load_fit_result, write_fit_result
+from kinetics.fitting import FIT_RULE_MAX_Z, apply_fit_config, calculate_profile, find_confidence_interval, fit_structure, load_fit_result, write_fit_result
 from kinetics.fitting.candidates import RECIPE_PREFIX
 from kinetics.fitting.residuals import get_sample_overrides
 from kinetics.fitting.thermo_fit import (
@@ -147,7 +147,7 @@ def score(problem: ThermoProblem, theta: dict) -> dict:
     return {'structure': 'thermo', 'parameters': [], 'fixed': dict(problem.fixed), 'theta': problem.theta(x), 'x': [],
             'chi2': float(residuals @ residuals), 'n_residuals': int(residuals.size), 'n_parameters': 0,
             'max_abs_z': float(abs(worst['z'])), 'worst': f"{worst['sample']}: {worst['nucleus']} {worst['quantity']}",
-            'fits': bool(abs(worst['z']) <= 3.0), 'table': table, 'ages': {}, 'local_optima': [], 'at_bounds': [],
+            'fits': bool(abs(worst['z']) <= FIT_RULE_MAX_Z), 'table': table, 'ages': {}, 'local_optima': [], 'at_bounds': [],
             'n_evaluations': 1, 'seconds': 0.0}
 
 
@@ -166,7 +166,7 @@ def score_tubes(samples: list, theta: dict, xi: float) -> list:
             worst = table.loc[table['z'].abs().idxmax()]
             rows.append({'tube': sample['name'], 'nuclei': role, 'chi2': float(residuals @ residuals), 'n_residuals': int(residuals.size),
                          'max |z|': float(abs(worst['z'])), 'worst': f"{worst['nucleus']} {worst['quantity']}",
-                         'fits': bool(abs(worst['z']) <= 3.0)})
+                         'fits': bool(abs(worst['z']) <= FIT_RULE_MAX_Z)})
     return rows
 
 
