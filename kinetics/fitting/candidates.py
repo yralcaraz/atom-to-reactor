@@ -13,6 +13,8 @@ ladder may move within their computed uncertainty. It turns a parameter vector i
     M0-Marcus   one barrier for all nine reactions, Marcus
     M1          one Marcus barrier per family (the structure of `level1`)
     M1-split    M1 with R1 separate from R2 and R3 (R2 and R3 share one barrier)
+    M1-split-dG M1-split with N15 apart too (its own barrier) and ΔG_rxn of R1 and R2 free within their computed
+                covariance (2026-11-13: the neat-DEC tube of 12 Nov, run kin_M1-split_DEC2pct-261112_md1112)
     M3-split    M1-split with ΔG_rxn of R1–R4 free, constrained by their computed covariance
     '+BEP'      any of them with the barrier rule of the reference model instead of Marcus (seventh fit, see with_bep_rule)
 
@@ -25,7 +27,7 @@ constraint is Gaussian with the covariance of the MD standard errors (kinetics.t
 
 The network is the active variant (kinetics.data.network; fifth fit: R1–R9 and N10–N15). A step that
 'follows' a reaction (N12 follows R2, N15 follows R1) takes the barrier class of that reaction in each structure,
-so it adds no parameter; a class of FIXED_BARRIERS_EV ('exchange': N10, N11, N13, N14) has a declared barrier
+so it adds no parameter, unless the structure's split names it (M1-split-dG: N15); a class of FIXED_BARRIERS_EV ('exchange': N10, N11, N13, N14) has a declared barrier
 and is not fitted. Their ΔG come from the species energies, freed shifts included.
 
 Sixth fit: the box of a freed energy can be set for a whole run to ±k standard errors of its computed value
@@ -59,7 +61,7 @@ from kinetics.thermo.uncertainty import calculate_solvation_covariance, calculat
 # fourth fit's 7 day reading already sat at 1.635 eV
 BARRIER_BOX_EV = {
     'all reactions': (0.60, 1.70),
-    'hydrolysis': (0.80, 1.70), 'hydrolysis_R1': (0.80, 1.80), 'hydrolysis_R23': (0.80, 1.70),
+    'hydrolysis': (0.80, 1.70), 'hydrolysis_R1': (0.80, 1.80), 'hydrolysis_R23': (0.80, 1.70), 'hydrolysis_N15': (0.80, 1.80),
     'transfer': (0.60, 1.50),
     'condensation': (1.00, 1.70), 'solvent_attack': (1.10, 1.60),
 }
@@ -67,7 +69,10 @@ ENERGY_BOX_EV = (-0.75, 0.75)            # about three standard errors of the co
 RECIPE_PREFIX = 'c0 '                    # 'c0 <species> <sample>': amount at mixing of a species the recipe does not fix
 FREED_REACTIONS = ('R1', 'R2', 'R3', 'R4')
 SPLIT_HYDROLYSIS = {'hydrolysis_R1': ('R1',), 'hydrolysis_R23': ('R2', 'R3')}
-FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'transfer', 'condensation', 'solvent_attack')
+# 2026-11-13 (neat-DEC tube of 12 Nov): N15 (TMSPA + H2O → MMSPA + HMDSO = R1 + R2 + R4) out of R1's class as well. With
+# ΔG R2 free, a lower R2 lowers N15 by as much, and at R1's barrier N15 would turn TMSPA straight into MMSPA
+SPLIT_HYDROLYSIS_N15 = {**SPLIT_HYDROLYSIS, 'hydrolysis_N15': ('N15',)}
+FAMILY_ORDER = ('hydrolysis', 'hydrolysis_R1', 'hydrolysis_R23', 'hydrolysis_N15', 'transfer', 'condensation', 'solvent_attack')
 # Barriers that are declared, not fitted. 'exchange': a silyl group moving between two phosphates or two glycols
 # (N10, N11, N13, N14). DECLARED: the value the reference model gives every step it has no data for (its class
 # "other"); at room temperature it takes about a year in our tubes
@@ -135,8 +140,9 @@ class FitStructure:
         for new_class, members in self.split.items():
             for rxn_id in members:
                 net[rxn_id]['class'] = new_class
-        for rxn in net.values():
-            if 'follows' in rxn:
+        named = {rxn_id for members in self.split.values() for rxn_id in members}
+        for rxn_id, rxn in net.items():
+            if 'follows' in rxn and rxn_id not in named:          # a step a split names keeps the class it is given
                 rxn['class'] = net[rxn['follows']]['class']
         return net
 
@@ -159,7 +165,7 @@ class FitStructure:
                 entry['g_eV'] = float(theta['g all reactions'])
         else:
             for new_class, members in self.split.items():
-                family = NETWORK[members[0]]['class']
+                family = get_active_network()[members[0]]['class']
                 params[new_class] = dict(params.get(family, params.get('default', {})))
             for c in self.barrier_classes():
                 entry = params.setdefault(c, dict(params.get('default', {})))
@@ -273,6 +279,9 @@ FIT_STRUCTURES = {
     'M0-Marcus': FitStructure('M0-Marcus', 'one barrier for all reactions, Marcus', 'level1', shared_barrier=True),
     'M1': _M1,
     'M1-split': _M1_SPLIT,
+    'M1-split-dG': replace(_M1_SPLIT, name='M1-split-dG',
+                           label='R1, R2 + R3 and N15 each with its own hydrolysis barrier; ΔG_rxn of R1 and R2 free within '
+                                 'their computed covariance', split=SPLIT_HYDROLYSIS_N15, freed=('R1', 'R2'), parent='M1-split'),
     'M3-split': replace(_M1_SPLIT, name='M3-split',
                         label='R1 separate from R2 and R3; ΔG_rxn of R1–R4 free within their covariance',
                         freed=FREED_REACTIONS, parent='M1-split'),

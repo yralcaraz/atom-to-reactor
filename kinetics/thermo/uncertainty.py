@@ -13,6 +13,11 @@ count it several times.
 Corrections to the computed energies are applied per species (calculate_species_shifts,
 build_shifted_species_database), never per reaction, so the Wegscheider cycles stay closed.
 
+The 2026-11-12 snapshot (campaign uppmax_iso) gives each solute as the mean of two boxes against a reference fitted
+over three solvent boxes, and stores only the total (`uncertainty_kjmol`): it is taken as the solute term, with no
+shared solvent term (its reference part, common to all species, is then counted as independent; an upper bound on
+the error of a 2 → 2 step).
+
 The values are standard errors already, so every σ returned here is the ±1 standard error of
 the solvation contribution and is used as stored (no further division by √n).
 
@@ -32,6 +37,7 @@ from functools import lru_cache
 import numpy as np
 import pandas as pd
 
+from kinetics.constants import KJ_MOL_TO_EV
 from kinetics.data.network import NETWORK, list_species
 from kinetics.data.medium import SolvationMedium, get_active_medium, mix_solvation
 from kinetics.data.snapshot import get_solvation_records
@@ -49,7 +55,10 @@ def calculate_solvation_sigma_components(solvation_records: dict = None) -> dict
     components = {}
     for name, record in solvation_records.items():
         raw = record['raw_metadata']
-        components[name] = (math.hypot(raw['E_gas_std_eV'], raw['E_solution_std_eV']), raw['E_solvent_std_eV'])
+        if 'E_gas_std_eV' in raw:
+            components[name] = (math.hypot(raw['E_gas_std_eV'], raw['E_solution_std_eV']), raw['E_solvent_std_eV'])
+        else:       # snapshot 2026-11-12: a mean of solute boxes against a fitted reference, only the total is stored
+            components[name] = (record['uncertainty_kjmol'] * KJ_MOL_TO_EV, 0.0)
     return components
 
 

@@ -1,0 +1,56 @@
+{
+ "fit": "M1-split (structure M1-split-dG) fitted to the 2 % H2O tube in neat DEC of 12 Nov 2026 alone; E_solv,i computed: MACE MD in neat DEC of the 2026-11-12 snapshot; ΔG of R1 and R2 free within their computed covariance",
+ "solvation": {
+  "snapshot": "tank_api_snapshot_2026-11-12.json",
+  "volume_fractions": {
+   "DEC": 1.0
+  },
+  "rule": "linear"
+ },
+ "network": "R1-R9+N10-N15",
+ "sample_overrides": {},
+ "scenarios": [
+  "10 min"
+ ],
+ "paper_observations": [],
+ "energy_box_sigma": 3.0,
+ "structures": {
+  "main": "M1-split-dG",
+  "extended": []
+ },
+ "effort": {
+  "M1-split-dG": [
+   4096,
+   16,
+   80
+  ]
+ },
+ "steps": [
+  {
+   "id": "K1",
+   "fit": [
+    "2 % H2O in DEC, 12/11/2026"
+   ],
+   "free": [
+    "g hydrolysis_R1",
+    "g hydrolysis_R23",
+    "g hydrolysis_N15",
+    "g transfer",
+    "g condensation",
+    "g solvent_attack",
+    "dG R1",
+    "dG R2"
+   ]
+  }
+ ],
+ "step_variants": {},
+ "why": [
+  "2026-11-13, the user: \"Do the proposed fit (hydrolysis separated) and call it M1-split\". The proposal (chat 2026-11-13): in kin_M1_DEC2pct-261112_md1112 (M1) MMSPA stays at ~1 mM while the tube shows 23 and 35 mM at 7 and 9 min, after TMSPA is gone. In M1 R2 is uphill (ΔG +0.40 eV) and shares the hydrolysis barrier with R1 and N15; moving E_solv(MMSPA) alone gives either no MMSPA or all TMSPA straight to MMSPA through N15 (forward scans 2026-11-13)",
+  "structure M1-split-dG (kinetics/fitting/candidates.py): R1, R2 + R3 (N12 with R2) and N15 each with their own Marcus barrier; transfer, condensation, solvent attack as in M1; ΔG_rxn of R1 and R2 free within their computed covariance (MD 2026-11-12, σ 0.17 and 0.25 eV), box ±3 σ. The registered name M1-split (R1 | R2 + R3, N15 with R1) is kept as it was: fits 2–5 and notebook 05 rev08 use it",
+  "trial fits before the run (scratch, 1024 screen points, 8 starts; not stored), same tube and setup: M1-split as registered χ² 91.5 (max |z| 6.9); + ΔG R1, R2 free χ² 37.1 (3.3); + N15 apart (this structure) χ² 21.3 (2.85); N15 with R2 instead χ² 27.4 (3.6)",
+  "the same tube, observables, solvation (MD 2026-11-12, neat DEC), network, error model and times as kin_M1_DEC2pct-261112_md1112 (data_dir copied from it); nothing taken from another fit",
+  "the 2026-11-12 snapshot stores only the total error of each solvation energy: kinetics/thermo/uncertainty.py takes it as the solute term with no shared solvent term (2026-11-13), for the covariance of the freed ΔG",
+  "effort: 4096 screen points, 16 starts, 80 least-squares iterations"
+ ],
+ "species_shifts_eV": {}
+}
