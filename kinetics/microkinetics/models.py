@@ -30,7 +30,7 @@ class ModelSpec:
     label: str
     kinetic_model: str
     family_params: dict
-    thermo_mode: str = 'wb97mv'
+    thermo_mode: str = None                                # None: the active one (kinetics.thermo.gas)
     status: str = 'reference'
     assumptions: tuple = field(default_factory=tuple)
     network: dict = None                                   # own network (e.g. a family split per reaction)

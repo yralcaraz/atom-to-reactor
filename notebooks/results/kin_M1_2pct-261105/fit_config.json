@@ -1,0 +1,51 @@
+{
+  "fit": "M1 fitted to the 2 % H2O tube of 5 Nov 2026 alone: no other tube",
+  "solvation": {
+    "snapshot": "tank_api_snapshot_2026-10-08.json",
+    "volume_fractions": {
+      "EC": 0.5,
+      "DEC": 0.5
+    },
+    "rule": "linear"
+  },
+  "network": "R1-R9+N10-N15",
+  "sample_overrides": {},
+  "scenarios": [
+    "10 min"
+  ],
+  "paper_observations": [],
+  "energy_box_sigma": 3.0,
+  "structures": {
+    "main": "M1",
+    "extended": []
+  },
+  "effort": {
+    "M1": [
+      2048,
+      16,
+      80
+    ]
+  },
+  "steps": [
+    {
+      "id": "K1",
+      "fit": [
+        "2 % H2O, 05/11/2026"
+      ],
+      "free": [
+        "g hydrolysis",
+        "g transfer",
+        "g condensation",
+        "g solvent_attack"
+      ]
+    }
+  ],
+  "step_variants": {},
+  "why": [
+    "2026-11-09, the user: fit only the data of 05.11.2026; the other tubes do not exist. The observables of the run hold that tube alone (build_observables.py)",
+    "model: M1 (one Marcus barrier per family, computed reaction energies within ±3 standard errors, network R1-R9 + N10-N15, EC/DEC 1:1 by volume, linear mixing, MD solvation of the 2026-10-08 snapshot), as the M1-steps runs",
+    "free: the four barriers of M1 (hydrolysis, transfer, condensation, solvent attack), nothing taken from another fit; the profiles say which of them the ³¹P of this tube fixes",
+    "times known: t 0 is the water added (16:33:04), the age is a known history. 'scenarios' lists '10 min' only because the code needs one reading; no tube of the run has an unknown age, so it changes nothing",
+    "effort: 2048 screen points, 16 starts, 80 least-squares iterations (four free barriers, one fast tube)"
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "fit": "M1 fitted to the 2 % H2O tube of 5 Nov 2026 alone, with the E_solv,i of the thermodynamic fit (thermo2_2pctH2O, ξ = 1); error model: no declared floor; windows with S/N < 2 weighted 0",
+  "solvation": {
+    "snapshot": "tank_api_snapshot_2026-10-08.json",
+    "volume_fractions": {
+      "EC": 0.5,
+      "DEC": 0.5
+    },
+    "rule": "linear"
+  },
+  "network": "R1-R9+N10-N15",
+  "sample_overrides": {},
+  "scenarios": [
+    "10 min"
+  ],
+  "paper_observations": [],
+  "energy_box_sigma": 3.0,
+  "structures": {
+    "main": "M1",
+    "extended": []
+  },
+  "effort": {
+    "M1": [
+      2048,
+      16,
+      80
+    ]
+  },
+  "steps": [
+    {
+      "id": "K1",
+      "fit": [
+        "2 % H2O, 05/11/2026"
+      ],
+      "free": [
+        "g hydrolysis",
+        "g transfer",
+        "g condensation",
+        "g solvent_attack"
+      ]
+    }
+  ],
+  "step_variants": {},
+  "why": [
+    "2026-11-09, the user: fit only the data of 05.11.2026; the other tubes do not exist. The observables of the run hold that tube alone (build_observables.py)",
+    "E_solv,i (2026-11-09, the user): those of the thermodynamic fit thermo2_2pctH2O at ξ = 1 (fit_thermo_rev01 §3.1, N. Gogoi's 2 % H2O tube at equilibrium), as 'species_shifts_eV' on the computed (MD, EC/DEC 1:1, 2026-10-08 snapshot) solvation energies; same medium and network as that fit. They set ΔG of every reaction, so the equilibrium the model runs to; the barriers set how fast",
+    "model: M1 (one Marcus barrier per family, reaction energies from those E_solv,i (no energy free), network R1-R9 + N10-N15, EC/DEC 1:1 by volume, linear mixing, MD solvation of the 2026-10-08 snapshot), as the M1-steps runs",
+    "free: the four barriers of M1 (hydrolysis, transfer, condensation, solvent attack), nothing taken from another fit; the profiles say which of them the ³¹P of this tube fixes",
+    "times known: t 0 is the water added (16:33:04), the age is a known history. 'scenarios' lists '10 min' only because the code needs one reading; no tube of the run has an unknown age, so it changes nothing",
+    "effort: 2048 screen points, 16 starts, 80 least-squares iterations (four free barriers, one fast tube)",
+    "error model (2026-11-09, the user: weight the precise points more, forget the noisy ones): σ of a share = noise ⊕ baseline of its spectrum, no declared floor (fit_thermo_rev01 §2.1); a window with share < 2σ is noise and has no weight (weights.py on the observables)"
+  ],
+  "species_shifts_eV": {
+    "TMSPA": 0.08497530901475454,
+    "H2O": -0.03548825038936343,
+    "BMSPA": -0.08181444371491853,
+    "TMSOH": 0.08043367141953231,
+    "MMSPA": 0.02533065444685144,
+    "H3PO4": 0.04692233705077056,
+    "HMDSO": -0.05412777913098467,
+    "EC": -0.06993753193351404,
+    "TMSOEG": 0.04894516668196565,
+    "CO2": 0.05500462194415058,
+    "TMSOdiEG": 0.06235417572276812
+  }
+}

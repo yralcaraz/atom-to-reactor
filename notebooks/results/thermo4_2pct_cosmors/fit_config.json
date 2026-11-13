@@ -1,0 +1,99 @@
+{
+  "solvation": {
+    "snapshot": "tank_api_snapshot_2026-10-08.json",
+    "volume_fractions": {
+      "EC": 0.5,
+      "DEC": 0.5
+    },
+    "rule": "linear",
+    "source": "cosmors"
+  },
+  "network": "R1-R9+N10-N15",
+  "sample_overrides": {
+    "TMSPa alone": {
+      "added_M": {
+        "H2O": 0.0656
+      },
+      "unknown_M": {}
+    }
+  },
+  "fit": "thermodynamic fit 4: as thermo2_2pctH2O (2 % H2O tube of N. Gogoi, 2023, alone), with openCOSMO-RS solvation energies as the computed values (fit_thermo_rev01 §5.1)",
+  "why": [
+    "fit_thermo_rev01 §5.1: does COSMO-RS reach the fit of thermo2 (χ² 43.9 / 60) with smaller moves of the reaction energies than MD?",
+    "only change from thermo2_2pctH2O: solvation source cosmors; σ_solv,i = |MD − COSMO-RS| of each species (11 Nov 2026), so E_solv,i free within ±ξ·|MD − COSMO-RS|",
+    "spectra_shares.csv and equilibrium_points.csv copied from thermo2_2pctH2O (same points, rule and overrides)",
+    "fit_thermo_rev01 §2.1: χ² = Σ ((y_model − y_NMR)/σ_tot)², y in mM, σ_tot = √(σ_noise² + σ_baseline²), every point independent (error_model 'nmr': no floor, no Birge, no shared baseline, no √((K−1)/K))",
+    "fit_thermo_rev01 §2.1 Thermo model: ΔG_i = G_gas,i (ωB97M-V, as stored) + ΔE_solv,i; only ΔE_solv,i free, within ±ξ·σ_solv,i; σ_solv,i the snapshot's uncertainty of the solvent correction (gas ⊕ solution ⊕ solvent, sigma_solv 'total'); no barriers (equilibrium only)",
+    "one tube, one fit (5 Nov 2026): '2 % H2O' of N. Gogoi (2023), not the spectra of 5 Nov 2026; its spectra at equilibrium by the rule (6 room-temperature rounds of 31P, 13C, 1H); 29Si left out (S/N < 30 in fit_thermo_rev01 §1.2)",
+    "medium, network and sample changes as thermo1_steps"
+  ],
+  "thermo": {
+    "xi": [
+      1.0,
+      2.0,
+      3.0
+    ],
+    "free_species": [
+      "TMSPA",
+      "H2O",
+      "BMSPA",
+      "TMSOH",
+      "MMSPA",
+      "H3PO4",
+      "HMDSO",
+      "EC",
+      "TMSOEG",
+      "CO2",
+      "TMSOdiEG"
+    ],
+    "reactions": [
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "R6",
+      "R7",
+      "R8",
+      "R9",
+      "N10",
+      "N11",
+      "N12",
+      "N13",
+      "N14",
+      "N15"
+    ],
+    "nuclei": {
+      "fit": [
+        "31P",
+        "13C",
+        "1H"
+      ],
+      "check": []
+    },
+    "rule": {
+      "min_spectra": 2,
+      "min_span_h": 24.0,
+      "max_abs_z": 3.0,
+      "floor": false
+    },
+    "overrides": {},
+    "effort": [
+      256,
+      8,
+      40
+    ],
+    "profile_nfev": 20,
+    "steps": [
+      {
+        "id": "S1",
+        "fit": [
+          "2 % H2O"
+        ]
+      }
+    ],
+    "order": [],
+    "error_model": "nmr",
+    "sigma_solv": "total"
+  }
+}

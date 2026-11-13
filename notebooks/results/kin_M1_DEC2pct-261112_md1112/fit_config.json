@@ -1,0 +1,53 @@
+{
+ "fit": "M1 fitted to the 2 % H2O tube in neat DEC of 12 Nov 2026 alone; E_solv,i computed: MACE MD in neat DEC of the 2026-11-12 snapshot (campaign uppmax_iso, the newest MD)",
+ "solvation": {
+  "snapshot": "tank_api_snapshot_2026-11-12.json",
+  "volume_fractions": {
+   "DEC": 1.0
+  },
+  "rule": "linear"
+ },
+ "network": "R1-R9+N10-N15",
+ "sample_overrides": {},
+ "scenarios": [
+  "10 min"
+ ],
+ "paper_observations": [],
+ "energy_box_sigma": 3.0,
+ "structures": {
+  "main": "M1",
+  "extended": []
+ },
+ "effort": {
+  "M1": [
+   2048,
+   16,
+   80
+  ]
+ },
+ "steps": [
+  {
+   "id": "K1",
+   "fit": [
+    "2 % H2O in DEC, 12/11/2026"
+   ],
+   "free": [
+    "g hydrolysis",
+    "g transfer",
+    "g condensation",
+    "g solvent_attack"
+   ]
+  }
+ ],
+ "step_variants": {},
+ "why": [
+  "2026-11-12, the user: a kinetic fit of the 5 % TMSPa + 2 % water tube in pure DEC (12/11/2026); a new fit, no earlier run overwritten. The observables hold that tube alone (build_observables.py)",
+  "2026-11-12, the user: \"I don't know which solvation correction for DEC is the best, use the best\". No thermo fit exists in DEC, so the same fit is run once per solvation source (runs kin_M1_DEC2pct-261112_<source>): MD of the 2026-11-12 snapshot, MD of the 2026-10-08 snapshot, openCOSMO-RS, and MD 2026-10-08 + the thermo2 shifts of the EC/DEC tube. This run: computed: MACE MD in neat DEC of the 2026-11-12 snapshot (campaign uppmax_iso, the newest MD). The best is the one with the lowest χ² (same data, same four free barriers)",
+  "model: M1 (one Marcus barrier per family, reaction energies from these E_solv,i, none free), network R1-R9 + N10-N15, neat DEC (EC 0: R8, R9 and the EC attacks do not run)",
+  "free: the four barriers of M1 (hydrolysis, transfer, condensation, solvent attack); nothing taken from another fit",
+  "times known: t 0 is the water added (14:21:23, 1 min before the first 31P). 'scenarios' lists '10 min' only because the code needs one reading; nothing in the run has an unknown age",
+  "error model: as kin_M1_2pct-261105_Esolv-thermo2 (noise ⊕ baseline ⊕ declared floor); the TMSPA window of the spectra from 5 min on has no weight (σ 1e3): the TMSPA line turns dispersive and dips below the baseline (fit_thermo_rev01 §3: 15, −15, −5 mM after 5 mM at 3 min)",
+  "effort: 2048 screen points, 16 starts, 80 least-squares iterations"
+ ],
+ "species_shifts_eV": {}
+}

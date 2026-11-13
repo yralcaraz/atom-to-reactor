@@ -84,6 +84,24 @@ def get_solvation_records(path: str = DEFAULT_SNAPSHOT_PATH, solvent: str = DEFA
     return records
 
 
+@lru_cache(maxsize=8)
+def get_cosmors_records(path: str = DEFAULT_SNAPSHOT_PATH, solvent: str = DEFAULT_SOLVENT) -> dict:
+    """{species name: openCOSMO-RS record} in one solvent (the snapshot's `cosmors` table: ΔG_solv at 298.15 K,
+    1 M gas → 1 M solution). Names are matched to the dataset's pipeline ids without regard to case."""
+    names = {name.upper(): name for name in get_dataset_records(path)}
+    table = load_snapshot(path).get("cosmors")
+    if not table:
+        raise KeyError(f"No openCOSMO-RS table in {os.path.basename(path)}")
+    records = {}
+    for record in table["rows"]:
+        name = names.get(record["solute_pipeline_id"].upper())
+        if name is not None and SOLVENT_IDS.get(record["solvent_name"]) == solvent:
+            records[name] = record
+    if not records:
+        raise KeyError(f"No openCOSMO-RS rows in '{solvent}' in {os.path.basename(path)}")
+    return records
+
+
 def get_structure(pipeline_id: str, path: str = DEFAULT_SNAPSHOT_PATH) -> tuple[list, list]:
     """(elements, coordinates_angstrom) of the optimised geometry."""
     uuid = _dataset_uuid(pipeline_id, path)

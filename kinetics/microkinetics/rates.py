@@ -22,6 +22,7 @@ from kinetics.microkinetics.parameters import (
     LEVEL1_PARAMETERS, REFERENCE_BEP_PARAMETERS, resolve_family_params,
 )
 from kinetics.data.network import NETWORK
+from kinetics.thermo.gas import resolve_thermo_mode
 from kinetics.thermo.reaction import calculate_reaction_thermo
 
 # kinetic_model → (barrier shape, or None to read each family's 'shape'; fallback parameter set)
@@ -33,7 +34,7 @@ KINETIC_MODELS = {
 
 def calculate_rate_constants(rxn_id: str, T_K: float, *, kinetic_model: str = 'bep_eyring',
                              family_params: dict = None, network: dict = None, species_db: dict = None,
-                             thermo_mode: str = 'wb97mv', viscosity_Pa_s: float = None) -> dict:
+                             thermo_mode: str = None, viscosity_Pa_s: float = None) -> dict:
     """k_f, k_r and the barriers of one reaction at T_K.
 
     viscosity_Pa_s enables the Collins-Kimball ceiling k_D = 8RT/3η for bimolecular steps.
@@ -81,7 +82,7 @@ def calculate_rate_constants(rxn_id: str, T_K: float, *, kinetic_model: str = 'b
         'T_K': T_K,
         'kinetic_model': kinetic_model,
         'barrier_model': active_shape,
-        'thermo_mode': thermo_mode,
+        'thermo_mode': resolve_thermo_mode(thermo_mode),
         'class': thermo['class'],
         'g_eV': g_eV,
         'alpha_eff': alpha_eff,

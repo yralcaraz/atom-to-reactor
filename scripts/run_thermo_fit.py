@@ -56,6 +56,7 @@ if str(REPO) not in sys.path:
 from kinetics.data import build_lab_nmr_inventory, load_lab_observables
 from kinetics.data.medium import get_active_medium
 from kinetics.data.network import get_active_network_variant
+from kinetics.thermo.gas import get_active_thermo_mode
 from kinetics.fitting import FIT_RULE_MAX_Z, apply_fit_config, calculate_profile, find_confidence_interval, fit_structure, load_fit_result, write_fit_result
 from kinetics.fitting.candidates import RECIPE_PREFIX
 from kinetics.fitting.residuals import get_sample_overrides
@@ -225,7 +226,7 @@ def stage_steps(args) -> None:
                     fit = score(problem, base)
                 fit.update(xi=xi, step=name, step_fit=fitted, step_free=free, step_from=step.get('from'),
                            species_shifts_eV=problem.species_shifts(fit['theta']), reactions=list(SETUP['reactions']),
-                           nuclei=SETUP['nuclei'], medium=get_active_medium().to_dict(), network=get_active_network_variant(),
+                           nuclei=SETUP['nuclei'], medium=get_active_medium().to_dict(), network=get_active_network_variant(), thermo_mode=get_active_thermo_mode(),
                            sample_overrides=get_sample_overrides())
                 return fit
 
@@ -296,7 +297,7 @@ def main():
     warnings.filterwarnings('ignore', category=RuntimeWarning)
     RESULTS.mkdir(parents=True, exist_ok=True)
     log(f'--- stage {args.stage} (workers {args.workers}) ---')
-    log(f"setup ({config['source']}): {config['medium'].label()}; network {config['network']}; reactions at equilibrium "
+    log(f"setup ({config['source']}): {config['medium'].label()}; network {config['network']}; thermo {config['thermo_mode']}; reactions at equilibrium "
         f"{', '.join(SETUP['reactions'])}; free {', '.join(SETUP['free_species'])} within ±ξ standard errors, ξ "
         f"{', '.join(f'{x:g}' for x in SETUP['xi'])}; nuclei fitted {', '.join(SETUP['nuclei']['fit'])}, checked "
         f"{', '.join(SETUP['nuclei']['check'])}; rule {SETUP['rule']}; error model {SETUP['error_model']}, σ_solv "

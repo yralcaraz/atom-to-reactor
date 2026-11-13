@@ -45,6 +45,7 @@ if str(REPO) not in sys.path:
 from kinetics.data import load_lab_observables
 from kinetics.data.medium import get_active_medium
 from kinetics.data.network import get_active_network_variant
+from kinetics.thermo.gas import get_active_thermo_mode
 from kinetics.fitting import (
     FIT_RULE_MAX_Z, REPORT_SOLVER, FitProblem, apply_fit_config, build_sample_set, calculate_profile,
     find_confidence_interval, fit_structure, get_structure, load_fit_result, tabulate_reaction_barriers,
@@ -161,7 +162,7 @@ def stage_steps(args) -> None:
                 fit.update(scenario=scenario, tag=f'__{name}', step=name, step_fit=list(step['fit']), step_free=free,
                            step_from=step.get('from'), label=structure.label, energy_box_sigma=get_energy_box_sigma(),
                            barriers=tabulate_reaction_barriers(structure, fit['theta']), medium=get_active_medium().to_dict(),
-                           network=get_active_network_variant(), sample_overrides=get_sample_overrides(),
+                           network=get_active_network_variant(), thermo_mode=get_active_thermo_mode(), sample_overrides=get_sample_overrides(),
                            variant_overrides={})
                 return fit
 
@@ -232,7 +233,7 @@ def main():
     warnings.filterwarnings('ignore', category=RuntimeWarning)
     RESULTS.mkdir(parents=True, exist_ok=True)
     log(f'--- stage {args.stage} (workers {args.workers}) ---')
-    log(f"setup ({config['source']}): {config['medium'].label()}; network {config['network']}; energy box "
+    log(f"setup ({config['source']}): {config['medium'].label()}; network {config['network']}; thermo {config['thermo_mode']}; energy box "
         f"{'±%g standard errors' % config['energy_box_sigma'] if config['energy_box_sigma'] else 'fixed'}; main structure "
         f"{MAIN_STRUCTURE}; readings "
         f"{', '.join(SCENARIO_ORDER)}; samples changed for the run: "

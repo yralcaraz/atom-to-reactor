@@ -10,7 +10,9 @@
 Source: Y. Alcaraz Galván
 """
 
-from kinetics.thermo.gas import THERMO_MODES, calculate_gas_thermo
+from kinetics.thermo.gas import (
+    THERMO_MODES, calculate_gas_thermo, get_active_thermo_mode, set_active_thermo_mode,
+)
 from kinetics.thermo.standard_state import calculate_standard_state_shift
 from kinetics.thermo.solution import calculate_solution_gibbs
 from kinetics.thermo.uncertainty import (
@@ -20,7 +22,7 @@ from kinetics.thermo.uncertainty import (
 from kinetics.thermo.reaction import calculate_network_thermo, calculate_reaction_thermo
 
 __all__ = [
-    "THERMO_MODES", "calculate_gas_thermo", "calculate_standard_state_shift", "calculate_solution_gibbs",
+    "THERMO_MODES", "calculate_gas_thermo", "get_active_thermo_mode", "set_active_thermo_mode", "calculate_standard_state_shift", "calculate_solution_gibbs",
     "build_shifted_species_database", "calculate_solvation_covariance", "calculate_solvation_sigma",
     "calculate_solvation_sigma_components", "calculate_species_shifts",
     "calculate_reaction_thermo", "calculate_network_thermo",

@@ -1,0 +1,102 @@
+{
+  "solvation": {
+    "snapshot": "tank_api_snapshot_2026-10-08.json",
+    "volume_fractions": {
+      "EC": 0.5,
+      "DEC": 0.5
+    },
+    "rule": "linear"
+  },
+  "network": "R1-R9+N10-N15",
+  "sample_overrides": {
+    "TMSPa alone": {
+      "added_M": {
+        "H2O": 0.0656
+      },
+      "unknown_M": {}
+    }
+  },
+  "fit": "thermodynamic fit 3: the solvation energies from the 2 % H2O and 0.5 % H2O tubes (N. Gogoi, 2023) together, objective of fit_thermo_rev01 §2",
+  "why": [
+    "fit_thermo_rev01 §2.1: χ² = Σ ((y_model − y_NMR)/σ_tot)², y in mM, σ_tot = √(σ_noise² + σ_baseline²), every point independent (error_model 'nmr': no floor, no Birge, no shared baseline, no √((K−1)/K))",
+    "fit_thermo_rev01 §2.1 Thermo model: ΔG_i = G_gas,i (ωB97M-V, as stored) + ΔE_solv,i; only ΔE_solv,i free, within ±ξ·σ_solv,i; σ_solv,i the snapshot's uncertainty of the solvent correction (gas ⊕ solution ⊕ solvent, sigma_solv 'total'); no barriers (equilibrium only)",
+    "two tubes, one fit (5 Nov 2026): '2 % H2O' (6 room-temperature rounds of 31P, 13C, 1H) and '0.5 % H2O'; 29Si left out as in thermo2",
+    "'0.5 % H2O' has one spectrum per nucleus (18.9 h after its first), so the rule cannot place it: its quantitative 31P (31P-1-1) and its 13C are declared at equilibrium (overrides); the 31Pcpd (d1 1 s) is not quantitative",
+    "coexists with thermo2_2pctH2O (2 % alone): medium, network and sample changes as there"
+  ],
+  "thermo": {
+    "xi": [
+      1.0,
+      2.0,
+      3.0
+    ],
+    "free_species": [
+      "TMSPA",
+      "H2O",
+      "BMSPA",
+      "TMSOH",
+      "MMSPA",
+      "H3PO4",
+      "HMDSO",
+      "EC",
+      "TMSOEG",
+      "CO2",
+      "TMSOdiEG"
+    ],
+    "reactions": [
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "R6",
+      "R7",
+      "R8",
+      "R9",
+      "N10",
+      "N11",
+      "N12",
+      "N13",
+      "N14",
+      "N15"
+    ],
+    "nuclei": {
+      "fit": [
+        "31P",
+        "13C",
+        "1H"
+      ],
+      "check": []
+    },
+    "rule": {
+      "min_spectra": 2,
+      "min_span_h": 24.0,
+      "max_abs_z": 3.0,
+      "floor": false
+    },
+    "overrides": {
+      "0.5 % H2O": {
+        "WW-NG-S1 TMSPa+H2O in EC-DEC_31P-1-1.jdf": true,
+        "WW-NG-S1 TMSPa+H2O in EC-DEC_Carbon-1-1.jdf": true
+      }
+    },
+    "effort": [
+      256,
+      8,
+      40
+    ],
+    "profile_nfev": 20,
+    "steps": [
+      {
+        "id": "S1",
+        "fit": [
+          "2 % H2O",
+          "0.5 % H2O"
+        ]
+      }
+    ],
+    "order": [],
+    "error_model": "nmr",
+    "sigma_solv": "total"
+  }
+}

@@ -4,6 +4,8 @@ Every stage of a run, and every notebook that reads its results, reads the setup
 
     solvation          the solvation medium of the reaction energies (kinetics.data.medium.SolvationMedium)
     network            the reaction network variant (kinetics.data.network.NETWORK_VARIANTS)
+    thermo_mode        the gas-phase free energies (kinetics.thermo.gas): 'wb97mv' (G fixed at its 25 °C value, the
+                       default) or 'wb97mv_T' (G = H − T·S follows the temperature; notebooks/H_DFT_Implementation)
     sample_overrides   changes to the samples for the whole run (keys as in residuals.build_sample_set)
     scenarios          the readings of the unknown ages: '10 min', '1 h', '8 h'
     energy_box_sigma   the box of the freed energies, in standard errors (kinetics.fitting.candidates)
@@ -24,7 +26,7 @@ and the three readings.
     load_fit_config     the setup stored in a results directory
     apply_fit_config    load it and make its medium, network and sample changes the active ones; returns the setup
     check_fit_medium    raise if a stored fit was computed in another medium than the active one
-    check_fit_setup     check_fit_medium, and the same for the network and the changes to the samples
+    check_fit_setup     check_fit_medium, and the same for the network, the thermo mode and the changes to the samples
 
 Source: Y. Alcaraz Galván
 """
@@ -37,13 +39,15 @@ from kinetics.data.medium import DEFAULT_MEDIUM, SolvationMedium, get_active_med
 from kinetics.data.network import (
     DEFAULT_NETWORK_VARIANT, NETWORK_VARIANTS, get_active_network_variant, set_active_network_variant,
 )
+from kinetics.thermo.gas import DEFAULT_THERMO_MODE, check_thermo_mode, get_active_thermo_mode, set_active_thermo_mode
 from kinetics.fitting.candidates import set_energy_box_sigma, set_species_shifts
 from kinetics.fitting.residuals import (
     DEFAULT_SCENARIOS, SCENARIOS, get_sample_overrides, set_sample_overrides,
 )
 
 FIT_CONFIG_FILE = 'fit_config.json'
-DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'network': DEFAULT_NETWORK_VARIANT, 'sample_overrides': {},
+DEFAULT_FIT_CONFIG = {'solvation': DEFAULT_MEDIUM.to_dict(), 'network': DEFAULT_NETWORK_VARIANT,
+                      'thermo_mode': DEFAULT_THERMO_MODE, 'sample_overrides': {},
                       'scenarios': list(DEFAULT_SCENARIOS),
                       'energy_box_sigma': None, 'structures': None,
                       'effort': {}, 'steps': [], 'step_variants': {}, 'thermo': None,
@@ -62,6 +66,7 @@ def load_fit_config(results_dir) -> dict:
         raise ValueError(f'{path}: unknown scenarios {sorted(unknown)} (this branch reads {list(SCENARIOS)})')
     if config['network'] not in NETWORK_VARIANTS:
         raise ValueError(f"{path}: unknown network '{config['network']}' (one of {NETWORK_VARIANTS})")
+    check_thermo_mode(config['thermo_mode'])
     config['medium'] = SolvationMedium.from_dict(config['solvation'])
     config['source'] = str(path) if path.exists() else 'default (no fit_config.json)'
     config['observables'] = resolve_observables_path(results_dir, config['observables'])
@@ -92,6 +97,7 @@ def apply_fit_config(results_dir) -> dict:
     config = load_fit_config(results_dir)
     set_active_medium(config['medium'])
     set_active_network_variant(config['network'])
+    set_active_thermo_mode(config['thermo_mode'])
     set_sample_overrides(config['sample_overrides'])
     set_energy_box_sigma(config['energy_box_sigma'])
     set_species_shifts(config['species_shifts_eV'])
@@ -107,14 +113,18 @@ def check_fit_medium(fit: dict) -> None:
 
 
 def check_fit_setup(fit: dict) -> None:
-    """check_fit_medium, and the same for the network and for the run's changes to the samples: a stored fit is run
-    forward with the network it was fitted with and, where it records them (fifth fit on), on top of the same
-    run-wide changes. The overrides of a variant (stored under 'variant_overrides') are passed by the caller."""
+    """check_fit_medium, and the same for the network, the thermo mode and the run's changes to the samples: a stored fit
+    is run forward with the network and thermo mode it was fitted with (fits without the record: the default) and,
+    where it records them (fifth fit on), on top of the same run-wide changes. The overrides of a variant (stored under 'variant_overrides') are passed by the caller."""
     check_fit_medium(fit)
     stored = fit.get('network', DEFAULT_NETWORK_VARIANT)
     if stored != get_active_network_variant():
         raise ValueError(f"this fit was computed with the network '{stored}', the active one is "
                          f"'{get_active_network_variant()}': call apply_fit_config(<its results directory>) first")
+    stored = fit.get('thermo_mode', DEFAULT_THERMO_MODE)
+    if stored != get_active_thermo_mode():
+        raise ValueError(f"this fit was computed with thermo_mode '{stored}', the active one is "
+                         f"'{get_active_thermo_mode()}': call apply_fit_config(<its results directory>) first")
     if 'sample_overrides' in fit and json.loads(json.dumps(get_sample_overrides())) != fit['sample_overrides']:
         raise ValueError(f"this fit was computed with the run-wide changes to the samples {fit['sample_overrides']}, "
                          f"the active ones are {get_sample_overrides()}: call apply_fit_config(<its results directory>) first")

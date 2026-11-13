@@ -1,0 +1,247 @@
+{
+  "_meta": {
+    "source": "Y. Alcaraz Galv\u00e1n; NMR data from experiments",
+    "built_from": "/home/yeray/data/nmr_261112 (kin_M1_DEC2pct-261112_md1112/build_observables.py): the 12 Nov 2026 neat-DEC tube only",
+    "built_at_utc": "2026-10-07T14:23:33+00:00",
+    "shares": "share of the summed area of the windows of one spectrum: median over three baselines; sigma_noise from the white noise, sigma_baseline half the spread between the baselines (kinetics.data.lab_nmr.calculate_area_shares)",
+    "windows": {
+      "31P": [
+        "TMSPA",
+        "BMSPA",
+        "MMSPA",
+        "H3PO4"
+      ],
+      "13C": [
+        "TMSOH",
+        "HMDSO",
+        "TMSOEG"
+      ],
+      "13C of a tube with phosphate": [
+        "TMSOH",
+        "HMDSO",
+        "TMSOEG",
+        "P-silyl"
+      ]
+    },
+    "error_floor": {
+      "31P": {
+        "absolute": 0.01,
+        "relative": 0.05
+      },
+      "13C": {
+        "absolute": 0.03,
+        "relative": 0.15
+      }
+    },
+    "more_nuclei_left_out": [],
+    "open_audit": [
+      "Raw spectra: check the 31P region near -144 ppm (PF6-) in every TMSPa sample, not only the 0.5 % one.",
+      "Raw spectra: inspect the 19F spectrum of the glovebox TMSOH sample (PF6- near -72 ppm, fluorosilanes).",
+      "Raw spectra: replace the ASSUMED clock times and the minimum durations of the heating steps by find_heated_windows on the inventory."
+    ]
+  },
+  "samples": {
+    "2 % H2O in DEC, 12/11/2026": {
+      "label": "5 vol% TMSPa + 2 % H2O (of the sample) in neat DEC, 12 Nov 2026 (our spectra)",
+      "campaign": 2026,
+      "nucleus": "31P",
+      "role": "fit",
+      "c0_M": {
+        "TMSPA": 0.14942455649519937,
+        "H2O": 1.1068553982792118
+      },
+      "recipe_basis": "25 \u00b5L TMSPa + 465 \u00b5L DEC + 10 \u00b5L H2O (2 % of the 500 \u00b5L sample, to confirm), volumes adding up, no EC",
+      "first_spectrum_at": "2026-11-12T14:22:23",
+      "T_rt_C": 22.3,
+      "age": {
+        "known": true,
+        "note": "water added 2026-11-12 14:21:23 (1 min before the first 31P); first 31P starts 1.00 min later"
+      },
+      "pre_history": [
+        {
+          "T_C": 22.3,
+          "duration_h": 0.016666666666666666
+        }
+      ],
+      "heated": [],
+      "heated_note": "none: every spectrum at room temperature",
+      "replicates": false,
+      "spectra": [
+        {
+          "t_since_first_h": 0.0,
+          "acquired_at": "2026-11-12T14:22:23",
+          "temperature_C": 22.3,
+          "scans": 4,
+          "relaxation_delay_s": 5.0,
+          "pulse_angle_deg": 45.0,
+          "noe": "FALSE",
+          "lock_solvent": "DMSO-D6",
+          "data_md5": "67964f90dceb9dd42f8dac76a764c6fd",
+          "shares": {
+            "TMSPA": {
+              "share": 0.3539655926517512,
+              "sigma_noise": 0.007381061969846718,
+              "sigma_baseline": 0.013240158385300654
+            },
+            "BMSPA": {
+              "share": 0.6246740205980723,
+              "sigma_noise": 0.009473022008759263,
+              "sigma_baseline": 0.007408564824157471
+            },
+            "MMSPA": {
+              "share": 0.01073370341224161,
+              "sigma_noise": 0.007030349602038271,
+              "sigma_baseline": 0.022295675437661127
+            },
+            "H3PO4": {
+              "share": 0.006980464002989846,
+              "sigma_noise": 0.009241314214984094,
+              "sigma_baseline": 0.00347006189567562
+            }
+          }
+        },
+        {
+          "t_since_first_h": 0.034166666666666665,
+          "acquired_at": "2026-11-12T14:24:26",
+          "temperature_C": 22.3,
+          "scans": 4,
+          "relaxation_delay_s": 5.0,
+          "pulse_angle_deg": 45.0,
+          "noe": "FALSE",
+          "lock_solvent": "DMSO-D6",
+          "data_md5": "acb10fffa39ea83519ec5afeea39104e",
+          "shares": {
+            "TMSPA": {
+              "share": 0.03330370187742894,
+              "sigma_noise": 0.008380579881114627,
+              "sigma_baseline": 0.005928840003355659
+            },
+            "BMSPA": {
+              "share": 0.8539706295535059,
+              "sigma_noise": 0.012642705533841512,
+              "sigma_baseline": 0.028307552101241473
+            },
+            "MMSPA": {
+              "share": 0.06226645731368921,
+              "sigma_noise": 0.006856998339969004,
+              "sigma_baseline": 0.019670644758646116
+            },
+            "H3PO4": {
+              "share": 0.04092989576820212,
+              "sigma_noise": 0.00911718108991075,
+              "sigma_baseline": 0.009801089602364144
+            }
+          }
+        },
+        {
+          "t_since_first_h": 0.06861111111111111,
+          "acquired_at": "2026-11-12T14:26:30",
+          "temperature_C": 22.3,
+          "scans": 4,
+          "relaxation_delay_s": 5.0,
+          "pulse_angle_deg": 45.0,
+          "noe": "FALSE",
+          "lock_solvent": "DMSO-D6",
+          "data_md5": "6db4ce5506a4066cf6a7c72de0806651",
+          "shares": {
+            "TMSPA": {
+              "share": 0.09948560698142442,
+              "sigma_noise": 1000.0,
+              "sigma_baseline": 0.01114772794551784,
+              "sigma_noise_measured": 0.007810583911513342
+            },
+            "BMSPA": {
+              "share": 0.8832147814389353,
+              "sigma_noise": 0.012871226515682602,
+              "sigma_baseline": 0.005870576127489258
+            },
+            "MMSPA": {
+              "share": 0.008172951289068808,
+              "sigma_noise": 0.00708507913796422,
+              "sigma_baseline": 0.01942059289644289
+            },
+            "H3PO4": {
+              "share": 0.00912666029057144,
+              "sigma_noise": 0.009270464579602195,
+              "sigma_baseline": 0.014143441078414299
+            }
+          }
+        },
+        {
+          "t_since_first_h": 0.10305555555555555,
+          "acquired_at": "2026-11-12T14:28:34",
+          "temperature_C": 22.3,
+          "scans": 4,
+          "relaxation_delay_s": 5.0,
+          "pulse_angle_deg": 45.0,
+          "noe": "FALSE",
+          "lock_solvent": "DMSO-D6",
+          "data_md5": "0f1398aa54f2adfa5de601bc4f5eb084",
+          "shares": {
+            "TMSPA": {
+              "share": -0.09872494544268569,
+              "sigma_noise": 1000.0,
+              "sigma_baseline": 0.025899094201969224,
+              "sigma_noise_measured": 0.01080069010118285
+            },
+            "BMSPA": {
+              "share": 0.9434027524015299,
+              "sigma_noise": 0.015636915377357945,
+              "sigma_baseline": 0.04122099618686009
+            },
+            "MMSPA": {
+              "share": 0.15367990730921607,
+              "sigma_noise": 0.007358950951982417,
+              "sigma_baseline": 0.015896373814873688
+            },
+            "H3PO4": {
+              "share": -0.01856715658104669,
+              "sigma_noise": 0.010862120664268686,
+              "sigma_baseline": 0.07291174304720982
+            }
+          }
+        },
+        {
+          "t_since_first_h": 0.1375,
+          "acquired_at": "2026-11-12T14:30:38",
+          "temperature_C": 22.3,
+          "scans": 4,
+          "relaxation_delay_s": 5.0,
+          "pulse_angle_deg": 45.0,
+          "noe": "FALSE",
+          "lock_solvent": "DMSO-D6",
+          "data_md5": "d7a193f126ad28b852bed21958e153ff",
+          "shares": {
+            "TMSPA": {
+              "share": -0.0346061195234923,
+              "sigma_noise": 1000.0,
+              "sigma_baseline": 0.007108264067936056,
+              "sigma_noise_measured": 0.009908772040988093
+            },
+            "BMSPA": {
+              "share": 0.8495743421072176,
+              "sigma_noise": 0.013900307112222933,
+              "sigma_baseline": 0.018166662124871724
+            },
+            "MMSPA": {
+              "share": 0.23156367899355987,
+              "sigma_noise": 0.007249093372215023,
+              "sigma_baseline": 0.029240602038440408
+            },
+            "H3PO4": {
+              "share": -0.04653190157728519,
+              "sigma_noise": 0.010993434184616154,
+              "sigma_baseline": 0.040299000095376084
+            }
+          }
+        }
+      ],
+      "flags": [
+        "31P windows of neat DEC (fit_thermo_rev01 \u00a73): BMSPA \u221215.5\u2026\u221211.5, MMSPA \u22127.0\u2026\u22123.5, H3PO4 \u22121.0\u20265.0 ppm",
+        "no weight (\u03c3 1e3), dispersive TMSPA line: TMSPA at 5.1 min (share +0.099); TMSPA at 7.2 min (share -0.099); TMSPA at 9.2 min (share -0.035)",
+        "1H recorded (5 spectra), ringing: not used; no 13C recorded"
+      ],
+      "more_nuclei": {}
+    }
+  }
+}

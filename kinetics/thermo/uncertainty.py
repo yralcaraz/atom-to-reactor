@@ -17,8 +17,9 @@ The values are standard errors already, so every σ returned here is the ±1 sta
 the solvation contribution and is used as stored (no further division by √n).
 
 Without explicit records, the components are those of the active solvation medium (kinetics/data/medium.py). In a
-linear mixture each term is weighted by the mole fraction of its solvent: σ_solute² = Σ_s (x_s σ_solute,s)², and
+linear mixture each term is weighted by the mole fraction of its solvent (preferential: by the solute's Boltzmann weights): σ_solute² = Σ_s (x_s σ_solute,s)², and
 the pure-solvent reference terms combine into one term shared by every species, σ_ref² = Σ_s (x_s σ_ref,s)².
+With openCOSMO-RS as the source (medium 'cosmors') the components are (|MD − COSMO-RS|, 0).
 
 Source: Y. Alcaraz Galván
 """
@@ -32,9 +33,9 @@ import numpy as np
 import pandas as pd
 
 from kinetics.data.network import NETWORK, list_species
-from kinetics.data.medium import SolvationMedium, get_active_medium
+from kinetics.data.medium import SolvationMedium, get_active_medium, mix_solvation
 from kinetics.data.snapshot import get_solvation_records
-from kinetics.data.species import resolve_species_database
+from kinetics.data.species import get_medium_database, resolve_species_database
 
 
 def calculate_solvation_sigma_components(solvation_records: dict = None) -> dict:
@@ -54,14 +55,24 @@ def calculate_solvation_sigma_components(solvation_records: dict = None) -> dict
 
 @lru_cache(maxsize=4)
 def _medium_components(medium: SolvationMedium) -> dict:
-    """Components of a solvation medium: those of its solvent, or of a linear mixture (weights x_s)."""
+    """Components of a solvation medium: those of its solvent, or of a linear mixture (weights x_s). Source 'cosmors':
+    (|MD − COSMO-RS|, 0) per species, the disagreement of the two methods, with no shared solvent term."""
+    if medium.source == 'cosmors':
+        return {name: (r['dE_solv_sigma_eV'], 0.0) for name, r in sorted(get_medium_database(medium).items())
+                if r['dE_solv_sigma_eV'] is not None}
     parts = {s: calculate_solvation_sigma_components(get_solvation_records(medium.path, s)) for s in medium.solvents}
     if medium.neat:
         return parts[medium.solvents[0]]
     x = medium.mole_fractions()
     shared = set.intersection(*(set(p) for p in parts.values()))
-    return {name: (math.sqrt(sum((x[s] * parts[s][name][0]) ** 2 for s in parts)),
-                   math.sqrt(sum((x[s] * parts[s][name][1]) ** 2 for s in parts))) for name in sorted(shared)}
+    if medium.rule == 'linear':
+        weights = {name: x for name in shared}
+    else:                                                       # the Boltzmann weights of each solute (medium.py)
+        neat = {s: get_medium_database(SolvationMedium(medium.snapshot, ((s, 1.0),))) for s in medium.solvents}
+        weights = {name: mix_solvation({s: neat[s][name]['dE_solv_eV'] for s in medium.solvents}, x, medium.rule)[1]
+                   for name in shared}
+    return {name: (math.sqrt(sum((weights[name][s] * parts[s][name][0]) ** 2 for s in parts)),
+                   math.sqrt(sum((weights[name][s] * parts[s][name][1]) ** 2 for s in parts))) for name in sorted(shared)}
 
 
 def calculate_solvation_sigma(reactants, products, solvation_records: dict = None) -> float:

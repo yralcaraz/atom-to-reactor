@@ -2,7 +2,10 @@
 
 Thermo modes (the `thermo_mode` argument used across the pipeline):
 
-    'wb97mv'  stored ωB97M-V Gibbs energy at 298.15 K; G does not change with T.
+    'wb97mv'    stored ωB97M-V Gibbs energy at 298.15 K; G does not change with T.
+    'wb97mv_T'  stored ωB97M-V enthalpy and Gibbs energy at 298.15 K give the entropy, S = (H − G)/298.15 K, and
+                G(T) = H − T·S: G follows the temperature (H and S are kept at their 298.15 K values). Equal to
+                'wb97mv' at 298.15 K. Nothing is fitted (notebooks/H_DFT_Implementation.ipynb).
     'qRRHO'   statistical mechanics from frequencies and moments of inertia (Grimme 2012 damping).
               The snapshot has no frequencies, so for its species this falls back to the stored G
               (with a warning) and only the standard-state shift differs from 'wb97mv'.
@@ -19,7 +22,11 @@ from kinetics.constants import (
 )
 from kinetics.data.species import resolve_species_database
 
-THERMO_MODES = ('wb97mv', 'qRRHO')
+THERMO_MODES = ('wb97mv', 'wb97mv_T', 'qRRHO')
+STORED_MODES = ('wb97mv', 'wb97mv_T')        # read the stored DFT values; no standard-state shift (solution.py)
+DEFAULT_THERMO_MODE = 'wb97mv'
+
+_active_thermo_mode = DEFAULT_THERMO_MODE
 
 
 def check_thermo_mode(thermo_mode: str) -> None:
@@ -27,34 +34,57 @@ def check_thermo_mode(thermo_mode: str) -> None:
         raise ValueError(f"Unknown thermo_mode '{thermo_mode}'. Supported: {THERMO_MODES}")
 
 
+def set_active_thermo_mode(thermo_mode: str = None) -> None:
+    """The thermo mode every calculation uses when none is passed (None: the default, 'wb97mv')."""
+    global _active_thermo_mode
+    thermo_mode = thermo_mode or DEFAULT_THERMO_MODE
+    check_thermo_mode(thermo_mode)
+    _active_thermo_mode = thermo_mode
+
+
+def get_active_thermo_mode() -> str:
+    return _active_thermo_mode
+
+
+def resolve_thermo_mode(thermo_mode: str = None) -> str:
+    """thermo_mode, or the active one when it is None."""
+    thermo_mode = thermo_mode or _active_thermo_mode
+    check_thermo_mode(thermo_mode)
+    return thermo_mode
+
+
 def calculate_gas_thermo(species: str, T_K: float, *, species_db: dict = None,
-                         thermo_mode: str = 'wb97mv', nu0_cm1: float = 100.0) -> dict:
+                         thermo_mode: str = None, nu0_cm1: float = 100.0) -> dict:
     """H°, S° and G° of one gas-phase species at T_K [kJ/mol, J/(mol·K)].
 
-    nu0_cm1 is the quasi-RRHO damping frequency (qRRHO only).
+    thermo_mode None: the active one (set_active_thermo_mode). nu0_cm1 is the quasi-RRHO damping frequency (qRRHO only).
     """
-    check_thermo_mode(thermo_mode)
+    thermo_mode = resolve_thermo_mode(thermo_mode)
     data = resolve_species_database(species_db)[species]
 
     has_freqs = len(data.get('frequencies_cm1', ())) > 0
     if thermo_mode == 'qRRHO' and not has_freqs:
         warnings.warn(f"qRRHO requested but '{species}' has no frequencies; using the stored Gibbs energy",
                       stacklevel=2)
+    if thermo_mode == 'wb97mv_T':
+        return _stored_gibbs(data, T_K)
     if thermo_mode == 'wb97mv' or not has_freqs:
         return _stored_gibbs(data)
     return _quasi_rrho(data, T_K, nu0_cm1)
 
 
-def _stored_gibbs(data: dict) -> dict:
-    """Stored RRHO values at 298.15 K (G is not extrapolated in T)."""
-    G_eV = data['G_gas_eV']
-    G_kJ_mol = G_eV * EV_TO_KJ_MOL
-    H_kJ_mol = data.get('H_gas_eV', G_eV) * EV_TO_KJ_MOL
+def _stored_gibbs(data: dict, T_K: float = None) -> dict:
+    """Stored RRHO values at 298.15 K. T_K None: G stays at its 298.15 K value ('wb97mv'); else G = H − T_K·S with
+    S = (H − G)/298.15 K ('wb97mv_T'). A species without a stored H has S = 0 and its G does not move."""
+    G298_kJ_mol = data['G_gas_eV'] * EV_TO_KJ_MOL
+    H_kJ_mol = data.get('H_gas_eV', data['G_gas_eV']) * EV_TO_KJ_MOL
+    S_J_mol_K = (H_kJ_mol - G298_kJ_mol) * 1000.0 / T_STD_K
+    G_kJ_mol = G298_kJ_mol if T_K is None else H_kJ_mol - T_K * S_J_mol_K / 1000.0
     return {
         'H_gas_kJ_mol': H_kJ_mol,
-        'S_gas_J_mol_K': (H_kJ_mol - G_kJ_mol) * 1000.0 / T_STD_K,
+        'S_gas_J_mol_K': S_J_mol_K,
         'G_gas_kJ_mol': G_kJ_mol,
-        'G_gas_eV': G_eV,
+        'G_gas_eV': data['G_gas_eV'] if T_K is None else G_kJ_mol / EV_TO_KJ_MOL,
     }
 
 

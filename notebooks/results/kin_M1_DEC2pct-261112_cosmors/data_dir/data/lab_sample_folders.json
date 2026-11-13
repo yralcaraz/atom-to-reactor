@@ -1,0 +1,121 @@
+{
+  "_meta": {
+    "what": "Names of raw lab folders, files and titles used by the code and by notebooks 03 and 04 (N. Gogoi, 2022-2023). Private: read by kinetics.data.observables.load_lab_sample_folders()."
+  },
+  "raw_sample_folders": {
+    "0.5 % H2O": [
+      "5% TMSPa + 0.5v% H2O in EC-DEC"
+    ],
+    "2 % H2O": [
+      "5% TMSPa + 2v% H2O in EC-DEC/Ramping Temperature",
+      "5% TMSPa + 2v% H2O in EC-DEC/After Ramping Temperature"
+    ],
+    "TMSPa alone": [
+      "5v%TMSPa in EDEC",
+      "NG230525_5v%TMSPa in EC_DEC_AFTER 10 DAYS"
+    ],
+    "TMSPa + TMSOH (A)": [
+      "5v%TMSPa+2v%TMSOH in ECDEC"
+    ],
+    "TMSPa + TMSOH (B)": [
+      "NG230530_5v%TMSPa+2v%TMSOH in EC_DEC_FRESH_Hus 7"
+    ],
+    "TMSOH, probe": [
+      "5v% TMSOH in EC-DEC heated in the NMR spectrometer"
+    ],
+    "TMSOH, glovebox": [
+      "5v% TMSOH EC-DEC stirred at 80oC in glovebox"
+    ]
+  },
+  "raw_check_folders": {
+    "TMSPa + TMSOH (A)": [
+      "NG230525_5v%TMSPa+2v%TMSOH in EC_DEC_AFTER 10 DAYS"
+    ]
+  },
+  "sample_of_folder": {
+    "5% TMSPa + 0.5v% H2O in EC-DEC": "5% TMSPa + 0.5% H2O",
+    "5% TMSPa + 2v% H2O in EC-DEC/Ramping Temperature": "5% TMSPa + 2% H2O",
+    "5% TMSPa + 2v% H2O in EC-DEC/After Ramping Temperature": "5% TMSPa + 2% H2O",
+    "5v% TMSOH in EC-DEC heated in the NMR spectrometer": "5% TMSOH, heated in the probe",
+    "5v% TMSOH EC-DEC stirred at 80oC in glovebox": "5% TMSOH, stirred at 80 °C (glovebox)",
+    "5v%TMSPa in EDEC": "5% TMSPa",
+    "NG230525_5v%TMSPa in EC_DEC_AFTER 10 DAYS": "5% TMSPa",
+    "5v%TMSPa+2v%TMSOH in ECDEC": "5% TMSPa + 2% TMSOH (A)",
+    "NG230525_5v%TMSPa+2v%TMSOH in EC_DEC_AFTER 10 DAYS": "5% TMSPa + 2% TMSOH (A)",
+    "NG230530_5v%TMSPa+2v%TMSOH in EC_DEC_FRESH_Hus 7": "5% TMSPa + 2% TMSOH (B)",
+    "5v% TMSOH+2v% H2O in ECDEC": "5% TMSOH + 2% H2O",
+    "5v%TMSOTMS+2v%H2O in ECDEC": "5% TMSOTMS + 2% H2O"
+  },
+  "sample_of_title": {
+    "NG230525_5v%TMSOH+2v%H2O in EC:DEC": "5% TMSOH + 2% H2O",
+    "NG230525_5v%TMSOTMS+2v%H2O in EC:DEC": "5% TMSOTMS + 2% H2O"
+  },
+  "processing_check": {
+    "folder": "5% TMSPa + 0.5v% H2O in EC-DEC",
+    "cases": [
+      {
+        "nucleus": "31P",
+        "fid": "WW-NG-S1 TMSPa+H2O in EC-DEC_31P-1-1.jdf",
+        "export": "WW-NG-S1 TMSPa+H2O in EC-DEC_31P-1.asc",
+        "windows": [
+          [
+            -27,
+            -22
+          ],
+          [
+            -16,
+            -12
+          ],
+          [
+            -152,
+            -136
+          ]
+        ]
+      },
+      {
+        "nucleus": "29Si",
+        "fid": "WW-NG-S1 TMSPa+H2O in EC-DEC_silicon-1-1.jdf",
+        "export": "WW-NG-S1 TMSPa+H2O in EC-DEC_silicon-1.asc",
+        "windows": [
+          [
+            15,
+            28
+          ],
+          [
+            -130,
+            -90
+          ]
+        ]
+      },
+      {
+        "nucleus": "13C",
+        "fid": "WW-NG-S1 TMSPa+H2O in EC-DEC_Carbon-1-1.jdf",
+        "export": "WW-NG-S1 TMSPa+H2O in EC-DEC_Carbon-1.asc",
+        "windows": [
+          [
+            -2,
+            2
+          ],
+          [
+            60,
+            68
+          ],
+          [
+            150,
+            160
+          ]
+        ]
+      }
+    ]
+  },
+  "si_text_exports": [
+    {
+      "path": "5v% TMSOH in EC-DEC heated in the NMR spectrometer/RT 29SI.txt",
+      "label": "export · 5% TMSOH, heated in the probe · room temperature"
+    },
+    {
+      "path": "NG230530_5v%TMSPa+2v%TMSOH in EC_DEC_FRESH_Hus 7/29Si_5v%TMSPa+2v%TMSOH in EC_DEC_FRESH_Hus7.txt",
+      "label": "export · 5% TMSPa + 2% TMSOH (B)"
+    }
+  ]
+}

@@ -19,7 +19,7 @@ def calculate_reaction_thermo(rxn_id: str,
                               *, 
                               network: dict = None, 
                               species_db: dict = None,
-                              thermo_mode: str = 'wb97mv') -> dict:
+                              thermo_mode: str = None) -> dict:
     
     """
     [Checked - YA]
@@ -49,7 +49,7 @@ def calculate_reaction_thermo(rxn_id: str,
 
 
 def calculate_network_thermo(T_K: float = T_STD_K, *, network: dict = None, species_db: dict = None,
-                             thermo_mode: str = 'wb97mv') -> pd.DataFrame:
+                             thermo_mode: str = None) -> pd.DataFrame:
     """One row per reaction: gas-phase ΔG, solvation contribution ΔΔE_solv ± σ, solution ΔG_rxn and K_eq.
 
     sigma_solv_eV is the ±1 standard error of ΔΔE_solv (NaN when the snapshot has no MD record).
